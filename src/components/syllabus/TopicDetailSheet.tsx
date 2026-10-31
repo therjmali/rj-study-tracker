@@ -838,7 +838,7 @@ export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelet
 
     {/* Delete confirmation — rendered OUTSIDE BottomSheet to avoid z-index conflict */}
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-      <AlertDialogContent className="z-[200]">
+      <AlertDialogContent className="">
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Topic</AlertDialogTitle>
           <AlertDialogDescription>This will permanently remove this topic and all its data.</AlertDialogDescription>

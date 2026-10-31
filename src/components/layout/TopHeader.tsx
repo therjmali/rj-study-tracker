@@ -1,4 +1,5 @@
 import { useState, memo } from 'react';
+import { useAppIcon } from '@/platform/appIcon';
 import { Stethoscope, Sun, Moon, Flame, Search, Cloud, CloudOff, Loader2, Bell, Wheat, GraduationCap, X } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import type { User, ThemeMode, StudentMode } from '../../types';
@@ -25,6 +26,8 @@ interface Props {
 }
 
 function AppIcon({ mode }: { mode?: StudentMode }) {
+  const custom = useAppIcon();
+  if (custom) return <img src={custom.dataUrl} alt="" className="w-full h-full object-cover rounded-[inherit]" draggable={false} />;
   if (mode === 'agriculture') return <Wheat className="w-4 h-4 text-primary-foreground" />;
   if (mode === 'nursing') return <Stethoscope className="w-4 h-4 text-primary-foreground" />;
   return <GraduationCap className="w-4 h-4 text-primary-foreground" />;
@@ -45,7 +48,7 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
       <div className="flex items-center gap-3 px-4 sm:px-6 h-14 max-w-6xl mx-auto">
         {/* Left: App icon + name */}
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <button onClick={onNavigateHome} className="w-8 h-8 rounded-[10px] bg-primary flex items-center justify-center shadow-sm shrink-0 hover:scale-105 active:scale-95 transition-transform" aria-label="Go to Home">
+          <button onClick={onNavigateHome} className="w-8 h-8 rounded-[10px] overflow-hidden bg-primary flex items-center justify-center shadow-sm shrink-0 hover:scale-105 active:scale-95 transition-transform" aria-label="Go to Home">
             <AppIcon mode={studentMode} />
           </button>
           <button onClick={onNavigateHome} className="font-heading text-foreground text-[15px] hidden sm:inline hover:text-primary transition-colors truncate">{appName}</button>

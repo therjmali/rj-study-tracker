@@ -187,7 +187,7 @@ export default function FolderCard({ folder, subjects, onOpen, onEdit, onDelete,
                   </span>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 z-[85]">
+              <DropdownMenuContent align="end" className="w-56">
                 {/* Header with folder info + copy link */}
                 <div className="px-2 py-1.5 border-b border-border/20 mb-1">
                   <div className="flex items-center gap-2">

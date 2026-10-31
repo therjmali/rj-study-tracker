@@ -4,9 +4,9 @@ import defaultTheme from 'tailwindcss/defaultTheme';
 const tailwindConfig: Config = {
   darkMode: ['class'],
   content: [
-    'src/**/*.{ts,tsx,css}',
-    '../../packages/ui/**/*.{ts,tsx}',
-    '../../packages/components/**/*.{ts,tsx}',
+    './index.html',
+    './src/**/*.{ts,tsx,css}',
+    './packages/components/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {

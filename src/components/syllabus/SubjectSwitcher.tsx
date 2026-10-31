@@ -29,7 +29,7 @@ export default function SubjectSwitcher({ currentSubject, allSubjects, onSwitch 
           <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" side="bottom" sideOffset={8} className="w-72 p-0 bg-card/98 backdrop-blur-xl border-border/20 shadow-2xl z-[90] rounded-2xl overflow-hidden">
+      <PopoverContent align="end" side="bottom" sideOffset={8} className="w-72 p-0 bg-card/98 backdrop-blur-xl border-border/20 shadow-2xl rounded-2xl overflow-hidden">
         {/* Search header */}
         <div className="p-2.5 border-b border-border/10 bg-muted/5">
           <div className="relative">

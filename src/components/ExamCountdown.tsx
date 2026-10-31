@@ -159,7 +159,7 @@ export default function ExamCountdown({ subjects, exams, onUpdateExams }: Props)
       </BottomSheet>
 
       <AlertDialog open={!!deleteId} onOpenChange={open => { if (!open) setDeleteId(null); }}>
-        <AlertDialogContent className="glass-card bg-card/90 backdrop-blur-xl" style={{ zIndex: 120 }}>
+        <AlertDialogContent className="glass-card bg-card/90 backdrop-blur-xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Exam?</AlertDialogTitle>
             <AlertDialogDescription>This exam will be permanently removed. This cannot be undone.</AlertDialogDescription>

@@ -8,6 +8,7 @@ import App from './App';
 import PlatformHost from './components/platform/PlatformHost';
 import { bootStorage } from './platform/storage';
 import { registerServiceWorker } from './platform/pwa';
+import { applyAppIcon } from './platform/appIcon';
 import { installNativeBridge } from './platform/native';
 import { scheduleDailySnapshot } from './platform/snapshots';
 
@@ -46,6 +47,7 @@ bootStorage().finally(() => {
       </ErrorBoundary>
     </StrictMode>,
   );
+  applyAppIcon();
   installNativeBridge();
   registerServiceWorker();
   scheduleDailySnapshot();

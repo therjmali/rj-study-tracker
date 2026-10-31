@@ -192,7 +192,7 @@ export default function ResourceManager({ resources, onChange }: { resources: Re
       </div>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={o => { if (!o) setDeleteTarget(null); }}>
-        <AlertDialogContent className="z-[200]">
+        <AlertDialogContent className="">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this link?</AlertDialogTitle>
             <AlertDialogDescription>

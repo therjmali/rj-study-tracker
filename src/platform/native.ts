@@ -52,7 +52,9 @@ export function installNativeBridge(): void {
   // <a download href="blob:…"> clicks (backups, ZIP/JSON exports, text summaries).
   document.addEventListener('click', (e) => {
     const a = (e.target as Element | null)?.closest?.('a[download]') as HTMLAnchorElement | null;
-    if (!a || !a.href.startsWith('blob:')) return;
+    if (!a) return;
+    const sameOrigin = (() => { try { return new URL(a.href).origin === location.origin; } catch { return false; } })();
+    if (!(a.href.startsWith('blob:') || a.href.startsWith('data:') || sameOrigin)) return;
     e.preventDefault();
     e.stopPropagation();
     const name = a.getAttribute('download') || 'download';

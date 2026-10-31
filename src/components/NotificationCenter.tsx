@@ -512,7 +512,7 @@ export default function NotificationCenter({
 
           {/* ═══ CONFIRM COMPLETE ═══ */}
           <AlertDialog open={!!confirmComplete} onOpenChange={o => { if (!o) setConfirmComplete(null); }}>
-            <AlertDialogContent className="bg-card/95 backdrop-blur-xl border-secondary/15 z-[90] max-w-[340px] rounded-2xl">
+            <AlertDialogContent className="bg-card/95 backdrop-blur-xl border-secondary/15 max-w-[340px] rounded-2xl">
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2 text-secondary text-base"><CheckCircle2 className="w-5 h-5" /> Mark Complete?</AlertDialogTitle>
                 <AlertDialogDescription className="text-xs">Complete <strong className="text-foreground">"{confirmComplete?.title}"</strong>?</AlertDialogDescription>
@@ -528,7 +528,7 @@ export default function NotificationCenter({
 
           {/* ═══ DELETE TASK ═══ */}
           <AlertDialog open={!!deleteTarget} onOpenChange={o => { if (!o) setDeleteTarget(null); }}>
-            <AlertDialogContent className="bg-card/95 backdrop-blur-xl border-destructive/15 z-[90] max-w-[340px] rounded-2xl">
+            <AlertDialogContent className="bg-card/95 backdrop-blur-xl border-destructive/15 max-w-[340px] rounded-2xl">
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2 text-destructive text-sm"><Trash2 className="w-4 h-4" /> Delete Task?</AlertDialogTitle>
                 <AlertDialogDescription className="text-xs">Delete <strong className="text-foreground">"{deleteTarget?.text}"</strong>?</AlertDialogDescription>
@@ -542,7 +542,7 @@ export default function NotificationCenter({
 
           {/* ═══ DELETE REMINDER ═══ */}
           <AlertDialog open={!!deleteReminderId} onOpenChange={() => setDeleteReminderId(null)}>
-            <AlertDialogContent className="bg-card/95 backdrop-blur-xl border-destructive/15 z-[90] max-w-[340px] rounded-2xl">
+            <AlertDialogContent className="bg-card/95 backdrop-blur-xl border-destructive/15 max-w-[340px] rounded-2xl">
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2 text-destructive text-sm"><Trash2 className="w-4 h-4" /> Delete Reminder?</AlertDialogTitle>
                 <AlertDialogDescription className="text-xs">This reminder will be permanently removed.</AlertDialogDescription>

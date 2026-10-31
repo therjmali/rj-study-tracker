@@ -11,6 +11,7 @@ import ReminderManager from '../reminders/ReminderManager';
 import OverviewTab from '../profile/OverviewTab';
 import BackupTab from '../profile/BackupTab';
 import AiDevicePanel from '../platform/AiDevicePanel';
+import AppIconPanel from '../platform/AppIconPanel';
 import TrashTab from '../profile/TrashTab';
 import TextLayoutSettings from './TextLayoutSettings';
 import {
@@ -58,6 +59,7 @@ type ItemId =
   | 'pomodoroTool' | 'pomodoroPrefs'
   | 'reminders'
   | 'aiDevice'
+  | 'appIcon'
   | 'backup' | 'trash'
   | 'shortcuts' | 'help';
 
@@ -103,8 +105,9 @@ const CATEGORIES: CategoryMeta[] = [
     ],
   },
   {
-    id: 'ai', icon: '✨', title: 'AI & Device', subtitle: 'AI tutor key, storage protection and offline status',
+    id: 'ai', icon: '✨', title: 'AI, Icon & Device', subtitle: 'AI tutor key, custom app icon, storage and offline status',
     items: [
+      { id: 'appIcon', icon: '🖼️', title: 'Custom App Icon', description: 'Upload your own icon (JPG/PNG/WebP, max 2 MB)', keywords: ['icon', 'logo', 'app icon', 'upload', 'image', 'launcher', 'home screen', 'custom'] },
       { id: 'aiDevice', icon: '🔑', title: 'AI Tutor & Device Storage', description: 'Add your own AI key, check storage protection and offline mode', keywords: ['ai', 'api', 'key', 'gemini', 'claude', 'openai', 'tutor', 'chat', 'mcq', 'storage', 'offline', 'persistent', 'device', 'model'] },
     ],
   },
@@ -242,6 +245,7 @@ export default function SettingsHub(props: SettingsHubProps) {
       case 'pomodoroPrefs': return <PomodoroSettingsPanel settings={settings} onUpdate={onUpdateSettings} />;
       case 'reminders': return onUpdateReminders ? <ReminderManager reminders={reminders || []} onUpdate={onUpdateReminders} /> : null;
       case 'aiDevice': return <AiDevicePanel />;
+      case 'appIcon': return <AppIconPanel />;
       case 'backup': return <BackupTab appState={props.appState} onImport={props.onImport} onReset={props.onReset} onClearHistory={props.onClearHistory} subjects={subjects} settings={settings} history={props.history} trash={trash} user={props.user} onUpdateUser={props.onUpdateUser} />;
       case 'trash': return <TrashTab trash={trash} onRestore={props.onRestoreTrash} onDelete={props.onDeleteTrash} onEmpty={props.onEmptyTrash} />;
       case 'shortcuts': return <KeyboardShortcutsSettings />;

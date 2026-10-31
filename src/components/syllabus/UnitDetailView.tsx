@@ -652,7 +652,7 @@ export default function UnitDetailView({
                 <MoreVertical className="w-4 h-4 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-xl border-border/20 min-w-[180px] z-[100]">
+            <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-xl border-border/20 min-w-[180px]">
               <DropdownMenuItem onClick={onBack} className="gap-2 text-xs">
                 <Pencil className="w-3.5 h-3.5" /> Edit Subject
               </DropdownMenuItem>
@@ -1792,7 +1792,7 @@ function LectureRow({ topic, index, onCycle, onToggleImportant, onOpenDetail, gl
                   <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={4} className="min-w-[190px] z-[100] bg-card/95 backdrop-blur-xl border-border/20">
+              <DropdownMenuContent align="end" sideOffset={4} className="min-w-[190px] bg-card/95 backdrop-blur-xl border-border/20">
                 <DropdownMenuItem onClick={onOpenDetail} className="gap-2 text-xs"><Pencil className="w-3 h-3" /> Edit Details</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onCycle} className="gap-2 text-xs">

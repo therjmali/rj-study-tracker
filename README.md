@@ -11,6 +11,7 @@ A private, **offline-first study tracker** for B.Sc. Nursing and NORCET preparat
 - **Full backup & restore** (Settings → Backup & Restore) including attachments, portable across devices and hosting addresses.
 - **Bulk subject import** — load many subjects at once from several `.json` files or a `.zip` pack, with preview, duplicate handling (keep both / skip / replace) and one-tap ZIP export.
 - **Daily safety snapshots** — the last 7 days of data are kept on-device and can be restored in Settings → AI & Device.
+- **Custom app icon** — upload your own JPG/PNG/WebP (max 2 MB); used in the header, browser tab, installed-app manifest and as a pinned Android home-screen shortcut.
 - **Local-first Android APK** — the full app bundled in the package (see below).
 - **PDF reports** through the browser print engine (choose *Save as PDF*).
 
