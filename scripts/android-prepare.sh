@@ -15,6 +15,11 @@ for d in android-res/mipmap-*; do
 done
 cp android-res/values/ic_launcher_background.xml android/app/src/main/res/values/ic_launcher_background.xml
 
+# Safe-area handling: replace the generated MainActivity with ours
+MAIN=$(find android/app/src/main/java -name MainActivity.java | head -1)
+cp android-res/MainActivity.java "$MAIN"
+echo "Installed MainActivity at $MAIN"
+
 # Version
 GRADLE=android/app/build.gradle
 sed -i -E "s/versionCode [0-9]+/versionCode ${VERSION_CODE}/; s/versionName \"[^\"]*\"/versionName \"${VERSION_NAME}\"/" "$GRADLE"

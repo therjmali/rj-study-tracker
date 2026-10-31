@@ -27,8 +27,27 @@ export async function saveAndShare(filename: string, blob: Blob): Promise<void> 
   await Share.share({ title: safe, url: written.uri, dialogTitle: 'Save or share' });
 }
 
+/** Keep the Android status / navigation bars in step with the app's current theme colour. */
+function syncSystemBars() {
+  const bridge = (window as unknown as { RJNative?: { setBars: (hex: string, darkIcons: boolean) => void } }).RJNative;
+  if (!bridge) return;
+  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(getComputedStyle(document.body).backgroundColor);
+  if (!m || (m[4] !== undefined && Number(m[4]) === 0)) return;
+  const [r, g, b] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const hex = `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  try { bridge.setBars(hex, luminance > 0.5); } catch { /* ignore */ }
+}
+
 export function installNativeBridge(): void {
   if (!isNative) return;
+
+  let raf = 0;
+  const schedule = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(syncSystemBars); };
+  new MutationObserver(schedule).observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style', 'data-theme'] });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', schedule);
+  window.addEventListener('load', schedule);
+  schedule();
 
   // <a download href="blob:…"> clicks (backups, ZIP/JSON exports, text summaries).
   document.addEventListener('click', (e) => {

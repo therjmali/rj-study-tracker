@@ -10,6 +10,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   backgroundColor: '#ecdfc8',
   server: { androidScheme: 'https' },
+  plugins: { SystemBars: { insetsHandling: 'disable' } }, // insets are handled natively in MainActivity
   android: { allowMixedContent: false, webContentsDebuggingEnabled: false },
 };
 
