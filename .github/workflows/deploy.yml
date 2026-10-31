@@ -1,0 +1,67 @@
+name: Deploy to GitHub Pages
+
+# Builds the app and publishes it to GitHub Pages on every push to main.
+# One-time setup: Settings → Pages → Build and deployment → Source: "GitHub Actions".
+#
+# Phone-friendly bootstrap: if a file named source.zip sits in the repo root, the first
+# run unpacks it into the repository (committing the real source tree), deletes the zip,
+# then builds and deploys — so the whole project can be installed with a single upload.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unpack source.zip (first-run bootstrap)
+        run: |
+          if [ -f source.zip ]; then
+            unzip -q -o source.zip -x ".github/*" "__MACOSX/*"
+            rm source.zip
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "chore: install RJ Tracker Pro source" || true
+            git push
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        run: |
+          REPO="${GITHUB_REPOSITORY#*/}"
+          case "$REPO" in
+            *.github.io) export VITE_BASE="/" ;;
+            *)           export VITE_BASE="/${REPO}/" ;;
+          esac
+          echo "Base path: $VITE_BASE"
+          npm run build
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

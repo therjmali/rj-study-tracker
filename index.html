@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>RJ Tracker Pro — Study Tracker</title>
+    <meta name="description" content="RJ Tracker Pro — a private, offline-first study tracker for nursing exam preparation: syllabus tracking, spaced repetition, Pomodoro, analytics and an optional AI tutor." />
+    <meta name="theme-color" content="#b4452b" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="application-name" content="RJ Tracker Pro" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="RJ Tracker" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%icons/icon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="%BASE_URL%icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <script>
+      // Restores deep links that GitHub Pages bounced through 404.html (see vite.config.ts).
+      (function () {
+        var l = window.location, m = /[?&]__p=([^&#]*)/.exec(l.search);
+        if (!m) return;
+        var rest = decodeURIComponent(m[1]).replace(/^\//, '');
+        window.history.replaceState(null, '', '%BASE_URL%' + rest + l.hash);
+      })();
+    </script>
+    <style>
+      /* Instant, brand-matched first paint while the JS bundle loads. */
+      html,body{margin:0;background:#ecdfc8;color:#1c1612}
+      @media (prefers-color-scheme: dark){html,body{background:#14110e;color:#f3ece1}}
+      #boot{position:fixed;inset:0;display:grid;place-items:center;font:600 15px/1.3 system-ui,-apple-system,'Segoe UI',sans-serif;letter-spacing:.02em}
+      #boot i{display:block;width:44px;height:44px;margin:0 auto 14px;border-radius:14px;background:linear-gradient(135deg,#b4452b,#3a2d22);box-shadow:0 10px 30px rgba(180,69,43,.35);animation:rjp 1.4s ease-in-out infinite}
+      @keyframes rjp{50%{transform:scale(.9);opacity:.75}}
+    </style>
+  </head>
+  <body>
+    <div id="root"><div id="boot"><div style="text-align:center"><i></i>RJ Tracker Pro</div></div></div>
+    <noscript>RJ Tracker Pro needs JavaScript to run.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

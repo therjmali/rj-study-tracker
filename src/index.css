@@ -1,0 +1,1350 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Backfilled during migration to 2.0 */
+    --font-serif: ui-serif;
+
+    /* Auto-restored theme variables */
+    --shadow-x: 0px;
+    --shadow-y: 1px;
+    --shadow-blur: 3px;
+    --shadow-spread: 0px;
+    --shadow-opacity: 0.08;
+    --shadow-color: hsl(20 30% 15%);
+
+    /* ── Cockroach Janta Party — Newspaper / Protest-Zine Theme ── */
+    /* Parchment cream background — confirmed from site */
+    --background: 38 47% 90%;
+    --foreground: 24 20% 9%;
+
+    --card: 40 40% 96%;
+    --card-foreground: 24 20% 9%;
+
+    --popover: 40 40% 96%;
+    --popover-foreground: 24 20% 9%;
+
+    /* Rust / Burnt Orange — primary CTA accent */
+    --primary: 13 62% 43%;
+    --primary-foreground: 40 50% 96%;
+
+    /* Dark Ink Brown — secondary */
+    --secondary: 30 18% 20%;
+    --secondary-foreground: 40 40% 96%;
+
+    --muted: 36 25% 85%;
+    --muted-foreground: 30 12% 38%;
+
+    /* Warm Ochre — accent */
+    --accent: 32 55% 45%;
+    --accent-foreground: 24 20% 9%;
+
+    /* Blood Red — destructive */
+    --destructive: 0 65% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 34 22% 78%;
+    --input: 34 22% 78%;
+    --ring: 13 62% 43%;
+
+    /* Muted earthy chart palette */
+    --chart-1: 13 62% 43%;
+    --chart-2: 30 18% 25%;
+    --chart-3: 32 55% 45%;
+    --chart-4: 150 35% 32%;
+    --chart-5: 345 45% 40%;
+
+    /* Difficulty Colors */
+    --diff-easy: 150 40% 34%;
+    --diff-medium: 38 60% 48%;
+    --diff-hard: 0 65% 45%;
+
+    /* Print-like: sharper corners */
+    --radius: 6px;
+
+    /* Dark ink sidebar */
+    --sidebar-background: 24 22% 10%;
+    --sidebar-foreground: 38 35% 90%;
+    --sidebar-primary: 13 62% 50%;
+    --sidebar-primary-foreground: 40 50% 96%;
+    --sidebar-accent: 32 55% 50%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 24 18% 16%;
+    --sidebar-ring: 13 62% 43%;
+
+    /* Inter for body, Fraunces for display headings */
+    --font-sans: 'Inter', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+    --font-heading: 'Fraunces', Georgia, 'Times New Roman', serif;
+
+    /* Warm shadow system — very subtle for print feel */
+    --shadow-rgb: 30 20 10;
+
+    --shadow-2xs: 0 0.5px 1px rgb(var(--shadow-rgb) / 0.03);
+    --shadow-xs: 0 1px 2px rgb(var(--shadow-rgb) / 0.04);
+    --shadow-sm: 0 1px 2px rgb(var(--shadow-rgb) / 0.05), 0 1px 2px -1px rgb(var(--shadow-rgb) / 0.03);
+    --shadow: 0 1px 4px rgb(var(--shadow-rgb) / 0.06), 0 1px 2px -1px rgb(var(--shadow-rgb) / 0.03);
+    --shadow-md: 0 2px 8px rgb(var(--shadow-rgb) / 0.07), 0 1px 3px -2px rgb(var(--shadow-rgb) / 0.04);
+    --shadow-lg: 0 4px 16px rgb(var(--shadow-rgb) / 0.08), 0 2px 4px -4px rgb(var(--shadow-rgb) / 0.03);
+    --shadow-xl: 0 8px 24px rgb(var(--shadow-rgb) / 0.10), 0 4px 8px -8px rgb(var(--shadow-rgb) / 0.04);
+    --shadow-2xl: 0 12px 32px rgb(var(--shadow-rgb) / 0.12);
+
+    /* Progress fill for unit/module cards — neutral warm, no green */
+    --progress-fill: hsl(34 20% 90%);
+
+    /* ── Unified State Colors — warm neutral, no green ── */
+    --state-complete-bg: 36 25% 93%;
+    --state-complete-border: 30 18% 35%;
+    --state-complete-accent: 30 20% 30%;
+    --state-complete-text: 28 18% 25%;
+    --state-progress-bg: 37 100% 95%;
+    --state-progress-border: 33 97% 49%;
+    --state-progress-accent: 28 94% 47%;
+    --state-neutral-border: 220 13% 91%;
+    --state-neutral-accent: 220 9% 64%;
+    --star-gold: 45 100% 48%;
+
+    /* Module-level accent — distinct from primary (units) and card (topics) */
+    --module-accent: 195 55% 42%;
+    --module-accent-fg: 195 55% 96%;
+    --submodule-accent: 270 35% 50%;
+    --submodule-accent-fg: 270 35% 96%;
+
+    /* Paper warmth layer */
+    --glass-bg: 40 38% 96%;
+    --glass-border: 30 18% 35%;
+    --glass-highlight: 40 40% 97%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  /* Theme transitions only during explicit theme switch — see useTheme.ts */
+  :root.theme-transitioning {
+    /* Only transition the root — children inherit the color changes via CSS vars */
+    transition: background-color 0.3s ease, color 0.3s ease !important;
+  }
+  :root.theme-transitioning .glass-card,
+  :root.theme-transitioning .glass-nav,
+  :root.theme-transitioning .glass-header,
+  :root.theme-transitioning nav,
+  :root.theme-transitioning header {
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+    letter-spacing: -0.01em;
+    font-weight: 450;
+    overflow-x: hidden;
+  }
+  html {
+    overflow-x: hidden;
+    background-color: hsl(var(--background));
+  }
+  body {
+    background-color: hsl(var(--background));
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  /* Subtle paper grain texture — newsprint feel (static, no SVG filter recomputation) */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 512px 512px;
+    contain: strict;
+  }
+  @media (hover: none), (pointer: coarse) {
+    body::before { display: none; }
+  }
+  body > * {
+    position: relative;
+    z-index: 1;
+  }
+  /* Root container — ensure it always fills viewport with correct bg */
+  #root {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background-color: hsl(var(--background));
+    isolation: isolate;
+  }
+  /* Smooth transitions — only GPU-friendly properties */
+  button, a, [role="button"] {
+    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
+  }
+  input, select, textarea {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  /* Fraunces for headings — bold newspaper masthead energy */
+  h1, h2 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  h3, h4 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  h5, h6 {
+    font-family: var(--font-sans);
+    letter-spacing: 0;
+    font-weight: 700;
+  }
+  /* Italic emphasis — editorial accent in rust */
+  h1 em, h2 em, h3 em, h4 em {
+    font-family: var(--font-heading);
+    font-style: italic;
+    color: hsl(var(--primary));
+  }
+}
+
+@layer components {
+  /* ── Flat Paper Card — no glass, minimal shadow, hairline border ── */
+  .glass-card {
+    @apply border;
+    border-radius: var(--radius);
+    background: hsl(var(--glass-bg));
+    border-color: hsl(var(--glass-border) / 0.12);
+    box-shadow:
+      0 1px 2px hsl(var(--shadow-rgb) / 0.04);
+  }
+
+  /* Subtle paper — lighter variant */
+  .glass-subtle {
+    @apply border;
+    border-radius: var(--radius);
+    background: hsl(var(--glass-bg) / 0.60);
+    border-color: hsl(var(--glass-border) / 0.08);
+  }
+
+  /* Paper texture grain for cards */
+  .paper-texture {
+    position: relative;
+  }
+  .paper-texture::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  /* Paper hover — GPU-only transforms for smoothness */
+  .glass-hover {
+    transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .glass-hover:hover {
+    border-color: hsl(var(--primary) / 0.16);
+    box-shadow:
+      0 1px 3px hsl(var(--shadow-rgb) / 0.05),
+      0 4px 14px hsl(var(--shadow-rgb) / 0.06);
+    transform: translateY(-1.5px) translateZ(0);
+  }
+  .glass-hover:active {
+    transform: translateY(0) scale(0.985) translateZ(0);
+    transition-duration: 0.08s;
+  }
+
+  /* ── Newsprint navigation bar ── */
+  .glass-nav {
+    @apply border;
+    background: hsl(var(--background) / 0.96);
+    border-color: hsl(var(--glass-border) / 0.10);
+    box-shadow:
+      0 -1px 0 hsl(var(--border) / 0.5),
+      0 2px 10px hsl(var(--shadow-rgb) / 0.07),
+      0 8px 24px hsl(var(--shadow-rgb) / 0.04);
+  }
+
+  /* ── Newsprint header bar ── */
+  .glass-header {
+    @apply border-b;
+    background: hsl(var(--background) / 0.94);
+    border-color: hsl(var(--glass-border) / 0.08);
+    box-shadow:
+      0 1px 3px hsl(var(--shadow-rgb) / 0.03),
+      0 4px 12px hsl(var(--shadow-rgb) / 0.02);
+  }
+
+  /* ── Material variants — paper layers ── */
+  .material-ultra-thin {
+    background: hsl(var(--glass-bg) / 0.45);
+    backdrop-filter: blur(6px);
+  }
+  .material-thin {
+    background: hsl(var(--glass-bg) / 0.65);
+    backdrop-filter: blur(8px);
+  }
+  .material-regular {
+    background: hsl(var(--glass-bg) / 0.82);
+  }
+  .material-thick {
+    background: hsl(var(--glass-bg) / 0.95);
+  }
+
+  /* ── Tinted cards — rust & ochre washes ── */
+  .glass-tint-primary {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.06),
+      hsl(var(--glass-bg))
+    );
+  }
+  .glass-tint-accent {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--accent) / 0.08),
+      hsl(var(--glass-bg))
+    );
+  }
+}
+
+/* Gradient text utility — rust to dark brown */
+.gradient-text {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Multi-color gradient — warm earthy palette */
+.gradient-multi {
+  background: linear-gradient(135deg,
+    hsl(var(--primary)),
+    hsl(var(--accent)),
+    hsl(var(--chart-4)),
+    hsl(var(--secondary))
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Warm parchment background — replaces mesh gradient */
+.mesh-gradient {
+  background:
+    radial-gradient(ellipse at 20% 0%, hsl(var(--primary) / 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, hsl(var(--accent) / 0.04) 0%, transparent 50%),
+    hsl(var(--background));
+}
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+  50% { box-shadow: 0 0 12px 4px hsl(var(--primary) / 0.18); }
+}
+@keyframes glow-pulse-once {
+  0% { box-shadow: 0 0 0 0 hsl(var(--diff-easy) / 0); }
+  50% { box-shadow: 0 0 10px 4px hsl(var(--diff-easy) / 0.18); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--diff-easy) / 0); }
+}
+.animate-glow-pulse {
+  animation: glow-pulse-once 0.6s ease-out;
+}
+.animate-glow-pulse-complete {
+  animation: glow-pulse 2.5s ease-in-out infinite;
+}
+
+/* ── Premium completed shimmer sweep ── */
+@keyframes premium-shimmer {
+  0% { background-position: -300% 0; }
+  100% { background-position: 300% 0; }
+}
+.premium-complete-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.premium-complete-shimmer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    transparent 35%,
+    hsl(var(--secondary) / 0.08) 45%,
+    hsl(var(--secondary) / 0.15) 50%,
+    hsl(var(--secondary) / 0.08) 55%,
+    transparent 65%,
+    transparent 100%
+  );
+  background-size: 300% 100%;
+  animation: premium-shimmer 4s ease-in-out infinite;
+  z-index: 1;
+}
+
+/* ── Celebration burst on first complete ── */
+@keyframes celebrate-burst {
+  0% { box-shadow: 0 0 0 0 hsl(var(--secondary) / 0.4); transform: scale(1); }
+  30% { box-shadow: 0 0 20px 8px hsl(var(--secondary) / 0.2); transform: scale(1.01); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--secondary) / 0); transform: scale(1); }
+}
+.animate-celebrate {
+  animation: celebrate-burst 0.8s ease-out;
+}
+
+/* ── In-progress pulse dot ── */
+@keyframes wip-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+.animate-wip-pulse {
+  animation: wip-pulse 2s ease-in-out infinite;
+}
+
+/* ── Completed badge shine ── */
+@keyframes badge-shine {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.badge-shine {
+  background: linear-gradient(
+    110deg,
+    hsl(var(--secondary)) 0%,
+    hsl(var(--secondary)) 40%,
+    hsl(var(--secondary) / 0.7) 50%,
+    hsl(var(--secondary)) 60%,
+    hsl(var(--secondary)) 100%
+  );
+  background-size: 200% auto;
+  animation: badge-shine 3s linear infinite;
+}
+
+@keyframes easy-glow {
+  0%, 100% { box-shadow: 0 0 3px hsl(var(--diff-easy) / 0.10); }
+  50% { box-shadow: 0 0 8px hsl(var(--diff-easy) / 0.18); }
+}
+@keyframes hard-pulse {
+  0%, 100% { box-shadow: 0 0 3px hsl(var(--diff-hard) / 0.10); }
+  50% { box-shadow: 0 0 6px hsl(var(--diff-hard) / 0.16); }
+}
+.glow-easy { animation: easy-glow 3s ease-in-out infinite; }
+.glow-hard { animation: hard-pulse 2s ease-in-out infinite; }
+
+@keyframes ping-once {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-ping-once {
+  animation: ping-once 0.4s ease-out;
+}
+
+/* ── Shimmer animation ── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    hsl(var(--primary) / 0.05) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* ── Float animation ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════════
+   AMOLED MODE — Deep Ink Newspaper
+   ══════════════════════════════════════════════ */
+html.amoled-mode {
+  --background: 0 0% 0%;
+
+  --card: 0 0% 6%;
+  --card-foreground: 38 20% 92%;
+  --popover: 0 0% 6%;
+  --popover-foreground: 38 20% 92%;
+
+  --muted: 0 0% 10%;
+  --muted-foreground: 24 8% 60%;
+
+  --border: 0 0% 14%;
+  --input: 0 0% 10%;
+
+  --glass-bg: 0 0% 5%;
+  --glass-border: 0 0% 20%;
+  --glass-highlight: 0 0% 12%;
+
+  --foreground: 38 20% 92%;
+
+  /* Lightened rust for AMOLED readability */
+  --primary: 13 65% 55%;
+  --primary-foreground: 40 50% 96%;
+
+  --secondary: 30 15% 45%;
+  --secondary-foreground: 0 0% 100%;
+
+  --accent: 32 55% 55%;
+  --accent-foreground: 38 20% 92%;
+
+  --destructive: 0 65% 55%;
+  --destructive-foreground: 0 0% 100%;
+
+  --ring: 13 65% 50%;
+
+  --diff-easy: 150 45% 48%;
+  --diff-medium: 38 60% 55%;
+  --diff-hard: 0 65% 55%;
+
+  --chart-1: 13 65% 52%;
+  --chart-2: 30 18% 40%;
+  --chart-3: 32 55% 52%;
+  --chart-4: 150 40% 45%;
+  --chart-5: 345 45% 50%;
+
+  --sidebar-background: 0 0% 0%;
+  --sidebar-foreground: 38 20% 92%;
+  --sidebar-primary: 13 65% 55%;
+  --sidebar-primary-foreground: 0 0% 0%;
+  --sidebar-accent: 32 55% 52%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 0 0% 10%;
+  --sidebar-ring: 13 65% 55%;
+
+  --shadow-rgb: 0 0 0;
+
+  /* Dark-friendly progress fill — neutral warm, no green */
+  --progress-fill: hsl(30 15% 14%);
+
+  --state-complete-bg: 30 15% 14%;
+  --state-complete-border: 30 20% 45%;
+  --state-complete-accent: 30 18% 50%;
+  --state-complete-text: 30 15% 65%;
+  --state-progress-bg: 33 40% 14%;
+  --state-progress-border: 33 80% 55%;
+  --state-progress-accent: 28 80% 52%;
+  --state-neutral-border: 0 0% 18%;
+  --state-neutral-accent: 0 0% 40%;
+  --star-gold: 45 85% 55%;
+
+  --module-accent: 195 60% 55%;
+  --module-accent-fg: 195 60% 92%;
+  --submodule-accent: 270 40% 60%;
+  --submodule-accent-fg: 270 40% 92%;
+}
+
+/* Kill paper grain on AMOLED */
+html.amoled-mode body::before {
+  opacity: 0;
+}
+
+/* Gradient text — lighter for AMOLED */
+html.amoled-mode .gradient-text {
+  background: linear-gradient(135deg, hsl(13 65% 58%), hsl(32 55% 55%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+html.amoled-mode .gradient-multi {
+  background: linear-gradient(135deg,
+    hsl(13 65% 58%),
+    hsl(32 55% 55%),
+    hsl(150 40% 48%),
+    hsl(30 18% 48%)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Low-opacity text boost — ensure readability on pure black */
+html.amoled-mode [class*="text-foreground/3"],
+html.amoled-mode [class*="text-foreground/4"] {
+  opacity: 0.75;
+}
+html.amoled-mode [class*="text-foreground/5"],
+html.amoled-mode [class*="text-foreground/6"] {
+  opacity: 0.85;
+}
+html.amoled-mode [class*="text-foreground/7"],
+html.amoled-mode [class*="text-foreground/8"] {
+  opacity: 0.92;
+}
+html.amoled-mode [class*="text-muted-foreground"] {
+  color: hsl(24 8% 70%);
+}
+/* Boost very low opacity muted text — /20, /25, /30, /40 */
+html.amoled-mode [class*="text-muted-foreground/2"],
+html.amoled-mode [class*="text-muted-foreground/3"] {
+  color: hsl(24 8% 50%);
+}
+html.amoled-mode [class*="text-muted-foreground/4"] {
+  color: hsl(24 8% 55%);
+}
+html.amoled-mode [class*="text-muted-foreground/5"],
+html.amoled-mode [class*="text-muted-foreground/6"],
+html.amoled-mode [class*="text-muted-foreground/7"] {
+  color: hsl(24 8% 60%);
+}
+
+/* Card / surface separation */
+html.amoled-mode .glass-card {
+  background: hsl(0 0% 5% / 0.95);
+  border-color: hsl(0 0% 18% / 0.35);
+  box-shadow:
+    inset 0 0.5px 0 rgba(255,255,255,0.03),
+    0 2px 8px rgba(0,0,0,0.6);
+}
+html.amoled-mode .glass-subtle {
+  background: hsl(var(--glass-bg) / 0.65);
+  border-color: hsl(var(--glass-border) / 0.18);
+}
+html.amoled-mode .glass-hover:hover {
+  border-color: hsl(var(--glass-border) / 0.35);
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.25),
+    0 6px 16px rgba(0,0,0,0.35),
+    inset 0 0.5px 0 rgba(255,255,255,0.05);
+}
+
+/* Nav / Header */
+html.amoled-mode .glass-nav {
+  background: hsl(0 0% 0% / 0.98);
+  border-color: hsl(0 0% 15% / 0.40);
+  box-shadow:
+    0 -0.5px 0 hsl(0 0% 12% / 0.20),
+    0 2px 12px rgba(0,0,0,0.7),
+    inset 0 0.5px 0 rgba(255,255,255,0.02);
+}
+html.amoled-mode .glass-header {
+  background: hsl(0 0% 0% / 0.98);
+  border-color: hsl(0 0% 15% / 0.30);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.5);
+}
+
+/* Mesh gradient — subtle glow on AMOLED */
+html.amoled-mode .mesh-gradient {
+  background:
+    radial-gradient(ellipse at 20% 0%, hsl(13 65% 55% / 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, hsl(32 55% 55% / 0.04) 0%, transparent 50%),
+    hsl(0 0% 0%);
+}
+
+/* Tinted cards */
+html.amoled-mode .glass-tint-primary {
+  background: linear-gradient(135deg, hsl(13 65% 55% / 0.08), hsl(var(--glass-bg)));
+}
+html.amoled-mode .glass-tint-accent {
+  background: linear-gradient(135deg, hsl(32 55% 55% / 0.10), hsl(var(--glass-bg)));
+}
+
+/* Material variants */
+html.amoled-mode .material-ultra-thin { background: hsl(0 0% 2% / 0.55); }
+html.amoled-mode .material-thin { background: hsl(0 0% 3% / 0.75); }
+html.amoled-mode .material-regular { background: hsl(0 0% 4% / 0.92); }
+html.amoled-mode .material-thick { background: hsl(0 0% 5% / 0.98); }
+
+/* Shimmer — visible on dark */
+html.amoled-mode .animate-shimmer {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    hsl(13 65% 55% / 0.06) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Selection */
+html.amoled-mode ::selection {
+  background: hsl(13 65% 55% / 0.22);
+  color: hsl(38 20% 94%);
+}
+
+/* Focus ring */
+html.amoled-mode :focus-visible {
+  outline-color: hsl(13 65% 50% / 0.50);
+}
+
+/* Paper texture off */
+html.amoled-mode .paper-texture::after {
+  opacity: 0;
+}
+
+/* Clock digits */
+html.amoled-mode .clock-digit {
+  background: linear-gradient(180deg, hsl(0 0% 6%) 0%, hsl(0 0% 2%) 100%);
+  border-color: hsl(0 0% 16% / 0.40);
+  color: hsl(38 20% 90%);
+}
+html.amoled-mode .clock-digit::after {
+  background: hsl(0 0% 14% / 0.35);
+}
+
+/* ══════════════════════════════════════════════
+   ANCIENT MODE — Aged Broadsheet / Manifesto
+   Darker parchment, bold headlines, editorial feel
+   ══════════════════════════════════════════════ */
+html.ancient-mode {
+  --background: 36 40% 88%;
+  --foreground: 22 28% 12%;
+
+  --card: 36 35% 93%;
+  --card-foreground: 22 28% 12%;
+  --popover: 36 35% 93%;
+  --popover-foreground: 22 28% 12%;
+
+  --muted: 34 22% 82%;
+  --muted-foreground: 26 14% 40%;
+
+  --border: 32 20% 74%;
+  --input: 32 20% 74%;
+
+  /* Deep Olive-Brown — primary */
+  --primary: 28 50% 30%;
+  --primary-foreground: 36 40% 96%;
+
+  /* Forest Green — secondary */
+  --secondary: 150 45% 28%;
+  --secondary-foreground: 0 0% 100%;
+
+  /* Burnt Sienna — accent */
+  --accent: 16 55% 42%;
+  --accent-foreground: 22 28% 10%;
+
+  --destructive: 4 60% 44%;
+  --destructive-foreground: 0 0% 100%;
+
+  --ring: 28 50% 30%;
+
+  --diff-easy: 150 42% 30%;
+  --diff-medium: 38 55% 42%;
+  --diff-hard: 4 60% 44%;
+
+  --chart-1: 28 50% 32%;
+  --chart-2: 150 45% 28%;
+  --chart-3: 16 55% 42%;
+  --chart-4: 38 55% 42%;
+  --chart-5: 195 40% 34%;
+
+  --glass-bg: 36 32% 92%;
+  --glass-border: 28 18% 45%;
+  --glass-highlight: 36 35% 96%;
+
+  --shadow-rgb: 30 20 10;
+
+  /* Warm parchment progress fill — neutral, no green */
+  --progress-fill: hsl(34 22% 84%);
+
+  --state-complete-bg: 36 25% 89%;
+  --state-complete-border: 28 35% 35%;
+  --state-complete-accent: 28 30% 30%;
+  --state-complete-text: 28 28% 22%;
+  --state-progress-bg: 36 50% 88%;
+  --state-progress-border: 33 70% 45%;
+  --state-progress-accent: 28 70% 42%;
+  --state-neutral-border: 32 20% 74%;
+  --state-neutral-accent: 26 14% 50%;
+  --star-gold: 42 80% 42%;
+
+  --module-accent: 195 45% 35%;
+  --module-accent-fg: 195 45% 94%;
+  --submodule-accent: 270 30% 42%;
+  --submodule-accent-fg: 270 30% 94%;
+
+  --sidebar-background: 22 22% 10%;
+  --sidebar-foreground: 36 35% 90%;
+  --sidebar-primary: 16 55% 48%;
+  --sidebar-primary-foreground: 22 22% 10%;
+  --sidebar-accent: 150 45% 35%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 22 18% 16%;
+  --sidebar-ring: 28 50% 30%;
+}
+
+/* Aged parchment grain */
+html.ancient-mode body::before {
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Gradient text — darker for light bg */
+html.ancient-mode .gradient-text {
+  background: linear-gradient(135deg, hsl(28 50% 28%), hsl(16 55% 38%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+html.ancient-mode .gradient-multi {
+  background: linear-gradient(135deg,
+    hsl(28 50% 28%),
+    hsl(150 42% 28%),
+    hsl(16 55% 38%),
+    hsl(38 55% 38%)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Papyrus card surfaces */
+html.ancient-mode .glass-card {
+  background: hsl(var(--glass-bg));
+  border-color: hsl(var(--glass-border) / 0.14);
+  box-shadow:
+    0 1px 2px hsl(30 20% 10% / 0.04);
+}
+html.ancient-mode .glass-subtle {
+  background: hsl(var(--glass-bg) / 0.70);
+  border-color: hsl(var(--glass-border) / 0.10);
+}
+html.ancient-mode .glass-hover:hover {
+  border-color: hsl(28 50% 30% / 0.20);
+  box-shadow:
+    0 1px 3px hsl(30 20% 10% / 0.06),
+    0 4px 12px hsl(30 20% 10% / 0.06);
+  transform: translateY(-1px);
+}
+
+/* Papyrus nav & header */
+html.ancient-mode .glass-nav {
+  background: hsl(var(--background) / 0.94);
+  border-color: hsl(var(--glass-border) / 0.10);
+  box-shadow:
+    0 -1px 0 hsl(var(--border)),
+    0 2px 8px hsl(30 20% 10% / 0.06);
+  backdrop-filter: blur(8px);
+}
+html.ancient-mode .glass-header {
+  background: hsl(var(--background) / 0.92);
+  border-color: hsl(var(--glass-border) / 0.10);
+  box-shadow: 0 1px 6px hsl(30 20% 10% / 0.04);
+  backdrop-filter: blur(8px);
+}
+
+/* Warm parchment mesh gradient */
+html.ancient-mode .mesh-gradient {
+  background:
+    radial-gradient(ellipse at 20% 0%, hsl(28 50% 30% / 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, hsl(150 45% 28% / 0.04) 0%, transparent 50%),
+    hsl(var(--background));
+}
+
+/* Clock digits */
+html.ancient-mode .clock-digit {
+  background: linear-gradient(180deg, hsl(36 35% 95%) 0%, hsl(36 30% 88%) 100%);
+  border-color: hsl(32 20% 72% / 0.35);
+  color: hsl(28 50% 28%);
+}
+html.ancient-mode .clock-digit::after {
+  background: hsl(32 20% 74% / 0.25);
+}
+
+/* Tinted cards */
+html.ancient-mode .glass-tint-primary {
+  background: linear-gradient(135deg, hsl(28 50% 30% / 0.06), hsl(var(--glass-bg)));
+}
+html.ancient-mode .glass-tint-accent {
+  background: linear-gradient(135deg, hsl(150 45% 28% / 0.05), hsl(var(--glass-bg)));
+}
+
+/* Material variants */
+html.ancient-mode .material-ultra-thin { background: hsl(var(--glass-bg) / 0.50); backdrop-filter: blur(6px); }
+html.ancient-mode .material-thin { background: hsl(var(--glass-bg) / 0.70); backdrop-filter: blur(8px); }
+html.ancient-mode .material-regular { background: hsl(var(--glass-bg) / 0.88); }
+html.ancient-mode .material-thick { background: hsl(var(--glass-bg) / 0.97); }
+
+/* Shimmer */
+html.ancient-mode .animate-shimmer {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    hsl(28 50% 30% / 0.05) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Selection */
+html.ancient-mode ::selection {
+  background: hsl(28 50% 30% / 0.16);
+  color: hsl(22 28% 10%);
+}
+
+/* Focus ring */
+html.ancient-mode :focus-visible {
+  outline-color: hsl(28 50% 30% / 0.45);
+}
+
+/* Section eyebrow */
+html.ancient-mode .sec-eyebrow {
+  color: hsl(26 14% 40%);
+}
+
+/* Paper texture stays */
+html.ancient-mode .paper-texture::after {
+  opacity: 0.035;
+}
+
+/* Boost low-opacity muted text in ancient mode for readability */
+html.ancient-mode [class*="text-muted-foreground/2"],
+html.ancient-mode [class*="text-muted-foreground/3"] {
+  color: hsl(26 14% 48%);
+}
+html.ancient-mode [class*="text-muted-foreground/4"] {
+  color: hsl(26 14% 44%);
+}
+/* Ensure incomplete topic text is readable in Ancient mode */
+html.ancient-mode [class*="text-foreground/7"],
+html.ancient-mode [class*="text-foreground/8"] {
+  color: hsl(var(--foreground) / 0.85);
+}
+
+/* Heading styling — bold wide-spaced */
+html.ancient-mode h1,
+html.ancient-mode h2 {
+  letter-spacing: 0.01em;
+  font-weight: 700;
+}
+html.ancient-mode h1 em,
+html.ancient-mode h2 em,
+html.ancient-mode h3 em,
+html.ancient-mode h4 em {
+  color: hsl(16 55% 38%);
+}
+
+/* ═══════════════════════════════════════════
+   SHARED ANIMATIONS & UTILITIES
+   ═══════════════════════════════════════════ */
+
+/* Animated gradient border for range controls */
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 3s ease infinite;
+}
+
+/* AlertDialog above BottomSheet fix */
+[data-state="open"][role="alertdialog"],
+[data-radix-alert-dialog-overlay] {
+  z-index: 200 !important;
+}
+
+/* Scrollbar hiding */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Safe area for floating nav — extra padding to avoid content being covered */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-36 {
+    padding-bottom: calc(9rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* UnitDetailView floating navigation — positioned relative to BottomNav.
+   BottomNav: fixed bottom-3 (12px) + h-[64px] → top edge = 76px from viewport bottom.
+   Gap: 12px above that → 88px total. Pure px avoids rem-scaling surprises.
+   NO safe-area-inset-bottom added here because BottomNav itself doesn't use it;
+   adding it only to this element caused a compounding gap on notched devices. */
+.udv-float-nav {
+  bottom: 78px;
+}
+/* Desktop: no BottomNav (lg:hidden), so float near viewport bottom */
+@media (min-width: 1024px) {
+  .udv-float-nav {
+    bottom: 1.5rem !important;
+  }
+}
+
+/* Breathing animation */
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.015); }
+}
+.animate-breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+/* Typing dots bounce */
+@keyframes bounce-dot {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-5px); }
+}
+
+/* Prevent blue/white flash during AnimatePresence transitions */
+main {
+  background-color: hsl(var(--background));
+  min-height: 50vh;
+  min-height: 50dvh;
+  contain: layout style;
+}
+/* Prevent blank flash during lazy-load Suspense fallback swap */
+main > * {
+  min-height: 0;
+}
+
+/* Skeleton pulse — softer, slower for less visual noise */
+@keyframes skeleton-pulse {
+  0% { opacity: 0.4; }
+  50% { opacity: 0.15; }
+  100% { opacity: 0.4; }
+}
+.animate-skeleton {
+  animation: skeleton-pulse 1.8s ease-in-out infinite;
+  animation-fill-mode: both;
+  contain: strict;
+  content-visibility: auto;
+}
+
+/* Card entrance animation */
+@keyframes card-enter {
+  0% { opacity: 0; transform: translateY(8px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-card-enter {
+  animation: card-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Page-level entrance — smooth upward reveal with stable dimensions */
+@keyframes page-enter {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-page-enter {
+  /* fill-mode "backwards": once finished, no transform/will-change is left behind
+     (a leftover transform turns the whole page into one huge GPU layer and
+     re-parents position:fixed children, which causes flicker while scrolling). */
+  animation: page-enter 0.18s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* Tabular nums */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Flashcard perspective */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+/* Focus ring — rust tint with softer glow */
+:focus-visible {
+  outline: 2px solid hsl(var(--primary) / 0.30);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.06);
+}
+
+/* Smooth scroll */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* GPU-accelerate ONLY nav/header (not every card — that causes memory bloat) */
+.glass-nav, .glass-header {
+  will-change: auto;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Stable layout for main content area */
+
+/* Content visibility for off-screen performance */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
+}
+
+/* Topic row virtualization — skip paint for off-screen topics */
+.topic-row-container {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 100px;
+}
+
+/* Density defaults */
+:root {
+  --density-pad-y: 14px;
+  --density-pad-x: 16px;
+  --density-gap: 8px;
+}
+
+/* Hardware-accelerated scroll containers */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+}
+
+/* Prevent layout thrash from AnimatePresence height:auto animations */
+[data-motion-pop-id] {
+  contain: layout;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Global Text Contrast Boost ──
+   Ensure low-opacity text classes remain readable in all themes */
+
+/* Boost text-muted-foreground/70 and similar — critical info text */
+[class*="text-muted-foreground/7"] {
+  color: hsl(var(--muted-foreground));
+}
+/* Boost text-foreground/40, /35 — ensure not invisible */
+[class*="text-foreground/3"],
+[class*="text-foreground/4"] {
+  color: hsl(var(--foreground) / 0.60);
+}
+/* Boost text-foreground/2 — very low, bump up */
+[class*="text-foreground/2"] {
+  color: hsl(var(--foreground) / 0.50);
+}
+/* Boost text-foreground/5, /6 */
+[class*="text-foreground/5"],
+[class*="text-foreground/6"] {
+  color: hsl(var(--foreground) / 0.72);
+}
+/* Boost muted-foreground/40, /50 for labels */
+[class*="text-muted-foreground/4"],
+[class*="text-muted-foreground/5"] {
+  color: hsl(var(--muted-foreground) / 0.78);
+}
+/* Boost muted-foreground/20, /25, /30 — separators and faint icons are fine, but text should be readable */
+[class*="text-muted-foreground/2"],
+[class*="text-muted-foreground/3"] {
+  color: hsl(var(--muted-foreground) / 0.65);
+}
+/* Boost muted-foreground/6 */
+[class*="text-muted-foreground/6"] {
+  color: hsl(var(--muted-foreground) / 0.82);
+}
+
+/* Ensure card-foreground text is always readable */
+.glass-card, [class*="bg-card"] {
+  color: hsl(var(--card-foreground));
+}
+
+
+
+/* Selection color — rust wash */
+::selection {
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--foreground));
+}
+
+/* ── Heading font utility ── */
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+/* ── Display Digit Font — editorial numbers ── */
+.font-display-digit {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 800;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+/* ── Clock digit tile ── */
+.clock-digit {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 800;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.85) 100%);
+  border: 1px solid hsl(var(--border) / 0.25);
+  box-shadow:
+    inset 0 1px 0 hsl(var(--glass-highlight) / 0.40),
+    0 1px 3px hsl(var(--shadow-rgb) / 0.06);
+  position: relative;
+}
+.clock-digit::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 49%;
+  height: 1px;
+  background: hsl(var(--border) / 0.15);
+  pointer-events: none;
+}
+
+/* ── Calendar display date ── */
+.cal-date-num {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 600;
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+  line-height: 1;
+}
+
+/* ── Colon pulse for clock ── */
+@keyframes colon-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+.animate-colon-blink {
+  animation: colon-blink 1s step-end infinite;
+}
+
+/* ── Streak shimmer ── */
+@keyframes streak-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ── Fire border animation ── */
+@keyframes fire-border {
+  0%, 100% { box-shadow: 0 0 6px hsl(13 62% 43% / 0.18), 0 0 14px hsl(32 55% 45% / 0.10); }
+  50% { box-shadow: 0 0 10px hsl(13 62% 43% / 0.28), 0 0 22px hsl(32 55% 45% / 0.18); }
+}
+.animate-fire-border {
+  animation: fire-border 2s ease-in-out infinite;
+}
+
+/* ── Eyebrow/section label — document classification stamp ── */
+.sec-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  font-weight: 600;
+}
+
+/* Ember glow */
+@keyframes ember-glow {
+  0%, 100% { box-shadow: 0 0 3px hsl(var(--primary) / 0.10); }
+  50% { box-shadow: 0 0 10px hsl(var(--primary) / 0.20); }
+}
+.glow-ember { animation: ember-glow 3s ease-in-out infinite; }
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   PERFORMANCE GUARDS — phones & tablets
+   backdrop-filter and CSS blur() re-sample/re-draw the pixels behind an
+   element on every scroll frame. On mobile GPUs this is the main cause of
+   flicker, lag and hangs. Surfaces are already mostly opaque, so dropping
+   the blur is visually almost identical.
+   ═══════════════════════════════════════════════════════════════════ */
+@media (hover: none), (pointer: coarse), (max-width: 1023px) {
+  [class*="backdrop-blur"],
+  .material-ultra-thin,
+  .material-thin,
+  html.ancient-mode .material-ultra-thin,
+  html.ancient-mode .material-thin {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  /* Floating surfaces (dialogs, popovers, menus) lose their blur on phones — give them a solid card
+     background instead so text underneath never bleeds through. */
+  [role="dialog"][class*="backdrop-blur"],
+  [role="alertdialog"][class*="backdrop-blur"],
+  [role="menu"][class*="backdrop-blur"],
+  [data-radix-popper-content-wrapper] [class*="backdrop-blur"],
+  [data-radix-popper-content-wrapper] > [class*="bg-"] {
+    background-color: hsl(var(--card) / 0.985) !important;
+  }
+  /* decorative blurred glow blobs: hide instead of re-blurring large areas */
+  [class*="blur-3xl"]:not([class*="backdrop-blur"]),
+  [class*="blur-2xl"]:not([class*="backdrop-blur"]),
+  [class*="blur-[60px]"],
+  [class*="blur-[50px]"] {
+    display: none !important;
+  }
+  /* box-shadow animations repaint every frame — keep them static */
+  .animate-fire-border,
+  .animate-glow-pulse-complete,
+  .glow-ember,
+  .glow-easy,
+  .glow-hard {
+    animation: none !important;
+  }
+  .paper-texture::after { display: none; }
+  /* hover lift effects are meaningless on touch and cause "sticky" repaints */
+  .glass-hover:hover { transform: none; box-shadow: none; }
+}
+
+/* Cheap CSS replacements for per-row framer-motion infinite loops */
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+.animate-spin-slow { animation: spin-slow 2s linear infinite; }
+@keyframes soft-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.animate-soft-pulse { animation: soft-pulse 2s ease-in-out infinite; }
+@keyframes dot-blip {
+  0%, 73% { opacity: 0; transform: scale(0); }
+  86% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(0); }
+}
+.animate-dot-blip { animation: dot-blip 5.5s ease-in-out infinite; }
+@keyframes glow-opacity {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.3; }
+}
+.animate-glow-opacity { animation: glow-opacity 2.5s ease-in-out infinite; }
+@keyframes glow-opacity-hi {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.55; }
+}
+.animate-glow-opacity-hi { animation: glow-opacity-hi 2.5s ease-in-out infinite; }
+
+/* Pause every looping animation on pages that are hidden / backgrounded */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin-slow, .animate-soft-pulse, .animate-dot-blip, .animate-glow-opacity, .animate-glow-opacity-hi { animation: none; }
+}
+
+@keyframes fade-in-quick { from { opacity: 0; } to { opacity: 1; } }
+.animate-fade-in { animation: fade-in-quick 0.16s ease-out both; }
+
+/* Settings: brief highlight on the setting a search result just opened */
+@keyframes settings-flash-ring {
+  0% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.55); }
+  60% { box-shadow: 0 0 0 6px hsl(var(--primary) / 0); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+}
+.settings-flash { animation: settings-flash-ring 1.4s ease-out 1; }
+
+/* Topic sheet "More" rows: reuse existing cards without a card-inside-a-card look */
+.flat-card > div:first-child {
+  background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; border-radius: 0 !important;
+}
+.flat-card > div:first-child > label:first-child,
+.flat-card > div:first-child > div:first-child > label:first-child { display: none; }
