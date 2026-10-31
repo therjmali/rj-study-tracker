@@ -4,3 +4,7 @@ dist
 *.local
 *.tsbuildinfo
 .env*
+
+# generated native project
+/android/
+*.keystore

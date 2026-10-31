@@ -8,6 +8,8 @@ import App from './App';
 import PlatformHost from './components/platform/PlatformHost';
 import { bootStorage } from './platform/storage';
 import { registerServiceWorker } from './platform/pwa';
+import { installNativeBridge } from './platform/native';
+import { scheduleDailySnapshot } from './platform/snapshots';
 
 const queryClient = new QueryClient();
 
@@ -44,5 +46,7 @@ bootStorage().finally(() => {
       </ErrorBoundary>
     </StrictMode>,
   );
+  installNativeBridge();
   registerServiceWorker();
+  scheduleDailySnapshot();
 });

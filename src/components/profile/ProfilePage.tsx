@@ -32,6 +32,7 @@ interface Props {
   onEmptyTrash: () => void;
   onClose: () => void;
   onLogout: () => void;
+  onOpenAi?: () => void;
   reminders?: Reminder[];
   onUpdateReminders?: (r: Reminder[]) => void;
   onOpenHelp?: () => void;
@@ -54,7 +55,7 @@ const GRADIENTS = [
 ];
 
 export default function ProfilePage(props: Props) {
-  const { user, onUpdateUser, subjects, dailyLogs, appState, settings, onUpdateSettings, onImport, onReset, onClearHistory, history, exams, onUpdateExams, onPomodoroComplete, trash, onRestoreTrash, onDeleteTrash, onEmptyTrash, onClose, onLogout, reminders, onUpdateReminders, onOpenHelp, dbSessions, initialSection } = props;
+  const { user, onUpdateUser, subjects, dailyLogs, appState, settings, onUpdateSettings, onImport, onReset, onClearHistory, history, exams, onUpdateExams, onPomodoroComplete, trash, onRestoreTrash, onDeleteTrash, onEmptyTrash, onClose, onLogout, onOpenAi, reminders, onUpdateReminders, onOpenHelp, dbSessions, initialSection } = props;
   const [editName, setEditName] = useState(false);
   const [nameVal, setNameVal] = useState(user.name);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -189,6 +190,14 @@ export default function ProfilePage(props: Props) {
             </div>
           ))}
         </div>
+
+        {onOpenAi && (
+          <button onClick={onOpenAi} className="w-full mb-3 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-left active:scale-[0.99] transition-transform">
+            <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-xl">🤖</span>
+            <span className="flex-1"><span className="block text-[13px] font-bold text-foreground">AI Tutor</span><span className="block text-[11px] text-muted-foreground">Chat, MCQs, flashcards and study plans</span></span>
+            <span className="text-primary text-lg">›</span>
+          </button>
+        )}
 
         {/* Logout */}
         <Button variant="outline" size="sm" onClick={onLogout} className="w-full mb-5 text-destructive border-destructive/20 hover:bg-destructive/10">

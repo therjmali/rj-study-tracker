@@ -17,9 +17,10 @@ interface Props {
   /** For replace mode — replaces ALL existing subjects */
   onReplaceImport?: (subjects: Subject[]) => void;
   existingSubjects?: Subject[];
+  onOpenBulk?: () => void;
 }
 
-export default function ImportSyllabusSheet({ open, onClose, onImport, onReplaceImport, existingSubjects = [] }: Props) {
+export default function ImportSyllabusSheet({ open, onClose, onImport, onReplaceImport, existingSubjects = [], onOpenBulk }: Props) {
   const [text, setText] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
@@ -241,6 +242,13 @@ export default function ImportSyllabusSheet({ open, onClose, onImport, onReplace
   return (
     <BottomSheet open={open} onClose={onClose} title="📥 Import Syllabus">
       <div className="space-y-4 pt-2">
+        {onOpenBulk && !showPrompt && (
+          <button onClick={onOpenBulk} className="w-full flex items-center gap-3 rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3 text-left active:scale-[0.99] transition-transform">
+            <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-xl">📦</span>
+            <span className="flex-1"><span className="block text-[13px] font-bold text-foreground">Bulk import — JSON files or ZIP</span><span className="block text-[11px] text-muted-foreground">Load many subjects in one go, with preview and duplicate handling</span></span>
+            <span className="text-primary text-lg">›</span>
+          </button>
+        )}
         {showPrompt ? (
           /* ===== AI PROMPT VIEW ===== */
           <>

@@ -2,23 +2,27 @@ import { useRef, useCallback, memo } from 'react';
 import { motion } from 'framer-motion';
 import type { AppTab } from '../../types';
 
-const TABS: { id: AppTab; label: string; icon: string; activeIcon: string }[] = [
+type NavId = AppTab | 'profile';
+const TABS: { id: NavId; label: string; icon: string; activeIcon: string }[] = [
   { id: 'dashboard', label: 'Home', icon: '🏠', activeIcon: '🏡' },
   { id: 'syllabus', label: 'Syllabus', icon: '📚', activeIcon: '📖' },
   { id: 'charts', label: 'Stats', icon: '📊', activeIcon: '📈' },
   { id: 'revision', label: 'Review', icon: '🧠', activeIcon: '🧠' },
-  { id: 'gamification', label: 'AI', icon: '🤖', activeIcon: '🤖' },
+  { id: 'profile', label: 'Profile', icon: '👤', activeIcon: '🧑‍🎓' },
 ];
 
-const TAB_ORDER: AppTab[] = TABS.map(t => t.id);
+// Swipe order keeps the AI tutor reachable (it also lives in Profile → AI Tutor).
+const TAB_ORDER: AppTab[] = ['dashboard', 'syllabus', 'charts', 'revision', 'gamification'];
 
 interface Props {
   activeTab: AppTab;
   onTabChange: (tab: AppTab, direction?: 'left' | 'right') => void;
   srsDueCount?: number;
+  onOpenProfile?: () => void;
+  profileOpen?: boolean;
 }
 
-function BottomNavInner({ activeTab, onTabChange, srsDueCount = 0 }: Props) {
+function BottomNavInner({ activeTab, onTabChange, srsDueCount = 0, onOpenProfile, profileOpen = false }: Props) {
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const touchStartTime = useRef(0);
@@ -61,9 +65,10 @@ function BottomNavInner({ activeTab, onTabChange, srsDueCount = 0 }: Props) {
       <div className="glass-nav relative rounded-[20px] mx-auto max-w-lg overflow-hidden shadow-lg">
         <div className="flex items-center h-[60px] px-1">
           {TABS.map(tab => {
-            const isActive = activeTab === tab.id;
+            const isProfile = tab.id === 'profile';
+            const isActive = isProfile ? profileOpen : activeTab === tab.id && !profileOpen;
             return (
-              <button key={tab.id} onClick={() => onTabChange(tab.id)}
+              <button key={tab.id} onClick={() => (isProfile ? onOpenProfile?.() : onTabChange(tab.id as AppTab))}
                 className="relative flex flex-col items-center justify-center gap-[3px] flex-1 py-2 active:scale-90 transition-transform duration-100"
                 aria-label={tab.label}>
                 {isActive && (

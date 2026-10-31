@@ -7,6 +7,7 @@ import {
   PROVIDERS, getAiSettings, isAiConfigured, saveAiSettings, subscribeAiSettings, testAiConnection,
   type AiProvider, type AiSettings,
 } from '@/platform/ai';
+import { createSnapshot, deleteSnapshot, listSnapshots, restoreSnapshot, type SnapshotMeta } from '@/platform/snapshots';
 import { getStorageHealth, requestPersistence, type StorageHealth } from '@/platform/storage';
 
 const ORDER: AiProvider[] = ['gemini', 'anthropic', 'openai'];
@@ -251,6 +252,8 @@ function DeviceTab() {
         <p>Because of that, <b>export a backup regularly</b> (Settings → Backup &amp; Restore), and always before clearing browser data or changing phones. Restoring that file on any device brings everything back, including attachments.</p>
       </div>
 
+      <Snapshots />
+
       <p className="text-[10px] text-center text-muted-foreground/60 font-mono">
         RJ Tracker Pro v{__APP_VERSION__} · build {__BUILD_DATE__}
       </p>
@@ -269,5 +272,46 @@ function Row({ ok, label, detail }: { ok: boolean; label: string; detail: string
         <span className="block text-[11px] text-muted-foreground leading-snug">{detail}</span>
       </span>
     </li>
+  );
+}
+
+function Snapshots() {
+  const [list, setList] = useState<SnapshotMeta[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const refresh = useCallback(async () => { try { setList(await listSnapshots()); } catch { setList([]); } }, []);
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  const snapNow = async () => {
+    setBusy(true);
+    try { await createSnapshot(true); await refresh(); toast.success('Snapshot saved'); } finally { setBusy(false); }
+  };
+  const restore = async (s: SnapshotMeta) => {
+    if (!window.confirm(`Restore the snapshot from ${new Date(s.createdAt).toLocaleString()}?\n\nYour current data is snapshotted first, so this can be undone.`)) return;
+    if (await restoreSnapshot(s.id)) { toast.success('Restored — reloading…'); setTimeout(() => window.location.reload(), 700); }
+  };
+
+  return (
+    <div className="rounded-2xl border border-border/20 bg-card/30 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-[13px] font-bold text-foreground">Safety snapshots</p>
+          <p className="text-[11px] text-muted-foreground leading-snug">Saved automatically every day (last 7 kept).</p>
+        </div>
+        <Button size="sm" variant="outline" onClick={snapNow} disabled={busy} className="rounded-xl font-bold shrink-0">Snapshot now</Button>
+      </div>
+      {list && list.length === 0 && <p className="text-[11px] text-muted-foreground">No snapshots yet — the first one is taken after you add a subject.</p>}
+      <ul className="space-y-1.5">
+        {(list ?? []).map(s => (
+          <li key={s.id} className="flex items-center gap-2 rounded-xl border border-border/15 bg-card/30 px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] font-bold text-foreground">{new Date(s.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</p>
+              <p className="text-[10px] text-muted-foreground">{s.subjects} subjects · {s.topics} topics · {fmtBytes(s.bytes)}</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => restore(s)} className="h-8 rounded-lg text-xs font-bold">Restore</Button>
+            <button aria-label="Delete snapshot" onClick={async () => { await deleteSnapshot(s.id); await refresh(); }} className="w-8 h-8 rounded-lg text-muted-foreground hover:text-destructive flex items-center justify-center"><Trash2 className="w-3.5 h-3.5" /></button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

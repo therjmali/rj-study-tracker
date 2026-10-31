@@ -2023,7 +2023,7 @@ function AppInner() {
         </main>
       </div>
 
-      <BottomNav activeTab={activeTab} onTabChange={handleBottomNavChange} srsDueCount={srsDueCount} />
+      <BottomNav activeTab={activeTab} onTabChange={handleBottomNavChange} srsDueCount={srsDueCount} onOpenProfile={openProfile} profileOpen={profileOpen} />
 
       {/* Unified FAB — hidden on AI tab to avoid overlap */}
       {activeTab !== 'gamification' && <UnifiedFAB
@@ -2248,6 +2248,7 @@ function AppInner() {
               initialSection={profileInitialSection}
               reminders={reminders} onUpdateReminders={setReminders}
               onOpenHelp={() => { setProfileOpen(false); setHelpOpen(true); }}
+              onOpenAi={() => { setProfileOpen(false); handleBottomNavChange('gamification'); }}
               dbSessions={dbSessions}
             />
           </Suspense>

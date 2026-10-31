@@ -9,6 +9,7 @@ import TopicDetailSheet from './syllabus/TopicDetailSheet';
 import UnitDetailView from './syllabus/UnitDetailView';
 import BulkSelectBar from './syllabus/BulkSelectBar';
 import ImportSyllabusSheet from './syllabus/ImportSyllabusSheet';
+import BulkImportSheet from './syllabus/BulkImportSheet';
 import TopicTimerSheet from './syllabus/TopicTimerSheet';
 import BottomSheet from './shared/BottomSheet';
 import ConfirmDialog from './shared/ConfirmDialog';
@@ -143,6 +144,7 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
   const [selectMode, setSelectMode] = useState(false);
   const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set());
   const [importOpen, setImportOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [unitDetailData, setUnitDetailData] = useState<{ subjectId: string; unitId: string } | null>(null);
 
   // Topic Timer state
@@ -1596,7 +1598,8 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
         topicIndex={topicNavInfo.topicIndex} totalTopics={topicNavInfo.totalTopics}
         availableSubjects={subjects} onNavigateToTopic={handleNavigateToTopic}
         onCreateSession={onCreateSession} />
-      <ImportSyllabusSheet open={importOpen} onClose={() => setImportOpen(false)} onImport={handleImportedSubjects} onReplaceImport={(imported) => onUpdate(imported)} existingSubjects={subjects} />
+      <BulkImportSheet open={bulkOpen} onClose={() => setBulkOpen(false)} existingSubjects={subjects} onApply={onUpdate} />
+      <ImportSyllabusSheet onOpenBulk={() => { setImportOpen(false); setBulkOpen(true); }} open={importOpen} onClose={() => setImportOpen(false)} onImport={handleImportedSubjects} onReplaceImport={(imported) => onUpdate(imported)} existingSubjects={subjects} />
 
       {/* Topic Timer Sheet */}
       <TopicTimerSheet

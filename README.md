@@ -9,6 +9,9 @@ A private, **offline-first study tracker** for B.Sc. Nursing and NORCET preparat
 - **Installable** (PWA) on Android, iOS and desktop.
 - **Optional AI tutor** — chat, MCQs, flashcards, study plans and tips — using *your own* Gemini, Claude or OpenAI key, stored only on the device and never included in backups.
 - **Full backup & restore** (Settings → Backup & Restore) including attachments, portable across devices and hosting addresses.
+- **Bulk subject import** — load many subjects at once from several `.json` files or a `.zip` pack, with preview, duplicate handling (keep both / skip / replace) and one-tap ZIP export.
+- **Daily safety snapshots** — the last 7 days of data are kept on-device and can be restored in Settings → AI & Device.
+- **Local-first Android APK** — the full app bundled in the package (see below).
 - **PDF reports** through the browser print engine (choose *Save as PDF*).
 
 ## Develop
@@ -25,6 +28,10 @@ npm run build        # outputs dist/
 1. Settings → Pages → *Build and deployment* → Source: **GitHub Actions**.
 2. Push to `main`. `.github/workflows/deploy.yml` builds and publishes; the base path is derived from the repository name automatically.
 
+## Android APK (local-first)
+
+Push a tag (e.g. `git tag v12.1.0 && git push --tags`) or run **Actions → Build Android APK**. The workflow bundles the app inside a Capacitor shell, signs it with the release key stored in repository secrets and publishes the APK under **Releases**. The APK never loads the website, so it works fully offline. Exports (backups, ZIPs, reports) open the Android share sheet.
+
 ## Architecture
 
 | Path | Purpose |
@@ -34,6 +41,9 @@ npm run build        # outputs dist/
 | `src/platform/ai.ts` | Browser-side AI providers (Gemini / Claude / OpenAI), streaming chat, JSON tasks |
 | `src/platform/files.ts`, `public/sw.js` | Attachment store served by the service worker; offline app shell |
 | `src/platform/auth.ts` | Local profile (no passwords) |
+| `src/platform/snapshots.ts` | Daily rolling safety snapshots |
+| `src/platform/native.ts` | Android share-sheet bridge for downloads |
+| `src/lib/bulkImport.ts` | JSON / ZIP bulk subject import and export |
 | `src/platform/pdf.ts` | Print-to-PDF reports |
 | `src/components/**` | UI |
 

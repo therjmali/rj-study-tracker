@@ -158,6 +158,11 @@ export async function bootStorage(timeoutMs = 4000): Promise<void> {
   void requestPersistence();
 }
 
+/** All stored entries (used by snapshots). */
+export function allEntries(): Array<[string, string]> {
+  return Array.from(mem.entries());
+}
+
 export async function requestPersistence(): Promise<boolean> {
   try {
     if (navigator.storage?.persisted && (await navigator.storage.persisted())) return true;
