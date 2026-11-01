@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-/** Fires when a timer should have finished — works even if the web view is asleep. */
+/** Fires when a timer should have finished — works even if the web view is asleep or the app was closed. */
 public class TimerAlarmReceiver extends BroadcastReceiver {
   public static final String ACTION_ALARM = "app.rjtracker.pro.TIMER_ALARM";
 
@@ -14,6 +14,6 @@ public class TimerAlarmReceiver extends BroadcastReceiver {
     String body = intent.getStringExtra("body");
     String next = intent.getStringExtra("next");
     String nextLabel = intent.getStringExtra("nextLabel");
-    NativeNotifier.showDone(context, title == null ? "Session finished" : title, body == null ? "" : body, next, nextLabel);
+    NativeNotifier.showDone(context, title == null || title.isEmpty() ? "Session finished" : title, body == null ? "" : body, next, nextLabel);
   }
 }

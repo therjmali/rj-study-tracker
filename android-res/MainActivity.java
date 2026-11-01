@@ -1,14 +1,11 @@
 package app.rjtracker.pro;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
+import android.app.ActivityManager;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.database.Cursor;
@@ -29,7 +26,6 @@ import android.webkit.WebView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -43,6 +39,7 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.lang.ref.WeakReference;
 import java.util.List;
 
 /**
@@ -55,16 +52,18 @@ import java.util.List;
 public class MainActivity extends BridgeActivity {
 
   private static final int DEFAULT_BG = Color.parseColor("#ECDFC8");
-  private static final int ALARM_REQUEST = 4721;
+  private static final String SHORTCUT_ID = "rj-custom-icon";
+
+  /** The live activity (if any), so the manifest-declared receiver can wake the web view. */
+  private static WeakReference<MainActivity> current = new WeakReference<>(null);
 
   private ActivityResultLauncher<Uri> folderPicker;
 
-  private final BroadcastReceiver actionReceiver = new BroadcastReceiver() {
-    @Override
-    public void onReceive(Context context, Intent intent) {
-      dispatchAction(intent.getStringExtra("id"));
-    }
-  };
+  /** Tell the web layer to pull the native action queue. No-op when the app is not running. */
+  static void wakeWebView() {
+    MainActivity a = current.get();
+    if (a != null) a.js("window.dispatchEvent(new Event('rj:native-wake'))");
+  }
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -99,8 +98,8 @@ public class MainActivity extends BridgeActivity {
       js("window.dispatchEvent(new CustomEvent('rj:folder-picked',{detail:{uri:" + q(uri.toString()) + ",name:" + q(name) + "}}))");
     });
 
+    current = new WeakReference<>(this);
     NativeNotifier.ensureChannels(this);
-    ContextCompat.registerReceiver(this, actionReceiver, new IntentFilter(NativeNotifier.ACTION_TIMER), ContextCompat.RECEIVER_NOT_EXPORTED);
 
     if (getBridge() != null && getBridge().getWebView() != null) {
       getBridge().getWebView().addJavascriptInterface(new RJBridge(), "RJNative");
@@ -117,11 +116,9 @@ public class MainActivity extends BridgeActivity {
 
   @Override
   public void onDestroy() {
-    try { unregisterReceiver(actionReceiver); } catch (Exception ignored) { /* not registered */ }
-    if (isFinishing()) {
-      NativeNotifier.cancelTimer(this);
-      cancelAlarm();
-    }
+    // The timer notification and its end alarm deliberately OUTLIVE the activity: the web layer persists the
+    // running session and restores it on launch, so closing the app mid-session must not cancel anything.
+    if (current.get() == this) current = new WeakReference<>(null);
     super.onDestroy();
   }
 
@@ -153,12 +150,13 @@ public class MainActivity extends BridgeActivity {
     wv.post(() -> wv.evaluateJavascript(script, null));
   }
 
+  /** Queue a button / shortcut tap with its timestamp, then ask the web layer to pull it. */
   private void dispatchAction(String id) {
     if (id == null) return;
     String safe = id.replaceAll("[^A-Za-z0-9_\\-]", "");
-    // Queue first so an action that arrives before the page is ready is not lost.
-    js("(window.__rjPending=window.__rjPending||[]).push('" + safe + "');"
-        + "window.dispatchEvent(new CustomEvent('rj:native-action',{detail:{id:'" + safe + "'}}))");
+    if (safe.isEmpty()) return;
+    NativeNotifier.queueAction(this, safe, System.currentTimeMillis());
+    js("window.dispatchEvent(new Event('rj:native-wake'))");
   }
 
   private void handleLaunchIntent(Intent intent) {
@@ -181,11 +179,41 @@ public class MainActivity extends BridgeActivity {
     }
   }
 
-  private void cancelAlarm() {
-    AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-    if (am == null) return;
-    Intent i = new Intent(this, TimerAlarmReceiver.class).setAction(TimerAlarmReceiver.ACTION_ALARM);
-    am.cancel(PendingIntent.getBroadcast(this, ALARM_REQUEST, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+  private ShortcutInfo buildShortcut(String label, Icon icon) {
+    Intent launch = new Intent(this, MainActivity.class).setAction(Intent.ACTION_MAIN);
+    return new ShortcutInfo.Builder(this, SHORTCUT_ID)
+        .setShortLabel(label)
+        .setLongLabel(label)
+        .setIcon(icon)
+        .setIntent(launch)
+        .build();
+  }
+
+  private boolean hasPinnedShortcut(ShortcutManager sm) {
+    try {
+      for (ShortcutInfo info : sm.getPinnedShortcuts()) {
+        if (SHORTCUT_ID.equals(info.getId())) return true;
+      }
+    } catch (Exception ignored) { /* treat as not pinned */ }
+    return false;
+  }
+
+  /** Recent-apps card icon. */
+  private void applyTaskIcon(final String label, final Bitmap bmp) {
+    runOnUiThread(() -> {
+      try {
+        setTaskDescription(new ActivityManager.TaskDescription(label, bmp));
+      } catch (Throwable ignored) { /* cosmetic only */ }
+    });
+  }
+
+  /** Re-post the running timer card so it picks up a new icon straight away. */
+  private void refreshTimerCard() {
+    try {
+      android.content.SharedPreferences p = getSharedPreferences("rj_native", MODE_PRIVATE);
+      String raw = p.getString("timer_payload", null);
+      if (raw != null) NativeNotifier.updateTimer(this, raw);
+    } catch (Throwable ignored) { /* cosmetic only */ }
   }
 
   private static String ok(String where) {
@@ -220,20 +248,81 @@ public class MainActivity extends BridgeActivity {
         if (bmp == null) return false;
         ShortcutManager sm = getSystemService(ShortcutManager.class);
         if (sm == null || !sm.isRequestPinShortcutSupported()) return false;
-        Intent launch = new Intent(MainActivity.this, MainActivity.class).setAction(Intent.ACTION_MAIN);
-        ShortcutInfo info = new ShortcutInfo.Builder(MainActivity.this, "rj-custom-" + System.currentTimeMillis())
-            .setShortLabel(label)
-            .setLongLabel(label)
-            .setIcon(Icon.createWithBitmap(bmp))
-            .setIntent(launch)
-            .build();
-        return sm.requestPinShortcut(info, null);
+        // Stable id: pinning again (or later icon changes) updates the SAME home-screen icon in place.
+        return sm.requestPinShortcut(buildShortcut(label, Icon.createWithBitmap(bmp)), null);
       } catch (Exception e) {
         return false;
       }
     }
 
+    /**
+     * Stores the custom icon and applies it everywhere Android allows: the pinned home-screen shortcut is
+     * updated in place, the recent-apps card and the timer notification use it. Android does not let an
+     * installed app replace its own launcher-drawer icon with an arbitrary picture.
+     * Returns "updated" | "needs-pin" | "unsupported" | "error".
+     */
+    @JavascriptInterface
+    public String setCustomIcon(String base64Png, String label) {
+      try {
+        byte[] bytes = Base64.decode(base64Png, Base64.DEFAULT);
+        Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        if (bmp == null) return "error";
+        try (FileOutputStream fos = new FileOutputStream(NativeNotifier.iconFile(MainActivity.this))) {
+          fos.write(bytes);
+        }
+        applyTaskIcon(label, bmp);
+        refreshTimerCard();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return "unsupported";
+        ShortcutManager sm = getSystemService(ShortcutManager.class);
+        if (sm == null) return "unsupported";
+        if (hasPinnedShortcut(sm)) {
+          List<ShortcutInfo> one = new ArrayList<>();
+          one.add(buildShortcut(label, Icon.createWithBitmap(bmp)));
+          sm.updateShortcuts(one);
+          return "updated";
+        }
+        return sm.isRequestPinShortcutSupported() ? "needs-pin" : "unsupported";
+      } catch (Throwable t) {
+        return "error";
+      }
+    }
+
+    @JavascriptInterface
+    public String clearCustomIcon() {
+      try {
+        File f = NativeNotifier.iconFile(MainActivity.this);
+        if (f.exists()) f.delete();
+        applyTaskIcon("RJ Tracker", BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher));
+        refreshTimerCard();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          ShortcutManager sm = getSystemService(ShortcutManager.class);
+          if (sm != null && hasPinnedShortcut(sm)) {
+            List<ShortcutInfo> one = new ArrayList<>();
+            one.add(buildShortcut("RJ Tracker", Icon.createWithResource(MainActivity.this, R.mipmap.ic_launcher)));
+            sm.updateShortcuts(one);
+          }
+        }
+        return "cleared";
+      } catch (Throwable t) {
+        return "error";
+      }
+    }
+
     /* ── live timer ── */
+
+    /** Rich timer card + end alarm in one call. `json` is built by src/platform/timerNotify.ts. */
+    @JavascriptInterface
+    public void timerUpdate(String json) {
+      try {
+        NativeNotifier.updateTimer(MainActivity.this, json);
+      } catch (Exception ignored) { /* notifications are best-effort */ }
+    }
+
+    /** Buttons tapped while the app was closed (or the page was not ready), as JSON [{id, at}]. Clears the queue. */
+    @JavascriptInterface
+    public String takePendingActions() {
+      return NativeNotifier.takePending(MainActivity.this);
+    }
 
     @JavascriptInterface
     public void timerShow(String title, String text, double whenMs, boolean countDown, boolean running, String actions) {
@@ -244,39 +333,34 @@ public class MainActivity extends BridgeActivity {
 
     @JavascriptInterface
     public void timerAlarm(double atMs, String title, String body, String nextAction, String nextLabel) {
-      try {
-        AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        if (am == null) return;
-        Intent i = new Intent(MainActivity.this, TimerAlarmReceiver.class)
-            .setAction(TimerAlarmReceiver.ACTION_ALARM)
-            .putExtra("title", title).putExtra("body", body)
-            .putExtra("next", nextAction).putExtra("nextLabel", nextLabel);
-        PendingIntent fire = PendingIntent.getBroadcast(MainActivity.this, ALARM_REQUEST, i,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        PendingIntent show = NativeNotifier.openApp(MainActivity.this, 4714, null);
-        // setAlarmClock is exact, survives Doze and needs no special permission.
-        am.setAlarmClock(new AlarmManager.AlarmClockInfo((long) atMs, show), fire);
-      } catch (Exception ignored) { /* best-effort */ }
+      NativeNotifier.scheduleAlarm(MainActivity.this, (long) atMs, title, body, nextAction, nextLabel);
     }
 
     @JavascriptInterface
     public void timerClear() {
       try {
         NativeNotifier.cancelTimer(MainActivity.this);
-        cancelAlarm();
+        NativeNotifier.cancelAlarm(MainActivity.this);
       } catch (Exception ignored) { /* best-effort */ }
     }
 
     @JavascriptInterface
     public void timerCancelAlarm() {
-      try { cancelAlarm(); } catch (Exception ignored) { /* best-effort */ }
+      NativeNotifier.cancelAlarm(MainActivity.this);
     }
 
     @JavascriptInterface
     public void timerDone(String title, String body, String nextAction, String nextLabel) {
       try {
-        cancelAlarm();
+        NativeNotifier.cancelAlarm(MainActivity.this);
         NativeNotifier.showDone(MainActivity.this, title, body, nextAction, nextLabel);
+      } catch (Exception ignored) { /* best-effort */ }
+    }
+
+    @JavascriptInterface
+    public void timerSaved(String title, String body) {
+      try {
+        NativeNotifier.showSaved(MainActivity.this, title, body);
       } catch (Exception ignored) { /* best-effort */ }
     }
 

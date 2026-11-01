@@ -8,7 +8,9 @@ import App from './App';
 import PlatformHost from './components/platform/PlatformHost';
 import { bootStorage } from './platform/storage';
 import { registerServiceWorker } from './platform/pwa';
-import { applyAppIcon } from './platform/appIcon';
+import { applyAppIcon, syncNativeIconOnBoot } from './platform/appIcon';
+import { installNativeActionDrain } from './platform/nativeActions';
+import { installFocusLog } from './platform/focusLog';
 import { installNativeBridge } from './platform/native';
 import { scheduleDailySnapshot } from './platform/snapshots';
 
@@ -47,8 +49,12 @@ bootStorage().finally(() => {
       </ErrorBoundary>
     </StrictMode>,
   );
+  requestAnimationFrame(() => requestAnimationFrame(() => (window as unknown as { __rjHideSplash?: () => void }).__rjHideSplash?.()));
   applyAppIcon();
+  syncNativeIconOnBoot();
+  installFocusLog();
   installNativeBridge();
+  installNativeActionDrain();
   registerServiceWorker();
   scheduleDailySnapshot();
 });

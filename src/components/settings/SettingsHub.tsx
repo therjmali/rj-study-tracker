@@ -96,10 +96,10 @@ const CATEGORIES: CategoryMeta[] = [
     ],
   },
   {
-    id: 'focus', icon: '⏱️', title: 'Focus & Productivity', subtitle: 'Pomodoro timer and session preferences',
+    id: 'focus', icon: '⏱️', title: 'Focus & Productivity', subtitle: 'Focus Timer and session preferences',
     items: [
-      { id: 'pomodoroTool', icon: '🍅', title: 'Pomodoro Timer', description: 'Start a focus session right here', keywords: ['pomodoro', 'timer', 'focus', 'session', 'stopwatch', 'start', 'productivity'] },
-      { id: 'pomodoroPrefs', icon: '⚙️', title: 'Timer Preferences', description: 'Focus and break lengths, auto-start and sound', keywords: ['pomodoro', 'timer', 'break', 'duration', 'minutes', 'sound', 'beep', 'auto start', 'focus'] },
+      { id: 'pomodoroTool', icon: '⏱️', title: 'Focus Timer', description: 'Pomodoro, Countdown or Stopwatch — start a session right here', keywords: ['pomodoro', 'timer', 'focus', 'session', 'stopwatch', 'start', 'productivity'] },
+      { id: 'pomodoroPrefs', icon: '⚙️', title: 'Focus Timer Preferences', description: 'Focus and break lengths, auto-start and sound', keywords: ['pomodoro', 'timer', 'break', 'duration', 'minutes', 'sound', 'beep', 'auto start', 'focus'] },
     ],
   },
   {

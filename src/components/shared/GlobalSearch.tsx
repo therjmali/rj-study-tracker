@@ -389,7 +389,7 @@ export default function GlobalSearch({ open, onClose, subjects, onToggleTopic, o
           <span
             onClick={(e) => { e.stopPropagation(); onOpenPomodoro(item.subject.id, item.unitId, item.topic.id); onClose(); }}
             className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-chart-4/0 group-hover/result:text-chart-4 hover:!bg-chart-4/15 active:scale-90 transition-all border border-transparent group-hover/result:border-chart-4/20"
-            title="Start Pomodoro"
+            title="Start Focus Timer"
             role="button"
             tabIndex={0}
           >

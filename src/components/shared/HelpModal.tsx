@@ -14,7 +14,7 @@ const SLIDES = [
   { icon: '🎯', title: 'Syllabus Tracker', desc: 'Navigate to Syllabus tab to add subjects, units, and topics. Mark topics as complete, set difficulty and importance levels. Import syllabus in bulk.' },
   { icon: '🔥', title: 'Daily Tracker', desc: 'Log your daily study sessions with timestamps. Track hours, topics, mood, and build a streak. Use the calendar view for monthly overview.' },
   { icon: '🧠', title: 'Spaced Repetition', desc: 'The Revision tab uses SRS to schedule reviews. Customize intervals per difficulty in Settings. Review flashcards and track your memory retention.' },
-  { icon: '🍅', title: 'Pomodoro Timer', desc: 'Use the built-in Pomodoro timer for focused study sessions. Customize focus/break durations. Your study time is auto-logged.' },
+  { icon: '⏱️', title: 'Focus Timer', desc: 'One timer with three modes — 🍅 Pomodoro (focus + breaks), ⏳ Countdown (one custom block) and ⏱️ Stopwatch (open-ended). Link a topic, control it from the notification, and your study time is auto-logged. It keeps running even if you close the app.' },
   { icon: '🪙', title: 'Study Coins & Store', desc: 'Earn 1 coin per 30 minutes of study. Spend coins in the Store to unlock accent themes, avatar borders, and celebration effects!' },
   { icon: '🎮', title: 'Gamification', desc: 'Earn XP, level up, unlock achievements, and climb weekly ranks. Check your progress in the Awards tab of your profile.' },
   { icon: '📱', title: 'Install as App', desc: 'RJ TRACKER works as a PWA! Install it on your phone for offline access and a native app experience.' },

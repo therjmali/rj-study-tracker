@@ -1,3 +1,4 @@
+import { isImageAvatar } from '../../lib/avatar';
 import { useState, memo } from 'react';
 import { useAppIcon } from '@/platform/appIcon';
 import { Stethoscope, Sun, Moon, Flame, Search, Cloud, CloudOff, Loader2, Bell, Wheat, GraduationCap, X } from 'lucide-react';
@@ -124,7 +125,7 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
 
           <button onClick={onOpenProfile}
             className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0 border border-primary/12 hover:bg-primary/15 hover:scale-105 active:scale-95 transition-all ml-0.5 overflow-hidden ring-2 ring-primary/8 ring-offset-1 ring-offset-background">
-            {user.avatar?.startsWith('http') ? (
+            {isImageAvatar(user.avatar) ? (
               <img src={user.avatar} alt="" className="w-full h-full object-cover" />
             ) : (
               user.avatar

@@ -1,6 +1,7 @@
 // ===== NurseTrack Pro v7.0 Types =====
 
-export const APP_VERSION = 'v7.0';
+/** Always the real release number (from package.json at build time) — it used to be a stale hard-coded "v7.0". */
+export const APP_VERSION = `v${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'}`;
 
 export interface QuickMCQ {
   id: string;

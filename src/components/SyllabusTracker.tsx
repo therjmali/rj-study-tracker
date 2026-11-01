@@ -10,7 +10,6 @@ import UnitDetailView from './syllabus/UnitDetailView';
 import BulkSelectBar from './syllabus/BulkSelectBar';
 import ImportSyllabusSheet from './syllabus/ImportSyllabusSheet';
 import BulkImportSheet from './syllabus/BulkImportSheet';
-import TopicTimerSheet from './syllabus/TopicTimerSheet';
 import BottomSheet from './shared/BottomSheet';
 import ConfirmDialog from './shared/ConfirmDialog';
 import { Button } from '@project/components/ui/button';
@@ -148,7 +147,6 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
   const [unitDetailData, setUnitDetailData] = useState<{ subjectId: string; unitId: string } | null>(null);
 
   // Topic Timer state
-  const [timerData, setTimerData] = useState<{ subjectId: string; unitId: string; topicId: string; topicName: string; timeSpent: number } | null>(null);
 
   // Report Builder state
   const [reportOpen, setReportOpen] = useState(false);
@@ -1021,9 +1019,10 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
   const handleOpenUnitEditor = useCallback((sId: string, uId: string) => {
     setUnitDetailData({ subjectId: sId, unitId: uId });
   }, []);
-  const handleOpenTimer = useCallback((subjectId: string, unitId: string, topicId: string, topicName: string, timeSpent: number) => {
-    setTimerData({ subjectId, unitId, topicId, topicName, timeSpent });
-  }, []);
+  // One timer for the whole app: the per-topic ⏱️ button opens the unified Focus Timer, pre-linked to the topic.
+  const handleOpenTimer = useCallback((subjectId: string, unitId: string, topicId: string, _topicName?: string, _timeSpent?: number) => {
+    onOpenPomodoro?.(subjectId, unitId, topicId);
+  }, [onOpenPomodoro]);
   const handleUpdateTopicsModule = useCallback((subjectId: string, unitId: string, topicIds: string[], field: 'module' | 'subModule', value: string | undefined) => {
     updateAndRenumber(subjects.map(s => s.id !== subjectId ? s : {
       ...s, units: s.units.map(u => u.id !== unitId ? u : {
@@ -1600,44 +1599,6 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
         onCreateSession={onCreateSession} />
       <BulkImportSheet open={bulkOpen} onClose={() => setBulkOpen(false)} existingSubjects={subjects} onApply={onUpdate} />
       <ImportSyllabusSheet onOpenBulk={() => { setImportOpen(false); setBulkOpen(true); }} open={importOpen} onClose={() => setImportOpen(false)} onImport={handleImportedSubjects} onReplaceImport={(imported) => onUpdate(imported)} existingSubjects={subjects} />
-
-      {/* Topic Timer Sheet */}
-      <TopicTimerSheet
-        open={!!timerData}
-        onClose={() => setTimerData(null)}
-        topicName={timerData?.topicName || ''}
-        currentTimeSpent={timerData?.timeSpent || 0}
-        onSaveTime={(addedMinutes) => {
-          if (!timerData) return;
-          const timerDate = getLocalDateStr(new Date());
-          // Create session IMMEDIATELY at point-of-entry
-          if (onCreateSession) {
-            const sub = subjects.find(s => s.id === timerData.subjectId);
-            onCreateSession({
-              date: timerDate,
-              minutes: addedMinutes,
-              description: timerData.topicName,
-              type: 'Topic',
-              subjectId: timerData.subjectId,
-              subjectName: sub?.shortName || '',
-              topicId: timerData.topicId,
-              unitId: timerData.unitId,
-              note: 'Timer session',
-            });
-          }
-          // Update topic-level timeSpent/timeEntries (marked synced since session already created)
-          onUpdate(subjects.map(s => s.id !== timerData.subjectId ? s : {
-            ...s, units: s.units.map(u => u.id !== timerData.unitId ? u : {
-              ...u, subTopics: u.subTopics.map(t => t.id !== timerData.topicId ? t : {
-                ...t,
-                timeSpent: t.timeSpent + addedMinutes,
-                timeEntries: [...(t.timeEntries || []), { date: timerDate, minutes: addedMinutes, note: 'Timer session', synced: true }],
-              })
-            })
-          }));
-          setTimerData(null);
-        }}
-      />
 
       {/* Create Unit from Selected */}
       <BottomSheet open={createUnitOpen} onClose={() => setCreateUnitOpen(false)} title="📂 Create Unit from Selected">

@@ -98,8 +98,8 @@ export default function StudyTimeLogger({ open, onClose, subjectName, unitName, 
                 <Play className="w-4 h-4 text-primary" />
               </div>
               <div className="text-left">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">stopwatch ⏱️</p>
-                <p className="text-[10px] font-bold text-muted-foreground">countdown ⏳</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">⏱️ Focus Timer</p>
+                <p className="text-[10px] font-bold text-muted-foreground">Pomodoro · Countdown · Stopwatch</p>
               </div>
             </button>
           )}
