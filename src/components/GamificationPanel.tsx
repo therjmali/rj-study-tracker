@@ -7,7 +7,7 @@ import type { Subject, DailyLog, Achievement, PomodoroSettings, StoreState, DbSt
 import { computeXP, getLevel, getLevelProgress, getXPToNextLevel, getStats, LEVELS, checkAchievements, getDefaultAchievements } from '../lib/gamification';
 import { formatStudyHours } from '../lib/utils';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import PomodoroTimer from './PomodoroTimer';
+import FocusTimer from './FocusTimer';
 
 const LevelStore = lazy(() => import('./store/LevelStore'));
 
@@ -70,7 +70,7 @@ export default function GamificationPanel({ subjects, dailyLogs, onPomodoroCompl
       {tab === 'pomodoro' && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           className="rounded-xl border border-border bg-card p-6">
-          <PomodoroTimer onSessionComplete={onPomodoroComplete} settings={pomodoroSettings} />
+          <FocusTimer onSessionComplete={onPomodoroComplete} settings={pomodoroSettings} />
         </motion.div>
       )}
 

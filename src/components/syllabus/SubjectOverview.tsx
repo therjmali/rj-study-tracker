@@ -582,7 +582,7 @@ function TimeBreakdown({ units, totalTime, subjectColor, onUnitClick, onClose }:
         })}
       </div>
       {units.length === 0 && (
-        <p className="text-xs text-muted-foreground text-center py-3">No time logged yet. Use the Pomodoro timer or edit topics to track time.</p>
+        <p className="text-xs text-muted-foreground text-center py-3">No time logged yet. Use the Focus Timer or edit topics to track time.</p>
       )}
     </div>
   );

@@ -538,8 +538,8 @@ export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelet
         </button>
       ) : <span className="flex-1" />}
       {onOpenPomodoro && !draft.completed && (
-        <button type="button" onClick={onOpenPomodoro} aria-label="Start a Pomodoro focus session" title="Pomodoro focus"
-          className="shrink-0 w-8 h-8 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-sm active:scale-90 transition-transform">🍅</button>
+        <button type="button" onClick={onOpenPomodoro} aria-label="Open the Focus Timer" title="Focus Timer"
+          className="shrink-0 w-8 h-8 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-sm active:scale-90 transition-transform">⏱️</button>
       )}
     </div>
   );
@@ -550,6 +550,7 @@ export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelet
       timer={timer} actions={timerActions} topicId={draft.id} topicName={draft.name}
       subjectId={subjectId!} unitId={unitId!} subjectName={subjectName || ''} isCompleted={!!draft.completed}
       onSaveTime={(mins, date, note) => addTime(mins, date, note, nowStartTime(mins, date))}
+      onOpenFull={onOpenPomodoro}
       revisions={draft.revisions} onOpenRevision={() => { navigator.vibrate?.(10); setRevisionOpen(true); }}
     />
   ) : null;
@@ -1239,79 +1240,40 @@ function UnifiedContextShelf({
   );
 }
 
-/* ===== Premium Study Timer with Flip Clock ===== */
-function PremiumStudyTimer({ timer, actions, topicId, topicName, subjectId, unitId, subjectName, isCompleted, onSaveTime, revisions, onOpenRevision }: {
+/* ===== Focus Timer card (flip clock) — the SAME engine, modes and names as the global Focus Timer ===== */
+const FOCUS_MODES = [
+  { id: 'pomodoro', icon: '🍅', label: 'Pomodoro' },
+  { id: 'countdown', icon: '⏳', label: 'Countdown' },
+  { id: 'stopwatch', icon: '⏱️', label: 'Stopwatch' },
+] as const;
+const FOCUS_PRESETS = [25, 30, 45, 60];
+
+function PremiumStudyTimer({ timer, actions, topicId, topicName, subjectId, unitId, subjectName, isCompleted, revisions, onOpenRevision, onOpenFull }: {
   timer: import('../../hooks/useGlobalTimer').GlobalTimerState;
   actions: import('../../hooks/useGlobalTimer').GlobalTimerActions;
   topicId: string; topicName: string; subjectId: string; unitId: string; subjectName: string; isCompleted: boolean;
+  /** Kept for call-site compatibility — saving now goes through the shared Focus Timer engine. */
   onSaveTime?: (minutes: number, date: string, note?: string) => void;
   revisions?: RevisionMap;
   onOpenRevision?: () => void;
+  onOpenFull?: () => void;
 }) {
   const { timeLeft, swTime } = useTimerTick();
   const isThisTopic = timer.topicId === topicId;
-  const isRunningOther = (timer.running || timer.swRunning) && !isThisTopic;
-  const isRunningThis = (timer.running || timer.swRunning) && isThisTopic;
-  const [localMode, setLocalMode] = useState<'stopwatch' | 'timer'>('stopwatch');
-  const [localPreset, setLocalPreset] = useState(30);
-  const [customVal, setCustomVal] = useState(30);
+  const busy = timer.active || timer.hasProgress;
+  const isRunningOther = busy && !isThisTopic;
+  const isRunningThis = busy && isThisTopic;
+  const isStopwatch = timer.appMode === 'stopwatch';
+  const isBreak = timer.appMode === 'pomodoro' && timer.phase !== 'focus';
 
   const fmt = (sec: number) => {
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
-    const s = sec % 60;
-    if (h > 0) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    const sc = sec % 60;
+    const mm = String(m).padStart(2, '0');
+    const ss = String(sc).padStart(2, '0');
+    return h > 0 ? `${String(h).padStart(2, '0')}:${mm}:${ss}` : `${mm}:${ss}`;
   };
-
-  const handleStart = () => {
-    actions.linkTopic(subjectId, unitId, topicId, topicName, subjectName);
-    actions.setAppMode(localMode);
-    if (localMode === 'timer') { actions.selectPreset(localPreset); setTimeout(() => actions.toggleTimer(), 50); }
-    else { setTimeout(() => actions.toggleSw(), 50); }
-  };
-
-  const handlePause = () => {
-    if (timer.appMode === 'timer') actions.toggleTimer();
-    else actions.toggleSw();
-  };
-
-  const handleReset = () => {
-    if (timer.appMode === 'timer') actions.resetTimer();
-    else actions.resetSw();
-  };
-
-  const [showSaveForm, setShowSaveForm] = useState(false);
-  const [saveFormData, setSaveFormData] = useState({ minutes: 0, date: '', time: '', note: '' });
-
-  const handleSaveStop = () => {
-    // Instead of directly calling stopSw, open the save form
-    const mins = Math.max(1, Math.round(swTime / 60));
-    const now = new Date();
-    const dateStr = getLocalDateStr(now);
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    setSaveFormData({ minutes: mins, date: dateStr, time: timeStr, note: '' });
-    setShowSaveForm(true);
-  };
-
-  const handleConfirmSave = () => {
-    const { minutes, date, note } = saveFormData;
-    if (minutes > 0 && onSaveTime) {
-      onSaveTime(minutes, date, note || undefined);
-      toast.success(`⏱️ ${minutes}m logged to this topic!`);
-    }
-    // Reset the stopwatch
-    actions.resetSw();
-    setShowSaveForm(false);
-  };
-
-  const handleCancelSave = () => {
-    setShowSaveForm(false);
-  };
-
-  const display = isThisTopic
-    ? (timer.appMode === 'stopwatch' ? fmt(swTime) : fmt(timeLeft))
-    : '00:00';
 
   if (isRunningOther) {
     return (
@@ -1319,63 +1281,15 @@ function PremiumStudyTimer({ timer, actions, topicId, topicName, subjectId, unit
         <div className="flex items-center gap-2">
           <Timer className="w-4 h-4 text-amber-500" />
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] text-amber-500 font-bold">Timer running for another topic</p>
-            <p className="text-xs text-foreground/60 truncate font-medium">{timer.topicName}</p>
+            <p className="text-[10px] text-amber-500 font-bold">Focus Timer is running for another topic</p>
+            <p className="text-xs text-foreground/60 truncate font-medium">{timer.topicName || timer.subjectName || 'Free study'}</p>
           </div>
-          <button onClick={() => { actions.resetTimer(); actions.resetSw(); actions.clearLink(); }}
-            className="text-[10px] px-3 py-1.5 rounded-xl bg-amber-500/12 text-amber-500 font-bold border border-amber-500/20 hover:bg-amber-500/20 transition-all">Stop & Switch</button>
+          <button onClick={() => { actions.stopAndSave(); actions.linkTopic(subjectId, unitId, topicId, topicName, subjectName); }}
+            className="text-[10px] px-3 py-1.5 rounded-xl bg-amber-500/12 text-amber-500 font-bold border border-amber-500/20 hover:bg-amber-500/20 transition-all">Save & switch</button>
         </div>
       </PremiumCard>
     );
   }
-
-  const saveFormUI = showSaveForm && (
-    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-      className="overflow-hidden">
-      <div className="mt-3 p-3 rounded-xl bg-secondary/5 border border-secondary/15 space-y-2.5">
-        <div className="flex items-center gap-2">
-          <Save className="w-3.5 h-3.5 text-secondary" />
-          <span className="text-[11px] font-black text-secondary uppercase tracking-wider">Save Study Time</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Duration (min)</Label>
-            <Input type="text" inputMode="numeric" pattern="[0-9]*"
-              value={saveFormData.minutes === 0 ? '' : String(saveFormData.minutes)}
-              onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setSaveFormData(p => ({ ...p, minutes: v === '' ? 0 : parseInt(v, 10) })); }}
-              className="h-8 text-xs font-mono font-bold text-center bg-card border-secondary/20 rounded-xl mt-1" />
-          </div>
-          <div>
-            <Label className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Date</Label>
-            <Input type="date" value={saveFormData.date}
-              onChange={e => setSaveFormData(p => ({ ...p, date: e.target.value }))}
-              className="h-8 text-[10px] font-mono bg-card border-border/20 rounded-xl mt-1" />
-          </div>
-        </div>
-        <div>
-          <Label className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Time Started</Label>
-          <Input type="time" value={saveFormData.time}
-            onChange={e => setSaveFormData(p => ({ ...p, time: e.target.value }))}
-            className="h-8 text-[10px] font-mono bg-card border-border/20 rounded-xl mt-1 w-28" />
-        </div>
-        <div>
-          <Label className="text-[8px] text-muted-foreground font-bold uppercase tracking-wider">Note (optional)</Label>
-          <Input placeholder="What did you study?" value={saveFormData.note}
-            onChange={e => setSaveFormData(p => ({ ...p, note: e.target.value }))}
-            className="h-8 text-[10px] bg-card border-border/20 rounded-xl mt-1" />
-        </div>
-        <div className="flex gap-2 pt-1">
-          <Button variant="outline" size="sm" onClick={handleCancelSave} className="flex-1 h-9 text-xs rounded-xl">Cancel</Button>
-          <motion.button whileTap={{ scale: 0.95 }} onClick={handleConfirmSave}
-            disabled={saveFormData.minutes <= 0}
-            className="flex-1 h-9 rounded-xl bg-secondary text-secondary-foreground text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
-            style={{ boxShadow: '0 4px 12px hsl(var(--secondary) / 0.3)' }}>
-            <Save className="w-3.5 h-3.5" /> Save {saveFormData.minutes > 0 ? `${saveFormData.minutes}m` : ''}
-          </motion.button>
-        </div>
-      </div>
-    </motion.div>
-  );
 
   // Completed topics: the old "Revision Timer" is replaced by the Revision launcher (opens the R1–R4 window)
   if (isCompleted && !isRunningThis) {
@@ -1412,100 +1326,83 @@ function PremiumStudyTimer({ timer, actions, topicId, topicName, subjectId, unit
     );
   }
 
+  const handlePrimary = () => {
+    if (!isThisTopic) actions.linkTopic(subjectId, unitId, topicId, topicName, subjectName);
+    actions.toggle();
+  };
+  const elapsedSec = isStopwatch ? swTime : Math.max(0, (timer.appMode === 'countdown' || timer.phase === 'focus' ? timer.focusDuration * 60 : 0) - timeLeft);
+  const canSave = isThisTopic && busy && !isBreak && elapsedSec >= 30;
+  const display = fmt(isStopwatch ? swTime : timeLeft);
+  const primary = timer.active ? 'Pause' : timer.hasProgress ? 'Resume' : 'Start';
+
   return (
     <PremiumCard>
-      <TimerCore localMode={localMode} setLocalMode={setLocalMode} localPreset={localPreset} setLocalPreset={setLocalPreset}
-        customVal={customVal} setCustomVal={setCustomVal} display={display} isRunningThis={isRunningThis} isThisTopic={isThisTopic}
-        handleStart={handleStart} handlePause={handlePause} handleReset={handleReset} handleSaveStop={handleSaveStop} timer={timer} />
-      <AnimatePresence>{saveFormUI}</AnimatePresence>
-    </PremiumCard>
-  );
-}
-
-/* Timer core UI */
-function TimerCore({ localMode, setLocalMode, localPreset, setLocalPreset, customVal, setCustomVal, display, isRunningThis, isThisTopic, handleStart, handlePause, handleReset, handleSaveStop, timer }: {
-  localMode: 'stopwatch' | 'timer'; setLocalMode: (m: 'stopwatch' | 'timer') => void;
-  localPreset: number; setLocalPreset: (n: number) => void;
-  customVal: number; setCustomVal: (n: number) => void;
-  display: string; isRunningThis: boolean; isThisTopic: boolean;
-  handleStart: () => void; handlePause: () => void; handleReset: () => void; handleSaveStop: () => void;
-  timer: import('../../hooks/useGlobalTimer').GlobalTimerState;
-}) {
-  const { swTime } = useTimerTick();
-  return (
-    <div className="space-y-3" onPointerDown={e => e.stopPropagation()}>
-      {/* Header + Mode Toggle */}
-      <div className="flex items-center justify-between">
-        <Label className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] flex items-center gap-1.5">
-          <Timer className="w-3.5 h-3.5 text-primary" /> Study Timer
-        </Label>
-        <div className="flex rounded-full border border-border/20 bg-muted/20 p-0.5 gap-0.5">
-          <button onClick={() => setLocalMode('stopwatch')}
-            className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 ${
-              localMode === 'stopwatch' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}>
-            ⏱ Stopwatch
-          </button>
-          <button onClick={() => setLocalMode('timer')}
-            className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 ${
-              localMode === 'timer' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}>
-            ⏰ Countdown
-          </button>
+      <div className="space-y-3" onPointerDown={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] flex items-center gap-1.5 shrink-0">
+            <Timer className="w-3.5 h-3.5 text-primary" /> Focus Timer
+          </Label>
+          {onOpenFull && (
+            <button onClick={onOpenFull} className="text-[10px] font-bold text-primary flex items-center gap-1">
+              Full screen <ExternalLink className="w-3 h-3" />
+            </button>
+          )}
         </div>
-      </div>
 
-      {/* Countdown presets */}
-      {localMode === 'timer' && !isRunningThis && (
-        <div className="flex gap-1.5 items-center">
-          {[30, 60].map(m => (
-            <button key={m} onClick={() => { setLocalPreset(m); setCustomVal(m); }}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
-                localPreset === m ? 'bg-primary/12 text-primary border-primary/30' : 'bg-card/30 text-foreground/60 border-border/15'
-              }`}>
-              {m}m
+        {/* Same three modes, same names, same icons as everywhere else */}
+        <div className="grid grid-cols-3 gap-1 rounded-2xl border border-border/20 bg-muted/20 p-0.5">
+          {FOCUS_MODES.map(m => (
+            <button key={m.id} onClick={() => actions.setAppMode(m.id)}
+              className={`py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
+                timer.appMode === m.id ? 'bg-primary text-primary-foreground shadow-sm' : busy ? 'text-muted-foreground/50' : 'text-muted-foreground hover:text-foreground'}`}>
+              <span>{m.icon}</span> {m.label}
             </button>
           ))}
-          <Input type="text" inputMode="numeric" pattern="[0-9]*" value={customVal === 0 ? '' : String(customVal)}
-            onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); const n = v === '' ? 0 : parseInt(v, 10); setCustomVal(n); if (n > 0) setLocalPreset(n); }}
-            className="w-14 h-9 text-xs font-bold text-center bg-card/30 border-border/15 rounded-xl" />
-          <span className="text-[10px] text-muted-foreground font-medium">min</span>
         </div>
-      )}
 
-      {/* Flip Clock Display */}
-      <FlipClock display={display} />
-
-      {/* Controls */}
-      <div className="flex justify-center gap-2.5">
-        {isRunningThis && (
-          <motion.button whileTap={{ scale: 0.9 }} onClick={handleReset}
-            className="w-10 h-10 rounded-xl bg-muted/30 border border-border/15 flex items-center justify-center">
-            <RotateCcw className="w-4 h-4 text-muted-foreground" />
-          </motion.button>
+        {!isStopwatch && !isBreak && !busy && (
+          <div className="flex gap-1.5 items-center">
+            {FOCUS_PRESETS.map(m => (
+              <button key={m} onClick={() => actions.selectPreset(m)}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
+                  timer.focusDuration === m ? 'bg-primary/12 text-primary border-primary/30' : 'bg-card/30 text-foreground/60 border-border/15'}`}>
+                {m}m
+              </button>
+            ))}
+          </div>
         )}
-        {!isRunningThis && !isThisTopic ? (
-          <motion.button whileTap={{ scale: 0.93 }} onClick={handleStart}
+
+        {timer.appMode === 'pomodoro' && (
+          <p className="text-center text-[10px] font-bold text-muted-foreground">
+            {timer.phase === 'focus' ? '🍅 Focus' : timer.phase === 'short' ? '☕ Short break' : '🌿 Long break'}
+            {timer.sessions > 0 ? ` · ${timer.sessions} done today` : ''}
+          </p>
+        )}
+
+        <FlipClock display={display} />
+
+        <div className="flex justify-center gap-2.5">
+          {busy && (
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => actions.reset()} aria-label="Reset timer"
+              className="w-10 h-10 rounded-xl bg-muted/30 border border-border/15 flex items-center justify-center">
+              <RotateCcw className="w-4 h-4 text-muted-foreground" />
+            </motion.button>
+          )}
+          <motion.button whileTap={{ scale: 0.93 }} onClick={handlePrimary}
             className="h-11 px-8 rounded-full bg-primary text-primary-foreground text-sm font-bold flex items-center gap-2"
             style={{ boxShadow: '0 4px 16px hsl(var(--primary) / 0.35)' }}>
-            <Play className="w-4 h-4" fill="currentColor" /> Start
+            {timer.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" fill="currentColor" />} {primary}
           </motion.button>
-        ) : (
-          <motion.button whileTap={{ scale: 0.93 }} onClick={handlePause}
-            className="h-11 px-8 rounded-full bg-primary text-primary-foreground text-sm font-bold flex items-center gap-2"
-            style={{ boxShadow: '0 4px 16px hsl(var(--primary) / 0.35)' }}>
-            {(timer.running || timer.swRunning) ? <><Pause className="w-4 h-4" /> Pause</> : <><Play className="w-4 h-4" fill="currentColor" /> Resume</>}
-          </motion.button>
-        )}
-        {isThisTopic && swTime >= 10 && !timer.swRunning && !timer.running && (
-          <motion.button whileTap={{ scale: 0.93 }} onClick={handleSaveStop}
-            className="h-11 px-5 rounded-full bg-secondary text-secondary-foreground text-sm font-bold flex items-center gap-2"
-            style={{ boxShadow: '0 4px 16px hsl(var(--secondary) / 0.3)' }}>
-            <Save className="w-4 h-4" /> Save {Math.max(1, Math.round(swTime / 60))}m
-          </motion.button>
-        )}
+          {canSave && (
+            <motion.button whileTap={{ scale: 0.93 }} onClick={() => actions.stopAndSave()}
+              className="h-11 px-5 rounded-full bg-secondary text-secondary-foreground text-sm font-bold flex items-center gap-2"
+              style={{ boxShadow: '0 4px 16px hsl(var(--secondary) / 0.3)' }}>
+              <Save className="w-4 h-4" /> Save {Math.max(1, Math.round(elapsedSec / 60))}m
+            </motion.button>
+          )}
+        </div>
       </div>
-    </div>
+    </PremiumCard>
   );
 }
 

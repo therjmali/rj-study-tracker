@@ -153,9 +153,63 @@ export function applyAppIcon(): void {
   if (link) link.href = manifestUrl;
 }
 
+interface IconBridge {
+  pinShortcut?: (b64: string, label: string) => boolean;
+  setCustomIcon?: (b64: string, label: string) => string;
+  clearCustomIcon?: () => string;
+}
+const iconBridge = (): IconBridge | undefined => (window as unknown as { RJNative?: IconBridge }).RJNative;
+
 /** Ask Android to pin a home-screen shortcut that uses the custom icon. Returns false outside the APK. */
 export function pinIconShortcut(pngDataUrl: string, label = 'RJ Tracker'): boolean {
-  const bridge = (window as unknown as { RJNative?: { pinShortcut?: (b64: string, label: string) => boolean } }).RJNative;
+  const bridge = iconBridge();
   if (!bridge?.pinShortcut) return false;
   try { return !!bridge.pinShortcut(pngDataUrl.split(',')[1] ?? '', label); } catch { return false; }
+}
+
+/** Launcher-style rounded 192 px PNG (what Android shortcuts and notifications use). */
+export function buildLauncherIcon(srcDataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 192;
+      const ctx = c.getContext('2d');
+      if (!ctx) { reject(new Error('canvas unavailable')); return; }
+      ctx.beginPath();
+      ctx.roundRect(0, 0, 192, 192, 42);
+      ctx.clip();
+      ctx.drawImage(img, 0, 0, 192, 192);
+      resolve(c.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('icon unreadable'));
+    img.src = srcDataUrl;
+  });
+}
+
+export type NativeIconResult = 'unsupported' | 'updated' | 'needs-pin' | 'cleared' | 'error';
+
+/**
+ * Push the custom icon to the Android layer. Android never lets an app swap the launcher icon of an
+ * installed app with an arbitrary picture, so the native side does everything the platform allows:
+ * it updates the pinned home-screen shortcut IN PLACE (same shortcut id), the recent-apps icon and
+ * the icon shown inside the timer notification. When no shortcut is pinned yet the result is
+ * 'needs-pin' and the caller offers to pin one automatically.
+ */
+export async function syncNativeIcon(dataUrl: string | null): Promise<NativeIconResult> {
+  const b = iconBridge();
+  if (!b?.setCustomIcon) return 'unsupported';
+  try {
+    if (!dataUrl) return (b.clearCustomIcon?.() as NativeIconResult | undefined) ?? 'cleared';
+    const png = await buildLauncherIcon(dataUrl);
+    return (b.setCustomIcon(png.split(',')[1] ?? '', 'RJ Tracker') as NativeIconResult) || 'error';
+  } catch {
+    return 'error';
+  }
+}
+
+/** Boot-time sync so the native layer always has the current icon (even one saved before this feature). */
+export function syncNativeIconOnBoot(): void {
+  const icon = getAppIcon();
+  if (icon) void syncNativeIcon(icon.dataUrl);
 }

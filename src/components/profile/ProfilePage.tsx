@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowLeft, Camera, Loader2 } from 'lucide-react';
-import { useUpload } from '@/platform/upload';
+import { fileToAvatarDataUrl, isImageAvatar } from '@/lib/avatar';
 import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
 import { toast } from 'sonner';
@@ -61,18 +61,17 @@ export default function ProfilePage(props: Props) {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
-  const { upload, isUploading: uploadBusy } = useUpload();
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarUploading(true);
     try {
-      const { url } = await upload(file);
-      onUpdateUser({ ...user, avatar: url });
+      const dataUrl = await fileToAvatarDataUrl(file);
+      onUpdateUser({ ...user, avatar: dataUrl });
       toast.success('Profile photo updated!');
-    } catch {
-      toast.error('Failed to upload photo');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update photo');
     }
     setAvatarUploading(false);
     if (avatarInputRef.current) avatarInputRef.current.value = '';
@@ -83,7 +82,7 @@ export default function ProfilePage(props: Props) {
     toast.success('Photo removed');
   };
 
-  const isPhotoUrl = user.avatar?.startsWith('http');
+  const isPhotoUrl = isImageAvatar(user.avatar);
 
   const stats = useMemo(() => getStats(subjects, dailyLogs, dbSessions), [subjects, dailyLogs, dbSessions]);
   const totalTopics = subjects.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.length, 0), 0);
@@ -132,16 +131,16 @@ export default function ProfilePage(props: Props) {
               ) : isPhotoUrl ? (
                 <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
-                user.avatar
+                <span className="max-w-full truncate px-1">{user.avatar}</span>
               )}
             </button>
-            <button onClick={() => avatarInputRef.current?.click()}
+            <button onClick={() => avatarInputRef.current?.click()} aria-label="Change profile photo"
               className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md border-2 border-background hover:scale-110 active:scale-95 transition-all">
               <Camera className="w-3.5 h-3.5" />
             </button>
             {isPhotoUrl && (
               <button onClick={handleRemovePhoto}
-                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-md border-2 border-background opacity-0 group-hover:opacity-100 transition-opacity">
+                aria-label="Remove photo" className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow-md border-2 border-background active:scale-90 transition-transform">
                 <X className="w-3 h-3" />
               </button>
             )}

@@ -3,7 +3,7 @@ import { ImagePlus, Loader2, RotateCcw, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@project/components/ui/button';
 import {
-  IconError, MAX_ICON_BYTES, loadBitmap, pinIconShortcut, renderIcon, resetAppIcon, saveAppIcon, useAppIcon,
+  IconError, MAX_ICON_BYTES, buildLauncherIcon, loadBitmap, pinIconShortcut, renderIcon, resetAppIcon, saveAppIcon, syncNativeIcon, useAppIcon,
   type CropState,
 } from '@/platform/appIcon';
 import { isNative } from '@/platform/native';
@@ -48,13 +48,22 @@ export default function AppIconPanel() {
     }
   };
 
-  const apply = () => {
+  const apply = async () => {
     if (!bmp) return;
     const url = renderIcon(bmp, crop, 512, 'square').toDataURL('image/png');
     saveAppIcon(url);
-    toast.success('App icon updated');
     setBmp(null);
     setFileName('');
+    const r = await syncNativeIcon(url);
+    if (r === 'updated') toast.success('App icon updated — your home-screen icon changed too');
+    else if (r === 'needs-pin') {
+      toast.success('App icon updated');
+      // Android needs one confirmation to place the icon on the home screen; after that it updates itself.
+      try {
+        const ok = pinIconShortcut(await buildLauncherIcon(url));
+        if (ok) toast.info('Tap “Add” in the Android prompt to put the new icon on your home screen');
+      } catch { /* the manual button below still works */ }
+    } else toast.success('App icon updated');
   };
 
   const pin = () => {
@@ -135,15 +144,21 @@ export default function AppIconPanel() {
       {current && !bmp && (
         <div className="space-y-2">
           {isNative ? (
-            <Button variant="outline" onClick={pin} className="w-full h-11 rounded-xl font-bold gap-2">
-              <Smartphone className="w-4 h-4" /> Add custom icon to home screen
-            </Button>
+            <>
+              <Button variant="outline" onClick={pin} className="w-full h-11 rounded-xl font-bold gap-2">
+                <Smartphone className="w-4 h-4" /> Add custom icon to home screen
+              </Button>
+              <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
+                Android fixes the app-drawer icon at install time, so no app can replace it. Your picture is applied everywhere Android allows:
+                the home-screen icon (added once, then it updates itself whenever you change the picture), recent apps, the splash screen and the timer notification.
+              </p>
+            </>
           ) : (
             <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
               To change the icon of an app you already installed, remove it and use “Add to Home screen / Install app” again. In the Android APK there is an “Add custom icon to home screen” button.
             </p>
           )}
-          <Button variant="outline" onClick={() => { resetAppIcon(); toast.success('Default icon restored'); }} className="w-full h-10 rounded-xl font-bold gap-2 text-muted-foreground">
+          <Button variant="outline" onClick={() => { resetAppIcon(); void syncNativeIcon(null); toast.success('Default icon restored'); }} className="w-full h-10 rounded-xl font-bold gap-2 text-muted-foreground">
             <RotateCcw className="w-4 h-4" /> Restore default icon
           </Button>
         </div>

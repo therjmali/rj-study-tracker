@@ -13,7 +13,13 @@ for d in android-res/mipmap-*; do
   mkdir -p "android/app/src/main/res/$name"
   cp "$d"/*.png "android/app/src/main/res/$name/"
 done
-cp android-res/values/ic_launcher_background.xml android/app/src/main/res/values/ic_launcher_background.xml
+# Values: launcher background colour + branded launch theme (replaces the template styles.xml)
+cp android-res/values/*.xml android/app/src/main/res/values/
+
+# Drawables (shapes, branded splash) + notification layouts
+mkdir -p android/app/src/main/res/drawable android/app/src/main/res/layout
+cp android-res/drawable/*.xml android/app/src/main/res/drawable/
+cp android-res/layout/*.xml android/app/src/main/res/layout/
 
 # Notification status-bar icon
 for d in android-res/drawable-*; do
@@ -33,6 +39,10 @@ echo "Installed native sources into $JAVA_DIR"
 MANIFEST=android/app/src/main/AndroidManifest.xml
 if ! grep -q "TimerAlarmReceiver" "$MANIFEST"; then
   sed -i 's#</application>#    <receiver android:name=".TimerAlarmReceiver" android:exported="false" />\n    </application>#' "$MANIFEST"
+fi
+# Notification buttons (Pause / Resume) — a manifest receiver runs even when the app process is dead
+if ! grep -q "TimerActionReceiver" "$MANIFEST"; then
+  sed -i 's#</application>#    <receiver android:name=".TimerActionReceiver" android:exported="false" />\n    </application>#' "$MANIFEST"
 fi
 
 # Version

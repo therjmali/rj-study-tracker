@@ -57,7 +57,7 @@ const RevisionPanel = lazy(() => import('./components/RevisionPanel').then(m => 
 const ProfilePage = lazy(() => import('./components/profile/ProfilePage'));
 // CoinStore removed — replaced by level-based LevelStore inside GamificationPanel
 const GamificationPanel = lazy(() => import('./components/GamificationPanel'));
-const PomodoroTimer = lazy(() => import('./components/PomodoroTimer'));
+const FocusTimer = lazy(() => import('./components/FocusTimer'));
 // memo: skip re-rendering this whole page when App re-renders for unrelated reasons (sheets opening, sync status, etc.)
 const AIChat = lazy(() => import('./components/AIChat').then(m => ({ default: memo(m.default as React.ComponentType<any>) as unknown as typeof m.default })));
 const MCQPractice = lazy(() => import('./components/MCQPractice'));
@@ -77,7 +77,7 @@ if (typeof window !== 'undefined') {
     import('./components/RevisionPanel');
     import('./components/profile/ProfilePage');
     import('./components/GamificationPanel');
-    import('./components/PomodoroTimer');
+    import('./components/FocusTimer');
     import('./components/AIChat');
     import('./components/MCQPractice');
     import('./components/FlashcardDeck');
@@ -1389,9 +1389,12 @@ function AppInner() {
     });
   }, [appState.subjects, updateSubjects, addHistoryEntries, saveTopicToCloud, globalTopicDetail]);
 
-  const handlePomodoroComplete_inner = useCallback((data: { minutes: number; subjectId?: string; unitId?: string; topicId?: string }) => {
-    const today = getLocalDateStr();
+  const handlePomodoroComplete_inner = useCallback((data: { minutes: number; subjectId?: string; unitId?: string; topicId?: string; mode?: 'pomodoro' | 'countdown' | 'stopwatch'; startedAt?: number; endedAt?: number; note?: string }) => {
     const { minutes, subjectId, unitId, topicId } = data;
+    const sessionEnd = new Date(data.endedAt || Date.now());
+    const sessionStart = new Date(data.startedAt || sessionEnd.getTime() - minutes * 60_000);
+    const today = getLocalDateStr(sessionEnd);
+    const modeTag = data.mode === 'stopwatch' ? 'Stopwatch' : data.mode === 'countdown' ? 'Countdown' : 'Pomodoro';
 
     // Find subject/topic names for the session
     const subject = subjectId ? appState.subjects.find(s => s.id === subjectId) : undefined;
@@ -1399,18 +1402,19 @@ function AppInner() {
     const topic = topicId ? unit?.subTopics.find(t => t.id === topicId) : undefined;
 
     // Create a first-class DB session
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     createStudySession({
       date: today,
       minutes,
-      description: topic ? `[Pomodoro] ${topic.name}` : subject ? `[Pomodoro] ${subject.shortName}` : '[Pomodoro] Focus Session',
+      description: topic ? `[${modeTag}] ${topic.name}` : subject ? `[${modeTag}] ${subject.shortName}` : `[${modeTag}] Focus Session`,
       type: topicId ? 'Topic' : 'Other',
       subjectId: subjectId || '',
       subjectName: subject?.shortName || '',
       topicId: topicId || undefined,
       unitId: unitId || undefined,
-      startTime: timeStr,
+      startTime: hhmm(sessionStart),
+      endTime: hhmm(sessionEnd),
+      note: data.note,
     });
 
     // Also update topic timeSpent AND add a timeEntry so it shows in topic details
@@ -1418,12 +1422,12 @@ function AppInner() {
       setAppState(prev => {
         const prevTopic = prev.subjects.find(s => s.id === subjectId)?.units.find(u => u.id === unitId)?.subTopics.find(t => t.id === topicId);
         const isRevision = prevTopic?.completed || prevTopic?.status === 'complete';
-        const timerMode = 'Timer';
+        const timerMode = modeTag;
         const newEntry = {
           date: today,
           minutes,
           status: (isRevision ? 'complete' : (prevTopic?.status || 'in_process')) as import('./types').TopicStatus,
-          note: isRevision ? `[Revision ${timerMode}] ${minutes}min` : `[${timerMode}] ${minutes}min`,
+          note: [isRevision ? `[Revision ${timerMode}] ${minutes}min` : `[${timerMode}] ${minutes}min`, data.note].filter(Boolean).join(' — '),
         };
         const subjects = prev.subjects.map(s => s.id !== subjectId ? s : {
           ...s, units: s.units.map(u => u.id !== unitId ? u : {
@@ -1447,7 +1451,7 @@ function AppInner() {
 
   // Global timer state — persists across navigation and sheet close/open
   const [timerState, timerActions] = useGlobalTimer(settings.pomodoroSettings, handlePomodoroComplete_inner);
-  useTimerNotifications(timerState, timerActions, settings.pomodoroSettings);
+  useTimerNotifications(timerState, settings.pomodoroSettings);
   const timerCtxValue = useMemo(() => ({ state: timerState, actions: timerActions }), [timerState, timerActions]);
 
   // ── Stable callbacks (so memoised children are not re-rendered by fresh inline lambdas) ──
@@ -1471,13 +1475,28 @@ function AppInner() {
   timerStateRef.current = timerState;
   useEffect(() => {
     const onAction = (e: Event) => {
-      if ((e as CustomEvent<{ id: string }>).detail?.id !== 'start-focus') return;
-      setPomodoroOpen(true);
-      const s = timerStateRef.current;
-      if (s.appMode === 'timer' && !s.running) timerActionsRef.current.toggleTimer();
+      const id = (e as CustomEvent<{ id: string }>).detail?.id;
+      if (id === 'start-focus') {
+        setPomodoroOpen(true);
+        const s = timerStateRef.current;
+        if (s.appMode !== 'stopwatch' && !s.active) timerActionsRef.current.toggle();
+      } else if (id === 'timer-notes') {
+        setPomodoroOpen(true);
+        setTimeout(() => window.dispatchEvent(new Event('rj:focus-note')), 450);
+      } else if (id === 'timer-open') {
+        setPomodoroOpen(true);
+      } else if (id === 'open-report') {
+        startTransition(() => setActiveTab('charts'));
+      } else if (id === 'open-history') {
+        startTransition(() => setActiveTab('history'));
+      } else if (id === 'open-settings') {
+        setProfileInitialSection('focus');
+        setProfileOpen(true);
+      }
     };
     window.addEventListener('rj:native-action', onAction);
     return () => window.removeEventListener('rj:native-action', onAction);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const clearPendingTopic = useCallback(() => setPendingTopicDetail(null), []);
   const clearSyllabusNavTarget = useCallback(() => setSyllabusNavTarget(null), []);
@@ -1652,10 +1671,8 @@ function AppInner() {
       saveTopicToCloud.flush();
       saveDailyLogToCloud.flush();
 
-      // Warn if Pomodoro timer is running
-      if (timerState.phase === 'focus' || timerState.phase === 'short' || timerState.phase === 'long') {
-        e.preventDefault();
-      }
+      // The Focus Timer is persisted and restored on launch, so closing the app mid-session is safe:
+      // no "leave site?" prompt (it used to appear on every close, timer or not).
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
@@ -2056,16 +2073,17 @@ function AppInner() {
       {activeTab !== 'gamification' && <UnifiedFAB
         onOpenQuickComplete={() => { setQcDate(getLocalDateStr()); setQcSubjectId(''); setQcUnitId(''); setQcTopicId(''); setQuickCompleteOpen(true); }}
         onOpenPomodoro={openPomodoro}
-        timerRunning={timerState.running || timerState.swRunning}
+        timerRunning={timerState.active}
       />}
 
       {/* Floating Mini-Player — hidden on AI tab to avoid overlap */}
-      {activeTab !== 'gamification' && <FloatingTimer timer={timerState} onClick={openPomodoro} />}
+      {activeTab !== 'gamification' && <FloatingTimer timer={timerState} onClick={openPomodoro}
+        totalSec={(timerState.appMode === 'countdown' || timerState.phase === 'focus' ? timerState.focusDuration : timerState.phase === 'short' ? settings.pomodoroSettings.shortBreakMin : settings.pomodoroSettings.longBreakMin) * 60} />}
 
-      <BottomSheet open={pomodoroOpen} onClose={() => { setPomodoroOpen(false); setPomodoroPreFill(null); }} title="🍅 Pomodoro Timer">
-        <ErrorBoundary fallbackTitle="Pomodoro Timer crashed">
+      <BottomSheet open={pomodoroOpen} onClose={() => { setPomodoroOpen(false); setPomodoroPreFill(null); }} title="⏱️ Focus Timer">
+        <ErrorBoundary fallbackTitle="Focus Timer crashed">
           <Suspense fallback={<div className="h-40 flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-            <PomodoroTimer onSessionComplete={handlePomodoroComplete_inner} settings={settings.pomodoroSettings} subjects={appState.subjects}
+            <FocusTimer onSessionComplete={handlePomodoroComplete_inner} settings={settings.pomodoroSettings} subjects={appState.subjects}
               initialSubjectId={pomodoroPreFill?.subjectId} initialUnitId={pomodoroPreFill?.unitId} initialTopicId={pomodoroPreFill?.topicId} />
           </Suspense>
         </ErrorBoundary>
@@ -2321,7 +2339,7 @@ function UnifiedFAB({ onOpenQuickComplete, onOpenPomodoro, timerRunning }: {
               onClick={() => { setExpanded(false); onOpenPomodoro(); }}
               className="w-11 h-11 rounded-[14px] bg-chart-4 text-white flex items-center justify-center"
               style={{ boxShadow: '0 2px 8px hsl(var(--chart-4) / 0.20), 0 6px 18px hsl(var(--chart-4) / 0.12)' }}
-              aria-label="Pomodoro Timer"
+              aria-label="Focus Timer"
             >
               <Timer className="w-5 h-5" />
             </motion.button>

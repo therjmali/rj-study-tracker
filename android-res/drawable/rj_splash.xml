@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Branded launch background: terracotta field with the mortarboard mark (Android < 12 and the gap before the web splash). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#C25236"
+                android:endColor="#8F2F1B" />
+        </shape>
+    </item>
+    <item
+        android:width="168dp"
+        android:height="168dp"
+        android:gravity="center">
+        <bitmap
+            android:gravity="fill"
+            android:src="@mipmap/ic_launcher_foreground" />
+    </item>
+</layer-list>
