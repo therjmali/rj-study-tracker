@@ -15,10 +15,25 @@ for d in android-res/mipmap-*; do
 done
 cp android-res/values/ic_launcher_background.xml android/app/src/main/res/values/ic_launcher_background.xml
 
-# Safe-area handling: replace the generated MainActivity with ours
+# Notification status-bar icon
+for d in android-res/drawable-*; do
+  name=$(basename "$d")
+  mkdir -p "android/app/src/main/res/$name"
+  cp "$d"/*.png "android/app/src/main/res/$name/"
+done
+
+# Native layer: MainActivity (insets, timer notification, backup files) + helpers
 MAIN=$(find android/app/src/main/java -name MainActivity.java | head -1)
+JAVA_DIR=$(dirname "$MAIN")
 cp android-res/MainActivity.java "$MAIN"
-echo "Installed MainActivity at $MAIN"
+cp android-res/java/*.java "$JAVA_DIR/"
+echo "Installed native sources into $JAVA_DIR"
+
+# Timer-finished alarm receiver (must be declared so it can wake the app)
+MANIFEST=android/app/src/main/AndroidManifest.xml
+if ! grep -q "TimerAlarmReceiver" "$MANIFEST"; then
+  sed -i 's#</application>#    <receiver android:name=".TimerAlarmReceiver" android:exported="false" />\n    </application>#' "$MANIFEST"
+fi
 
 # Version
 GRADLE=android/app/build.gradle

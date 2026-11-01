@@ -12,6 +12,8 @@ A private, **offline-first study tracker** for B.Sc. Nursing and NORCET preparat
 - **Bulk subject import** — load many subjects at once from several `.json` files or a `.zip` pack, with preview, duplicate handling (keep both / skip / replace) and one-tap ZIP export.
 - **Daily safety snapshots** — the last 7 days of data are kept on-device and can be restored in Settings → AI & Device.
 - **Custom app icon** — upload your own JPG/PNG/WebP (max 2 MB); used in the header, browser tab, installed-app manifest and as a pinned Android home-screen shortcut.
+- **Notifications** — daily study reminders at times you choose (Start focus / Snooze buttons), and a live Pomodoro / stopwatch notification with Pause · Resume · Stop and an end-of-session alert that works with the screen off (Android).
+- **Automatic backups** — a full backup on the first open of each day and/or at times you choose, saved to Downloads/RJ Tracker Backups or a folder you pick, with a notification and automatic clean-up of old files.
 - **Local-first Android APK** — the full app bundled in the package (see below).
 - **PDF reports** through the browser print engine (choose *Save as PDF*).
 

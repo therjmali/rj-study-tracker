@@ -4,6 +4,7 @@ import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
 import BottomSheet from '../shared/BottomSheet';
 import AiDevicePanel from './AiDevicePanel';
+import PlatformRuntime from './PlatformRuntime';
 import { OPEN_SETTINGS_EVENT } from '@/platform/ai';
 import { OPEN_PROFILE_SETUP_EVENT, getStoredProfile, saveProfile } from '@/platform/auth';
 
@@ -39,6 +40,7 @@ export default function PlatformHost() {
         </div>
       </BottomSheet>
       <ProfileSetup open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <PlatformRuntime />
     </>
   );
 }

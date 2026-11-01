@@ -10,6 +10,9 @@ import { useDebouncedCallback } from 'use-debounce';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTheme } from './hooks/useTheme';
 import { useGlobalTimer } from './hooks/useGlobalTimer';
+import { useTimerNotifications } from './hooks/useTimerNotifications';
+import { registerBackupContext } from './platform/autoBackup';
+import type { BackupContext } from './lib/backupBuilder';
 import { useBackGuard } from './hooks/useBackGuard';
 import { TimerProvider } from './contexts/TimerContext';
 import { DEFAULT_SEMESTER, generateDefaultLogs } from './data/syllabus';
@@ -1444,6 +1447,7 @@ function AppInner() {
 
   // Global timer state — persists across navigation and sheet close/open
   const [timerState, timerActions] = useGlobalTimer(settings.pomodoroSettings, handlePomodoroComplete_inner);
+  useTimerNotifications(timerState, timerActions, settings.pomodoroSettings);
   const timerCtxValue = useMemo(() => ({ state: timerState, actions: timerActions }), [timerState, timerActions]);
 
   // ── Stable callbacks (so memoised children are not re-rendered by fresh inline lambdas) ──
@@ -1452,6 +1456,29 @@ function AppInner() {
   const openReminders = useCallback(() => setNotifCenterOpen(true), []);
   const openCloudData = useCallback(() => setCloudDataOpen(true), []);
   const openPomodoro = useCallback(() => setPomodoroOpen(true), []);
+
+  // Automatic backups read the newest data through this ref, so a scheduled backup never works from a stale snapshot.
+  const backupCtxRef = useRef<BackupContext | null>(null);
+  backupCtxRef.current = authUser
+    ? { appState, subjects: appState.subjects, settings, history, trash, user: authUser as unknown as BackupContext['user'] }
+    : null;
+  useEffect(() => { registerBackupContext(() => backupCtxRef.current); }, []);
+
+  // "Start focus" from a reminder notification.
+  const timerActionsRef = useRef(timerActions);
+  timerActionsRef.current = timerActions;
+  const timerStateRef = useRef(timerState);
+  timerStateRef.current = timerState;
+  useEffect(() => {
+    const onAction = (e: Event) => {
+      if ((e as CustomEvent<{ id: string }>).detail?.id !== 'start-focus') return;
+      setPomodoroOpen(true);
+      const s = timerStateRef.current;
+      if (s.appMode === 'timer' && !s.running) timerActionsRef.current.toggleTimer();
+    };
+    window.addEventListener('rj:native-action', onAction);
+    return () => window.removeEventListener('rj:native-action', onAction);
+  }, []);
   const clearPendingTopic = useCallback(() => setPendingTopicDetail(null), []);
   const clearSyllabusNavTarget = useCallback(() => setSyllabusNavTarget(null), []);
   const goHome = useCallback(() => { setSlideDir(null); startTransition(() => setActiveTab('dashboard')); }, [setActiveTab]);

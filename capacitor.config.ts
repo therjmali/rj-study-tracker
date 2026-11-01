@@ -10,7 +10,10 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   backgroundColor: '#ecdfc8',
   server: { androidScheme: 'https' },
-  plugins: { SystemBars: { insetsHandling: 'disable' } }, // insets are handled natively in MainActivity
+  plugins: {
+    SystemBars: { insetsHandling: 'disable' }, // insets are handled natively in MainActivity
+    LocalNotifications: { smallIcon: 'ic_stat_rj', iconColor: '#B4452B' },
+  },
   android: { allowMixedContent: false, webContentsDebuggingEnabled: false },
 };
 

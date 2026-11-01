@@ -12,6 +12,8 @@ import OverviewTab from '../profile/OverviewTab';
 import BackupTab from '../profile/BackupTab';
 import AiDevicePanel from '../platform/AiDevicePanel';
 import AppIconPanel from '../platform/AppIconPanel';
+import NotificationsPanel from '../platform/NotificationsPanel';
+import AutoBackupPanel from '../platform/AutoBackupPanel';
 import TrashTab from '../profile/TrashTab';
 import TextLayoutSettings from './TextLayoutSettings';
 import {
@@ -60,6 +62,8 @@ type ItemId =
   | 'reminders'
   | 'aiDevice'
   | 'appIcon'
+  | 'notifications'
+  | 'autoBackup'
   | 'backup' | 'trash'
   | 'shortcuts' | 'help';
 
@@ -102,6 +106,13 @@ const CATEGORIES: CategoryMeta[] = [
     id: 'notifications', icon: '🔔', title: 'Reminders & Alerts', subtitle: 'Pop-up reminders and sticky notes',
     items: [
       { id: 'reminders', icon: '⏰', title: 'Pop Reminders', description: 'Create, edit and schedule reminders and sticky notes', keywords: ['reminder', 'notification', 'alert', 'pop', 'bell', 'sticky', 'note', 'notify', 'schedule'] },
+    ],
+  },
+  {
+    id: 'auto', icon: '🔔', title: 'Notifications & Auto-backup', subtitle: 'Daily reminders, live timer alerts and automatic backups',
+    items: [
+      { id: 'notifications', icon: '🔔', title: 'Notifications', description: 'Daily study reminders and timer / stopwatch alerts with quick actions', keywords: ['notification', 'reminder', 'alert', 'timer', 'pomodoro', 'stopwatch', 'daily', 'time', 'push'] },
+      { id: 'autoBackup', icon: '💾', title: 'Automatic Backups', description: 'Daily backup on first open, custom times, chosen folder', keywords: ['backup', 'auto', 'download', 'folder', 'daily', 'schedule', 'export', 'storage'] },
     ],
   },
   {
@@ -246,6 +257,8 @@ export default function SettingsHub(props: SettingsHubProps) {
       case 'reminders': return onUpdateReminders ? <ReminderManager reminders={reminders || []} onUpdate={onUpdateReminders} /> : null;
       case 'aiDevice': return <AiDevicePanel />;
       case 'appIcon': return <AppIconPanel />;
+      case 'notifications': return <NotificationsPanel />;
+      case 'autoBackup': return <AutoBackupPanel />;
       case 'backup': return <BackupTab appState={props.appState} onImport={props.onImport} onReset={props.onReset} onClearHistory={props.onClearHistory} subjects={subjects} settings={settings} history={props.history} trash={trash} user={props.user} onUpdateUser={props.onUpdateUser} />;
       case 'trash': return <TrashTab trash={trash} onRestore={props.onRestoreTrash} onDelete={props.onDeleteTrash} onEmpty={props.onEmptyTrash} />;
       case 'shortcuts': return <KeyboardShortcutsSettings />;

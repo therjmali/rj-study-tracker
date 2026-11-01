@@ -953,11 +953,7 @@ html.ancient-mode h4 em {
   animation: gradient-x 3s ease infinite;
 }
 
-/* AlertDialog above BottomSheet fix */
-[data-state="open"][role="alertdialog"],
-[data-radix-alert-dialog-overlay] {
-  z-index: 200 !important;
-}
+/* Dialog / menu layering lives in packages/components/ui (overlay z-[300], content z-[310], menus z-[400]). */
 
 /* Scrollbar hiding */
 .scrollbar-hide::-webkit-scrollbar { display: none; }

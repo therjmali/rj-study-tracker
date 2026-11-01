@@ -37,6 +37,22 @@ self.addEventListener('activate', (event) => {
   })());
 });
 
+// Quick-action buttons on notifications (timer Pause / Stop, reminders…) → forward to the open app.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const id = event.action || '';
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const target = all.find((c) => c.url.startsWith(SCOPE)) || all[0];
+    if (target) {
+      if (id) target.postMessage({ type: 'rj-notif-action', id });
+      await target.focus();
+    } else {
+      await self.clients.openWindow(SCOPE);
+    }
+  })());
+});
+
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });

@@ -1,6 +1,6 @@
 {
   "name": "rj-study-tracker",
-  "version": "12.2.0",
+  "version": "12.3.0",
   "private": true,
   "description": "RJ Tracker Pro — a private, offline-first study tracker for nursing exam preparation (B.Sc. Nursing, NORCET).",
   "type": "module",
@@ -17,6 +17,7 @@
   "dependencies": {
     "@capacitor/core": "^8.6.0",
     "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/local-notifications": "^8.3.1",
     "@capacitor/share": "^8.0.3",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",

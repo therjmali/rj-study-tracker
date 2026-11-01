@@ -71,6 +71,9 @@ const tickStore = {
   },
 };
 
+/** Read the current per-second values without subscribing (for effects). */
+export function getTimerTick(): TimerTick { return tickStore.get(); }
+
 /** Subscribe to the per-second timer values. Only components that show the time should call this. */
 export function useTimerTick(): TimerTick {
   return useSyncExternalStore(tickStore.subscribe, tickStore.get, tickStore.get);
