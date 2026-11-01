@@ -34,7 +34,16 @@ jobs:
 
       - name: Assemble release APK
         working-directory: android
-        run: ./gradlew --no-daemon assembleRelease
+        run: |
+          set +e
+          ./gradlew --no-daemon assembleRelease 2>&1 | tee ../gradle.log
+          code=${PIPESTATUS[0]}
+          if [ "$code" -ne 0 ]; then
+            # Surface the real compiler / Gradle errors as an annotation so they are visible without the raw log.
+            MSG=$(grep -E "error:|What went wrong|Execution failed|cannot find symbol|symbol:|location:|Manifest merger|Lint found|^> " ../gradle.log | head -40 | sed 's/%/%25/g' | tr -d '\r' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=Gradle build failed::${MSG}"
+          fi
+          exit $code
 
       - name: Sign APK
         env:
