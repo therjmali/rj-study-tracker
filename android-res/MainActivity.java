@@ -116,7 +116,7 @@ public class MainActivity extends BridgeActivity {
   }
 
   @Override
-  protected void onDestroy() {
+  public void onDestroy() {
     try { unregisterReceiver(actionReceiver); } catch (Exception ignored) { /* not registered */ }
     if (isFinishing()) {
       NativeNotifier.cancelTimer(this);
