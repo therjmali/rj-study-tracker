@@ -40,7 +40,7 @@ jobs:
           code=${PIPESTATUS[0]}
           if [ "$code" -ne 0 ]; then
             # Surface the real compiler / Gradle errors as an annotation so they are visible without the raw log.
-            MSG=$(grep -E "error:|What went wrong|Execution failed|cannot find symbol|symbol:|location:|Manifest merger|Lint found|^> " ../gradle.log | head -40 | sed 's/%/%25/g' | tr -d '\r' | awk '{printf "%s%%0A", $0}')
+            MSG=$(grep -E -A6 "error:|What went wrong|Execution failed|cannot find symbol|Manifest merger|Lint found|FAILURE" ../gradle.log | grep -v "^> Task" | head -60 | sed 's/%/%25/g' | tr -d '\r' | awk '{printf "%s%%0A", $0}')
             echo "::error title=Gradle build failed::${MSG}"
           fi
           exit $code
