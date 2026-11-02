@@ -40,6 +40,13 @@ MANIFEST=android/app/src/main/AndroidManifest.xml
 if ! grep -q "TimerAlarmReceiver" "$MANIFEST"; then
   sed -i 's#</application>#    <receiver android:name=".TimerAlarmReceiver" android:exported="false" />\n    </application>#' "$MANIFEST"
 fi
+# Foreground service that owns the running-timer card (top of the shade, survives swiping the app away)
+if ! grep -q "FOREGROUND_SERVICE_SPECIAL_USE" "$MANIFEST"; then
+  sed -i 's#<application#<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />\n    <application#' "$MANIFEST"
+fi
+if ! grep -q "TimerService" "$MANIFEST"; then
+  sed -i 's#</application>#    <service android:name=".TimerService" android:exported="false" android:foregroundServiceType="specialUse">\n        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="study_timer" />\n    </service>\n    </application>#' "$MANIFEST"
+fi
 # Notification buttons (Pause / Resume) — a manifest receiver runs even when the app process is dead
 if ! grep -q "TimerActionReceiver" "$MANIFEST"; then
   sed -i 's#</application>#    <receiver android:name=".TimerActionReceiver" android:exported="false" />\n    </application>#' "$MANIFEST"

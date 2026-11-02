@@ -16,7 +16,9 @@ function phaseTotalMs(core: TimerCore, pom: PomodoroSettings): number {
 }
 
 /** Everything the notification needs, derived from the engine's wall-clock timestamps. */
-export function buildTimerPayload(core: TimerCore, pom: PomodoroSettings): TimerNotifyPayload {
+export interface TimerNotifyExtra { unitName?: string; subjectColor?: string }
+
+export function buildTimerPayload(core: TimerCore, pom: PomodoroSettings, extra: TimerNotifyExtra = {}): TimerNotifyPayload {
   const stopwatch = core.appMode === 'stopwatch';
   const running = stopwatch ? core.swRunning : core.cdRunning;
   const modeLabel = stopwatch ? MODE_LABEL.stopwatch : core.appMode === 'countdown' ? MODE_LABEL.countdown : PHASE_LABEL[core.phase];
@@ -44,7 +46,12 @@ export function buildTimerPayload(core: TimerCore, pom: PomodoroSettings): Timer
     headlinePaused: `${modeLabel} paused${link ? ` · ${link}` : ''}`,
     activity: link || 'Free study',
     subject: core.subjectName,
+    unit: extra.unitName ?? '',
     topic: core.topicName,
+    subjectId: core.subjectId,
+    unitId: core.unitId,
+    topicId: core.topicId,
+    color: /^#[0-9a-fA-F]{6}$/.test(extra.subjectColor ?? '') ? (extra.subjectColor as string) : '',
     sessions: core.sessions,
     stopLabel: isBreak ? 'Skip break' : 'Stop & Save',
     endTitle: core.appMode === 'stopwatch' ? '' : endTitle,
@@ -59,7 +66,9 @@ export function buildTimerPayload(core: TimerCore, pom: PomodoroSettings): Timer
  * announces the end of a session while the app is in the background. Never per-second: the system
  * chronometer in the notification does the counting.
  */
-export function useTimerNotifications(state: GlobalTimerState, pomodoro: PomodoroSettings) {
+export function useTimerNotifications(state: GlobalTimerState, pomodoro: PomodoroSettings, extra: TimerNotifyExtra = {}) {
+  const extraRef = useRef(extra);
+  extraRef.current = extra;
   const stateRef = useRef(state);
   stateRef.current = state;
   const pomRef = useRef(pomodoro);
@@ -70,14 +79,14 @@ export function useTimerNotifications(state: GlobalTimerState, pomodoro: Pomodor
     const core = getTimerCore();
     if (!core) return;
     if (!(s.active || s.hasProgress)) { timerClear(); return; }
-    void timerPublish(buildTimerPayload(core, pomRef.current));
+    void timerPublish(buildTimerPayload(core, pomRef.current, extraRef.current));
   };
 
   // Mirror state changes (never per-second).
   useEffect(() => {
     publish();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, pomodoro.shortBreakMin, pomodoro.longBreakMin]);
+  }, [state, pomodoro.shortBreakMin, pomodoro.longBreakMin, extra.unitName, extra.subjectColor]);
 
   // If the system or the student swiped the notification away, bring it back when the app is backgrounded.
   useEffect(() => {

@@ -274,6 +274,13 @@ export default function FocusTimer({ settings, subjects = [], initialSubjectId, 
         ) : null}
       </div>
 
+      {timer.topicId && (
+        <button type="button" onClick={() => window.dispatchEvent(new Event('rj:open-running-topic'))}
+          className="mx-auto flex items-center gap-1.5 text-xs font-bold text-primary">
+          <BookOpen className="w-3.5 h-3.5" /> Open topic window
+        </button>
+      )}
+
       {/* Session note */}
       {!isBreak && (
         <div className="flex items-center gap-2 rounded-xl border border-border/20 bg-card/30 px-3">

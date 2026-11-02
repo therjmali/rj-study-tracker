@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Compact timer notification: live time + the two actions you need, without expanding it. -->
+<!-- Compact timer notification: topic name, live time and the two actions you need without expanding. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -8,8 +8,8 @@
 
     <ImageView
         android:id="@+id/rj_icon"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
+        android:layout_width="34dp"
+        android:layout_height="34dp"
         android:layout_marginEnd="10dp"
         android:scaleType="centerCrop" />
 
@@ -19,33 +19,51 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <Chronometer
-            android:id="@+id/rj_time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:singleLine="true"
-            android:textAppearance="@android:style/TextAppearance.Material.Notification.Title"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
         <TextView
-            android:id="@+id/rj_time_paused"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:singleLine="true"
-            android:textAppearance="@android:style/TextAppearance.Material.Notification.Title"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/rj_sub"
+            android:id="@+id/rj_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:singleLine="true"
-            android:textAppearance="@android:style/TextAppearance.Material.Notification.Info"
-            android:textSize="12sp" />
+            android:textAppearance="@android:style/TextAppearance.Material.Notification.Title"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <Chronometer
+                android:id="@+id/rj_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:textAppearance="@android:style/TextAppearance.Material.Notification"
+                android:textSize="19sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/rj_time_paused"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:textAppearance="@android:style/TextAppearance.Material.Notification"
+                android:textSize="19sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/rj_state"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:textAppearance="@android:style/TextAppearance.Material.Notification.Info"
+                android:textSize="12sp" />
+        </LinearLayout>
     </LinearLayout>
 
     <TextView
