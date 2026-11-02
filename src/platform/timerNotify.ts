@@ -28,7 +28,14 @@ export interface TimerNotifyPayload {
   headlinePaused: string;
   activity: string;
   subject: string;
+  unit: string;
   topic: string;
+  /** Ids so a tap on the card can open the running topic's window. */
+  subjectId: string;
+  unitId: string;
+  topicId: string;
+  /** Subject colour (#rrggbb) used as the notification accent. */
+  color: string;
   sessions: number;
   stopLabel: string;
   /** End-of-session alarm (countdown modes only). */

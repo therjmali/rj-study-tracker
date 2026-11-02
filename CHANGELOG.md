@@ -1,5 +1,14 @@
 # Changelog
 
+## 14.1.0 — Notification that opens your topic
+
+- **Tap the running timer → your topic.** Tapping the notification (or the floating timer) opens the window of the topic you are studying, with its live timer card. With no topic linked it opens the Focus Timer. Works from a cold start (waits for your syllabus to load).
+- **Topic name first.** The notification title is the topic; below it `Mode • Subject › Unit`, and the subject name in the header. The subject colour is the accent.
+- **Always on top, expanded where Android allows.** The card is owned by a foreground service, which Android sorts to the top of the shade (the position expanded by default). The compact form already shows topic, live time, Pause and Save.
+- **Live progress bar** for Pomodoro and Countdown (refreshes every 20 s) and a Start time / Remaining / Status details row.
+- **Sturdier.** Survives swiping the app away; if the system refuses the service the card falls back to a normal ongoing notification and the service is not retried.
+- "Open topic window" button in the Focus Timer sheet.
+
 ## 14.0.0 — Cloud accounts & multi-device sync
 
 **A real sign-in system**

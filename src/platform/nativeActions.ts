@@ -14,7 +14,7 @@ import { isNative } from './native';
 interface Bridge { takePendingActions?: () => string }
 const bridge = (): Bridge | undefined => (window as unknown as { RJNative?: Bridge }).RJNative;
 
-export interface NativeAction { id: string; at: number }
+export interface NativeAction { id: string; at: number; subjectId?: string; unitId?: string; topicId?: string }
 
 export function drainNativeActions(): void {
   const b = bridge();
@@ -27,7 +27,9 @@ export function drainNativeActions(): void {
   for (const a of list) {
     if (!a || typeof a.id !== 'string' || !a.id) continue;
     const at = Number(a.at) > 0 ? Number(a.at) : Date.now();
-    window.dispatchEvent(new CustomEvent('rj:native-action', { detail: { id: a.id, at } }));
+    window.dispatchEvent(new CustomEvent('rj:native-action', {
+      detail: { id: a.id, at, subjectId: a.subjectId, unitId: a.unitId, topicId: a.topicId },
+    }));
   }
 }
 

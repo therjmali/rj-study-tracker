@@ -9,12 +9,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.SystemClock;
 import android.widget.RemoteViews;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -44,6 +46,7 @@ final class NativeNotifier {
   private static final String PREFS = "rj_native";
   private static final String KEY_PAYLOAD = "timer_payload";
   private static final String KEY_PENDING = "pending_actions";
+  private static final String KEY_FGS_FAILED = "fgs_failed";
   private static final String ICON_FILE = "rj_custom_icon.png";
   private static final int ACCENT = 0xFFB4452B;
 
@@ -84,10 +87,25 @@ final class NativeNotifier {
 
   /** Opens the app and hands `action` to the web layer (applied with the moment the user tapped). */
   static PendingIntent openApp(Context ctx, int requestCode, String action) {
+    return openApp(ctx, requestCode, action, null, null, null);
+  }
+
+  /** Same, carrying the topic the timer is running for so the app can open that topic's window. */
+  static PendingIntent openApp(Context ctx, int requestCode, String action, String subjectId, String unitId, String topicId) {
     Intent open = new Intent(ctx, MainActivity.class)
         .setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
     if (action != null) open.putExtra("rj_action", action);
+    if (subjectId != null) open.putExtra("rj_subject", subjectId);
+    if (unitId != null) open.putExtra("rj_unit", unitId);
+    if (topicId != null) open.putExtra("rj_topic", topicId);
     return PendingIntent.getActivity(ctx, requestCode, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+  }
+
+  /** Tap target for the card: the running topic's window, or the Focus Timer when no topic is linked. */
+  static PendingIntent openTopicOrTimer(Context ctx, int requestCode, JSONObject p) {
+    String t = p == null ? "" : p.optString("topicId", "");
+    if (t.isEmpty()) return openApp(ctx, requestCode, "timer-open");
+    return openApp(ctx, requestCode, "timer-topic", p.optString("subjectId", ""), p.optString("unitId", ""), t);
   }
 
   /** Background button: handled by the manifest-declared TimerActionReceiver, so it works with the app closed. */
@@ -105,13 +123,21 @@ final class NativeNotifier {
 
   /** Remember a tapped button together with the moment it was tapped. Survives the app being closed. */
   static synchronized void queueAction(Context ctx, String id, long at) {
+    queueAction(ctx, id, at, null, null, null);
+  }
+
+  static synchronized void queueAction(Context ctx, String id, long at, String subjectId, String unitId, String topicId) {
     try {
       SharedPreferences p = prefs(ctx);
       JSONArray arr = new JSONArray(p.getString(KEY_PENDING, "[]"));
       JSONArray next = new JSONArray();
       int start = Math.max(0, arr.length() - 19);
       for (int i = start; i < arr.length(); i++) next.put(arr.get(i));
-      next.put(new JSONObject().put("id", id).put("at", at));
+      JSONObject o = new JSONObject().put("id", id).put("at", at);
+      if (subjectId != null && !subjectId.isEmpty()) o.put("subjectId", subjectId);
+      if (unitId != null && !unitId.isEmpty()) o.put("unitId", unitId);
+      if (topicId != null && !topicId.isEmpty()) o.put("topicId", topicId);
+      next.put(o);
       p.edit().putString(KEY_PENDING, next.toString()).apply();
     } catch (Exception ignored) { /* best-effort */ }
   }
@@ -191,26 +217,46 @@ final class NativeNotifier {
     }
   }
 
-  static void showTimerRich(Context ctx, JSONObject p) throws Exception {
+  private static String clip(String v, int max) {
+    if (v == null) return "";
+    v = v.trim();
+    return v.length() <= max ? v : v.substring(0, max - 1) + "…";
+  }
+
+  /** Builds the running / paused timer notification (custom card; plain fallback if the layout cannot be built). */
+  static Notification buildTimerNotification(Context ctx, JSONObject p) {
     ensureChannels(ctx);
+    try {
+      return buildRich(ctx, p);
+    } catch (Throwable richFailed) {
+      return buildPlain(ctx, p);
+    }
+  }
+
+  private static Notification buildRich(Context ctx, JSONObject p) throws Exception {
     boolean running = p.optBoolean("running");
     boolean countDown = p.optBoolean("countDown");
     long anchor = p.optLong("anchorMs");
     long value = p.optLong("valueMs");
+    long total = p.optLong("totalMs");
     long started = p.optLong("startedAtMs");
-    String mode = p.optString("mode", "stopwatch");
     String modeLabel = p.optString("modeLabel", "Timer");
-    String activity = p.optString("activity", "Free study");
+    String topic = p.optString("topic", "");
+    String subject = p.optString("subject", "");
+    String unit = p.optString("unit", "");
     String headline = p.optString(running ? "headlineRunning" : "headlinePaused", modeLabel);
     String stopLabel = p.optString("stopLabel", "Stop & Save");
     String statusText = running ? "Running" : "Paused";
 
-    String sub;
-    if (running) {
-      sub = countDown ? "Ends at " + fmtTime(ctx, anchor) + " · " + activity : activity + " · Running";
-    } else {
-      sub = activity + " · Paused";
-    }
+    // Topic first, always: topic name → else subject → else the mode.
+    String title = !topic.isEmpty() ? topic : (!subject.isEmpty() ? subject : modeLabel);
+    String crumb;
+    if (!subject.isEmpty() && !unit.isEmpty() && !topic.isEmpty()) crumb = subject + "  ›  " + unit;
+    else if (!subject.isEmpty() && !topic.isEmpty()) crumb = subject;
+    else crumb = modeLabel;
+    crumb = modeLabel + "  •  " + crumb;
+    if (topic.isEmpty() && subject.isEmpty()) crumb = modeLabel + "  •  Free study";
+
     String startedLine;
     if (running && countDown) startedLine = "Ends at " + fmtTime(ctx, anchor) + "   •   Remaining time";
     else if (running) startedLine = "Started at " + fmtTime(ctx, started > 0 ? started : anchor) + "   •   Elapsed time";
@@ -218,12 +264,21 @@ final class NativeNotifier {
 
     Bitmap custom = loadCustomIcon(ctx, 96);
     int chipTextColor = running ? 0xFF1E9E55 : 0xFFC77700;
+    int accent = ACCENT;
+    try {
+      String c = p.optString("color", "");
+      if (!c.isEmpty()) accent = Color.parseColor(c);
+    } catch (Throwable ignored) { /* keep brand colour */ }
+
+    PendingIntent openTopic = openTopicOrTimer(ctx, 4711, p);
+    String sId = p.optString("subjectId", ""), uId = p.optString("unitId", ""), tId = p.optString("topicId", "");
 
     /* compact */
     RemoteViews small = new RemoteViews(ctx.getPackageName(), R.layout.rj_notif_collapsed);
     bindIcon(ctx, small, custom);
+    small.setTextViewText(R.id.rj_title, clip(title, 42));
     bindTime(small, R.id.rj_time, R.id.rj_time_paused, running, countDown, anchor, value);
-    small.setTextViewText(R.id.rj_sub, sub);
+    small.setTextViewText(R.id.rj_state, running ? (countDown ? "left" : "Running") : "Paused");
     small.setTextViewText(R.id.rj_btn_toggle, running ? "Pause" : "Resume");
     small.setTextViewText(R.id.rj_btn_stop, "Save");
     small.setOnClickPendingIntent(R.id.rj_btn_toggle, actionBroadcast(ctx, "timer-toggle"));
@@ -236,53 +291,140 @@ final class NativeNotifier {
     big.setTextViewText(R.id.rj_status_chip, (running ? "● " : "❚❚ ") + statusText);
     big.setTextColor(R.id.rj_status_chip, chipTextColor);
     big.setInt(R.id.rj_status_chip, "setBackgroundResource", running ? R.drawable.rj_bg_chip_running : R.drawable.rj_bg_chip_paused);
+    big.setTextViewText(R.id.rj_topic, "📖  " + clip(title, 60));
+    big.setTextViewText(R.id.rj_crumb, clip(crumb, 70));
+    big.setOnClickPendingIntent(R.id.rj_topic_row, openTopic);
     big.setTextViewText(R.id.rj_started, startedLine);
+
+    if (countDown && total > 0) {
+      long remaining = running ? Math.max(0, anchor - System.currentTimeMillis()) : Math.max(0, value);
+      int progress = (int) Math.max(0, Math.min(1000, (total - remaining) * 1000 / total));
+      big.setViewVisibility(R.id.rj_progress, android.view.View.VISIBLE);
+      big.setProgressBar(R.id.rj_progress, 1000, progress, false);
+    } else {
+      big.setViewVisibility(R.id.rj_progress, android.view.View.GONE);
+    }
+
     big.setTextViewText(R.id.rj_btn_toggle, running ? "⏸ Pause" : "▶ Resume");
     big.setTextViewText(R.id.rj_btn_stop, "⏹ " + stopLabel);
     big.setOnClickPendingIntent(R.id.rj_btn_toggle, actionBroadcast(ctx, "timer-toggle"));
     big.setOnClickPendingIntent(R.id.rj_btn_stop, openApp(ctx, 4730, "timer-stop"));
     big.setOnClickPendingIntent(R.id.rj_btn_notes, openApp(ctx, 4731, "timer-notes"));
 
-    big.setTextViewText(R.id.rj_d_activity, activity);
-    big.setTextViewText(R.id.rj_d_start, fmtTime(ctx, started > 0 ? started : (running && !countDown ? anchor : 0)));
+    big.setTextViewText(R.id.rj_d_start, "🕒 " + fmtTime(ctx, started > 0 ? started : (running && !countDown ? anchor : 0)));
     bindTime(big, R.id.rj_d_time, R.id.rj_d_time_paused, running, countDown, anchor, value);
     big.setTextViewText(R.id.rj_d_time_label, countDown ? "Remaining" : "Duration");
-    big.setTextViewText(R.id.rj_d_status_icon, running ? "🟢" : "🟠");
-    big.setTextViewText(R.id.rj_d_status, statusText);
+    big.setTextViewText(R.id.rj_d_status, (running ? "🟢 " : "🟠 ") + statusText);
     big.setOnClickPendingIntent(R.id.rj_f_report, openApp(ctx, 4732, "open-report"));
     big.setOnClickPendingIntent(R.id.rj_f_history, openApp(ctx, 4733, "open-history"));
     big.setOnClickPendingIntent(R.id.rj_f_settings, openApp(ctx, 4734, "open-settings"));
 
     NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL_TIMER)
         .setSmallIcon(R.drawable.ic_stat_rj)
-        .setColor(ACCENT)
+        .setColor(accent)
         .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
         .setCustomContentView(small)
         .setCustomBigContentView(big)
-        .setContentTitle(headline)
-        .setContentText(sub)
+        .setContentTitle(title)
+        .setContentText(headline)
         .setOngoing(true)
         .setOnlyAlertOnce(true)
         .setShowWhen(false)
         .setCategory("stopwatch")
         .setPriority(NotificationCompat.PRIORITY_DEFAULT)
         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-        .setContentIntent(openApp(ctx, 4711, "timer-open"));
+        .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+        .setContentIntent(openTopic);
+    if (!subject.isEmpty()) b.setSubText(clip(subject, 28));
+    return b.build();
+  }
 
+  /** Standard (non-custom) fallback so the timer is never invisible. */
+  private static Notification buildPlain(Context ctx, JSONObject p) {
+    boolean running = p.optBoolean("running");
+    boolean countDown = p.optBoolean("countDown");
+    String topic = p.optString("topic", "");
+    String subject = p.optString("subject", "");
+    NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL_TIMER)
+        .setSmallIcon(R.drawable.ic_stat_rj)
+        .setColor(ACCENT)
+        .setContentTitle(!topic.isEmpty() ? topic : p.optString(running ? "headlineRunning" : "headlinePaused", "Timer"))
+        .setContentText(!subject.isEmpty() ? subject + " · " + p.optString("modeLabel", "") : p.optString("modeLabel", ""))
+        .setOngoing(true)
+        .setOnlyAlertOnce(true)
+        .setCategory("stopwatch")
+        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+        .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+        .setContentIntent(openTopicOrTimer(ctx, 4711, p));
+    if (running) {
+      long wall = System.currentTimeMillis();
+      long anchor = p.optLong("anchorMs");
+      b.setShowWhen(true).setWhen(anchor).setUsesChronometer(true).setChronometerCountDown(countDown);
+      if (!countDown && anchor > wall) b.setWhen(wall);
+    } else {
+      b.setShowWhen(false).setUsesChronometer(false);
+    }
+    b.addAction(0, running ? "Pause" : "Resume", actionBroadcast(ctx, "timer-toggle"));
+    b.addAction(0, p.optString("stopLabel", "Stop & Save"), openApp(ctx, 4730, "timer-stop"));
+    return b.build();
+  }
+
+  /** Tiny notification used only to satisfy the foreground-service contract when there is nothing to show. */
+  static Notification placeholder(Context ctx) {
+    ensureChannels(ctx);
+    return new NotificationCompat.Builder(ctx, CHANNEL_TIMER)
+        .setSmallIcon(R.drawable.ic_stat_rj)
+        .setColor(ACCENT)
+        .setContentTitle("RJ Tracker")
+        .setContentText("Focus Timer")
+        .setOngoing(true)
+        .setOnlyAlertOnce(true)
+        .build();
+  }
+
+  static String storedPayload(Context ctx) {
+    return prefs(ctx).getString(KEY_PAYLOAD, null);
+  }
+
+  static void markForegroundFailed(Context ctx) {
+    prefs(ctx).edit().putBoolean(KEY_FGS_FAILED, true).apply();
+  }
+
+  /**
+   * Posts the card. Preferred path is the foreground service (top of the shade, survives swiping the app
+   * away); if the system refuses it, a normal ongoing notification is used instead, and the service is not
+   * tried again.
+   */
+  private static void postTimer(Context ctx, JSONObject p, String json) {
     NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
-    if (nm != null) nm.notify(TIMER_ID, b.build());
+    if (TimerService.running) {
+      if (nm != null) nm.notify(TIMER_ID, buildTimerNotification(ctx, p));
+      return;
+    }
+    boolean fgsOk = !prefs(ctx).getBoolean(KEY_FGS_FAILED, false);
+    if (fgsOk) {
+      try {
+        Intent i = new Intent(ctx, TimerService.class).putExtra("payload", json);
+        ContextCompat.startForegroundService(ctx, i);
+        return;
+      } catch (Throwable t) {
+        // Not allowed right now (e.g. background start restriction) — fall through to a normal notification.
+      }
+    }
+    if (nm != null) nm.notify(TIMER_ID, buildTimerNotification(ctx, p));
+  }
+
+  static void stopTimerService(Context ctx) {
+    try {
+      ctx.stopService(new Intent(ctx, TimerService.class));
+    } catch (Throwable ignored) { /* best-effort */ }
   }
 
   /** Full update from the web layer: persist, post the card, and (re)arm or cancel the end alarm. */
   static void updateTimer(Context ctx, String json) throws Exception {
     JSONObject p = new JSONObject(json);
     prefs(ctx).edit().putString(KEY_PAYLOAD, json).apply();
-    try {
-      showTimerRich(ctx, p);
-    } catch (Throwable richFailed) {
-      // Some launchers refuse custom layouts: fall back to a standard notification with action buttons.
-      showTimerPlain(ctx, p);
-    }
+    postTimer(ctx, p, json);
     boolean running = p.optBoolean("running");
     boolean countDown = p.optBoolean("countDown");
     if (running && countDown) {
@@ -291,34 +433,6 @@ final class NativeNotifier {
     } else {
       cancelAlarm(ctx);
     }
-  }
-
-  /** Standard (non-custom) fallback so the timer is never invisible. */
-  private static void showTimerPlain(Context ctx, JSONObject p) {
-    ensureChannels(ctx);
-    boolean running = p.optBoolean("running");
-    boolean countDown = p.optBoolean("countDown");
-    NotificationCompat.Builder b = new NotificationCompat.Builder(ctx, CHANNEL_TIMER)
-        .setSmallIcon(R.drawable.ic_stat_rj)
-        .setColor(ACCENT)
-        .setContentTitle(p.optString(running ? "headlineRunning" : "headlinePaused", "Timer"))
-        .setContentText(p.optString("activity", ""))
-        .setOngoing(true)
-        .setOnlyAlertOnce(true)
-        .setCategory("stopwatch")
-        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-        .setContentIntent(openApp(ctx, 4711, "timer-open"));
-    if (running) {
-      long wall = System.currentTimeMillis();
-      b.setShowWhen(true).setWhen(p.optLong("anchorMs")).setUsesChronometer(true).setChronometerCountDown(countDown);
-      if (!countDown && p.optLong("anchorMs") > wall) b.setWhen(wall);
-    } else {
-      b.setShowWhen(false).setUsesChronometer(false);
-    }
-    b.addAction(0, running ? "Pause" : "Resume", actionBroadcast(ctx, "timer-toggle"));
-    b.addAction(0, p.optString("stopLabel", "Stop & Save"), openApp(ctx, 4730, "timer-stop"));
-    NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
-    if (nm != null) nm.notify(TIMER_ID, b.build());
   }
 
   /**
@@ -417,12 +531,14 @@ final class NativeNotifier {
         .setPriority(NotificationCompat.PRIORITY_HIGH)
         .setDefaults(Notification.DEFAULT_ALL)
         .setCategory(NotificationCompat.CATEGORY_ALARM)
-        .setContentIntent(openApp(ctx, 4712, "timer-open"));
+        .setContentIntent(openTopicOrTimer(ctx, 4712, storedJson(ctx)));
     Bitmap custom = loadCustomIcon(ctx, 128);
     if (custom != null) b.setLargeIcon(custom);
     if (nextAction != null && !nextAction.isEmpty()) {
       b.addAction(0, nextLabel == null || nextLabel.isEmpty() ? "Continue" : nextLabel, openApp(ctx, 4713, nextAction));
     }
+    // A foreground-service notification cannot be cancelled while the service runs — stop it first.
+    stopTimerService(ctx);
     NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
     if (nm != null) {
       nm.cancel(TIMER_ID);
@@ -448,7 +564,17 @@ final class NativeNotifier {
     if (nm != null) nm.notify(SAVED_ID, b.build());
   }
 
+  private static JSONObject storedJson(Context ctx) {
+    try {
+      String raw = storedPayload(ctx);
+      return raw == null ? null : new JSONObject(raw);
+    } catch (Throwable t) {
+      return null;
+    }
+  }
+
   static void cancelTimer(Context ctx) {
+    stopTimerService(ctx);
     NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
     if (nm != null) nm.cancel(TIMER_ID);
     prefs(ctx).edit().remove(KEY_PAYLOAD).apply();

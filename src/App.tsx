@@ -1270,7 +1270,11 @@ function AppInner() {
 
   // Global timer state — persists across navigation and sheet close/open
   const [timerState, timerActions] = useGlobalTimer(settings.pomodoroSettings, handlePomodoroComplete_inner);
-  useTimerNotifications(timerState, settings.pomodoroSettings);
+  const notifyExtra = useMemo(() => {
+    const sub = appState.subjects.find(x => x.id === timerState.subjectId);
+    return { unitName: sub?.units.find(u => u.id === timerState.unitId)?.name ?? '', subjectColor: sub?.color ?? '' };
+  }, [appState.subjects, timerState.subjectId, timerState.unitId]);
+  useTimerNotifications(timerState, settings.pomodoroSettings, notifyExtra);
   const timerCtxValue = useMemo(() => ({ state: timerState, actions: timerActions }), [timerState, timerActions]);
 
   // ── Stable callbacks (so memoised children are not re-rendered by fresh inline lambdas) ──
@@ -1292,6 +1296,34 @@ function AppInner() {
   timerActionsRef.current = timerActions;
   const timerStateRef = useRef(timerState);
   timerStateRef.current = timerState;
+  const subjectsRef = useRef(appState.subjects);
+  subjectsRef.current = appState.subjects;
+
+  /**
+   * Tap on the running timer (notification, floating chip): jump straight to the topic being studied —
+   * its own window, with the live timer card — or to the Focus Timer when the session is not linked to a topic.
+   */
+  const openRunningTopic = useCallback((ids?: { subjectId?: string; unitId?: string; topicId?: string }, attempt = 0) => {
+    // Cold start from the notification: the syllabus may still be loading — wait for it instead of guessing.
+    if (subjectsRef.current.length === 0 && attempt < 16) {
+      setTimeout(() => openRunningTopic(ids, attempt + 1), 500);
+      return;
+    }
+    const t = timerStateRef.current;
+    const sId = ids?.subjectId || t.subjectId;
+    const uId = ids?.unitId || t.unitId;
+    const tId = ids?.topicId || t.topicId;
+    const unit = subjectsRef.current.find(x => x.id === sId)?.units.find(u => u.id === uId);
+    const topic = unit?.subTopics.find(x => x.id === tId);
+    if (!topic) { setPomodoroOpen(true); return; }
+    topicDetailSourceRef.current = 'other';
+    try { sessionStorage.setItem('nursetrack-topic-source', 'other'); } catch {}
+    setPomodoroOpen(false);
+    setProfileOpen(false);
+    setSearchOpen(false);
+    setGlobalNavList(null);
+    setGlobalTopicDetail({ topic, subjectId: sId, unitId: uId });
+  }, [setGlobalTopicDetail]);
   useEffect(() => {
     const onAction = (e: Event) => {
       const id = (e as CustomEvent<{ id: string }>).detail?.id;
@@ -1302,6 +1334,9 @@ function AppInner() {
       } else if (id === 'timer-notes') {
         setPomodoroOpen(true);
         setTimeout(() => window.dispatchEvent(new Event('rj:focus-note')), 450);
+      } else if (id === 'timer-topic') {
+        const d = (e as CustomEvent<{ subjectId?: string; unitId?: string; topicId?: string }>).detail;
+        openRunningTopic(d);
       } else if (id === 'timer-open') {
         setPomodoroOpen(true);
       } else if (id === 'open-report') {
@@ -1314,9 +1349,15 @@ function AppInner() {
       }
     };
     window.addEventListener('rj:native-action', onAction);
-    return () => window.removeEventListener('rj:native-action', onAction);
+    // The Focus Timer sheet's "Open topic" button asks for the same navigation.
+    const onOpenTopic = () => openRunningTopic(undefined);
+    window.addEventListener('rj:open-running-topic', onOpenTopic);
+    return () => {
+      window.removeEventListener('rj:native-action', onAction);
+      window.removeEventListener('rj:open-running-topic', onOpenTopic);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [openRunningTopic]);
   const clearPendingTopic = useCallback(() => setPendingTopicDetail(null), []);
   const clearSyllabusNavTarget = useCallback(() => setSyllabusNavTarget(null), []);
   const goHome = useCallback(() => { setSlideDir(null); startTransition(() => setActiveTab('dashboard')); }, [setActiveTab]);
@@ -1942,7 +1983,7 @@ function AppInner() {
       />}
 
       {/* Floating Mini-Player — hidden on AI tab to avoid overlap */}
-      {activeTab !== 'gamification' && <FloatingTimer timer={timerState} onClick={openPomodoro}
+      {activeTab !== 'gamification' && <FloatingTimer timer={timerState} onClick={() => openRunningTopic()}
         totalSec={(timerState.appMode === 'countdown' || timerState.phase === 'focus' ? timerState.focusDuration : timerState.phase === 'short' ? settings.pomodoroSettings.shortBreakMin : settings.pomodoroSettings.longBreakMin) * 60} />}
 
       <BottomSheet open={pomodoroOpen} onClose={() => { setPomodoroOpen(false); setPomodoroPreFill(null); }} title="⏱️ Focus Timer">

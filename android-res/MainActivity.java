@@ -150,12 +150,15 @@ public class MainActivity extends BridgeActivity {
     wv.post(() -> wv.evaluateJavascript(script, null));
   }
 
-  /** Queue a button / shortcut tap with its timestamp, then ask the web layer to pull it. */
-  private void dispatchAction(String id) {
-    if (id == null) return;
-    String safe = id.replaceAll("[^A-Za-z0-9_\\-]", "");
+  private static String clean(String v) {
+    return v == null ? "" : v.replaceAll("[^A-Za-z0-9_\\-]", "");
+  }
+
+  /** Queue a button / shortcut tap with its timestamp (and the topic it refers to), then wake the web layer. */
+  private void dispatchAction(String id, String subjectId, String unitId, String topicId) {
+    String safe = clean(id);
     if (safe.isEmpty()) return;
-    NativeNotifier.queueAction(this, safe, System.currentTimeMillis());
+    NativeNotifier.queueAction(this, safe, System.currentTimeMillis(), clean(subjectId), clean(unitId), clean(topicId));
     js("window.dispatchEvent(new Event('rj:native-wake'))");
   }
 
@@ -163,8 +166,14 @@ public class MainActivity extends BridgeActivity {
     if (intent == null) return;
     String action = intent.getStringExtra("rj_action");
     if (action != null) {
+      String s = intent.getStringExtra("rj_subject");
+      String u = intent.getStringExtra("rj_unit");
+      String t = intent.getStringExtra("rj_topic");
       intent.removeExtra("rj_action");
-      dispatchAction(action);
+      intent.removeExtra("rj_subject");
+      intent.removeExtra("rj_unit");
+      intent.removeExtra("rj_topic");
+      dispatchAction(action, s, u, t);
     }
   }
 
