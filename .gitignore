@@ -11,3 +11,6 @@ dist
 
 # sync server data (accounts, tokens, restore points)
 /server/data/
+
+# keep the sync-server template out of the .env* ignore rule
+!/server/.env.example
