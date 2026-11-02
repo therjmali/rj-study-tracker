@@ -34,9 +34,15 @@ jobs:
       - name: Build web bundle (root base path for the APK)
         env:
           # Optional repository variable: the default sync server for the APK.
-          # Students can still change it in-app (Settings → Cloud sync → Sync server).
+          # Students can still change it in-app (Sign in → Sync server).
           VITE_CLOUD_URL: ${{ vars.CLOUD_URL }}
-        run: VITE_BASE=/ npm run build
+        run: |
+          if [ -n "${VITE_CLOUD_URL}" ]; then
+            echo "::notice::Cloud endpoint baked into the APK: ${VITE_CLOUD_URL}"
+          else
+            echo "::warning::No CLOUD_URL repository variable — this APK asks the student for a sync-server address on the sign-in screen (guest mode still works offline). Set CLOUD_URL and re-run this workflow to ship a build that signs in out of the box."
+          fi
+          VITE_BASE=/ npm run build
 
       - name: Prepare Android project
         run: |
@@ -92,5 +98,13 @@ jobs:
           if ! node scripts/release-notes.mjs > "$NOTES_FILE"; then
             printf 'Local-first Android APK with cloud sync — the whole app is bundled and works fully offline.\n' > "$NOTES_FILE"
           fi
-          gh release create "$TAG" "$APK_FILE" --title "RJ Tracker Pro ${TAG}" --notes-file "$NOTES_FILE" \
-            || gh release upload "$TAG" "$APK_FILE" --clobber
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            # Re-running the build must leave exactly one APK per tag: the newest.
+            for old in $(gh release view "$TAG" --json assets -q '.assets[].name' | grep -E '\.apk$' || true); do
+              gh release delete-asset "$TAG" "$old" --yes
+            done
+            gh release edit "$TAG" --notes-file "$NOTES_FILE"
+            gh release upload "$TAG" "$APK_FILE"
+          else
+            gh release create "$TAG" "$APK_FILE" --title "RJ Tracker Pro ${TAG}" --notes-file "$NOTES_FILE"
+          fi
