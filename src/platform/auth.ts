@@ -1,11 +1,20 @@
 /**
- * Local profile — replaces hosted sign-in.
+ * Account facade.
  *
- * There are no accounts and no passwords: the "profile" is just a display name
- * (and optional email) kept on this device. Signing out hides the profile but never
- * deletes study data.
+ * The app talks to `useAuth()` and gets a `LocalUser`; underneath that there is
+ * now a real cloud account (email + password, hosted on the student's own sync
+ * server) instead of a name stored on one device. Guest mode is unchanged: the
+ * app stays fully usable offline with no account at all.
  */
-import { useCallback, useSyncExternalStore } from 'react';
+import { useCallback } from 'react';
+import {
+  CloudUser, getSession, setSession,
+} from './cloud/session';
+import {
+  getCloudAuthState, refreshAccount as refreshAccountRemote, signIn as cloudSignIn,
+  signOut as cloudSignOut, signUp as cloudSignUp, updateAccountProfile, useCloudAuth,
+} from './cloud/authStore';
+import { detachCloudAccount } from './cloud/syncEngine';
 
 export interface LocalUser {
   id: string;
@@ -27,12 +36,50 @@ interface StoredProfile {
 
 const KEY = 'rj-local-profile-v1';
 const CHANGE = 'rj:profile-changed';
+
+/** Open the premium sign-in / sign-up screen from anywhere in the app. */
+export const OPEN_AUTH_EVENT = 'rj:open-auth';
+/** Kept for the legacy display-name sheet. */
 export const OPEN_PROFILE_SETUP_EVENT = 'rj:open-profile-setup';
 
-let snapshot: LocalUser | null | undefined;
-let lastRaw: string | null = null;
+export type AuthMode = 'signin' | 'signup';
 
-function read(): StoredProfile | null {
+export function openAuth(mode: AuthMode = 'signin'): void {
+  window.dispatchEvent(new CustomEvent(OPEN_AUTH_EVENT, { detail: { mode } }));
+}
+
+function splitName(name: string): { firstName: string; lastName: string } {
+  const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return { firstName: '', lastName: '' };
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
+
+function toLocalUser(user: CloudUser): LocalUser {
+  const { firstName, lastName } = splitName(user.name || user.email.split('@')[0]);
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name || `${firstName} ${lastName}`.trim(),
+    firstName,
+    lastName,
+    image: user.avatar || undefined,
+    coverGradient: user.coverGradient,
+  };
+}
+
+/** Legacy local profile, used to prefill the display-name sheet and reports. */
+export function getStoredProfile(): StoredProfile | null {
+  const session = getSession();
+  if (session?.user) {
+    const { firstName, lastName } = splitName(session.user.name || '');
+    return {
+      firstName,
+      lastName,
+      email: session.user.email,
+      createdAt: session.signedInAt,
+      signedIn: true,
+    };
+  }
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
@@ -50,42 +97,12 @@ function read(): StoredProfile | null {
   }
 }
 
-function toUser(p: StoredProfile): LocalUser {
-  const name = `${p.firstName} ${p.lastName}`.trim() || 'Student';
-  return {
-    id: 'local-user',
-    email: p.email || 'student@this.device',
-    name,
-    firstName: p.firstName || 'Student',
-    lastName: p.lastName,
-  };
-}
-
-function getSnapshot(): LocalUser | null {
-  let raw: string | null = null;
-  try { raw = localStorage.getItem(KEY); } catch { /* ignore */ }
-  if (snapshot !== undefined && raw === lastRaw) return snapshot;
-  lastRaw = raw;
-  const p = read();
-  snapshot = p && p.signedIn ? toUser(p) : null;
-  return snapshot;
-}
-
-function emit() {
-  window.dispatchEvent(new Event(CHANGE));
-}
-
-function subscribe(cb: () => void) {
-  window.addEventListener(CHANGE, cb);
-  return () => window.removeEventListener(CHANGE, cb);
-}
-
-export function getStoredProfile(): StoredProfile | null {
-  return read();
-}
-
-export function saveProfile(input: { firstName: string; lastName?: string; email?: string }) {
-  const prev = read();
+/**
+ * Save the display name. When signed in this also updates the account (so the
+ * new name reaches every device); offline it is queued on this device only.
+ */
+export function saveProfile(input: { firstName: string; lastName?: string; email?: string }): void {
+  const prev = getStoredProfile();
   const next: StoredProfile = {
     firstName: input.firstName.trim(),
     lastName: (input.lastName ?? '').trim(),
@@ -94,30 +111,69 @@ export function saveProfile(input: { firstName: string; lastName?: string; email
     signedIn: true,
   };
   try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* ignore */ }
-  emit();
+
+  const session = getSession();
+  if (session) {
+    const fullName = `${next.firstName} ${next.lastName}`.trim();
+    if (fullName && fullName !== session.user.name) {
+      setSession({ ...session, user: { ...session.user, name: fullName } });
+      void updateAccountProfile({ name: fullName }).catch(() => { /* retried on next profile edit */ });
+    }
+  }
+  window.dispatchEvent(new Event(CHANGE));
 }
 
-export function useAuth() {
-  const user = useSyncExternalStore(subscribe, getSnapshot, () => null);
+export interface AuthApi {
+  user: LocalUser | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  isGuest: boolean;
+  cloud: ReturnType<typeof useCloudAuth>;
+  loginWithRedirect: (opts?: { mode?: AuthMode; redirectUrl?: string }) => void;
+  logout: () => Promise<void>;
+  signIn: (input: { email: string; password: string }) => Promise<CloudUser>;
+  signUp: (input: { email: string; password: string; name: string }) => Promise<CloudUser>;
+  refreshAccount: () => Promise<void>;
+}
 
-  const loginWithRedirect = useCallback((_opts?: { redirectUrl?: string }) => {
-    const p = read();
-    if (p && (p.firstName || p.email)) {
-      // Returning student on this device: one tap, no form.
-      try { localStorage.setItem(KEY, JSON.stringify({ ...p, signedIn: true })); } catch { /* ignore */ }
-      emit();
-      return;
-    }
-    window.dispatchEvent(new Event(OPEN_PROFILE_SETUP_EVENT));
+export function useAuth(): AuthApi {
+  const cloud = useCloudAuth();
+  const user = cloud.user ? toLocalUser(cloud.user) : null;
+
+  const loginWithRedirect = useCallback((opts?: { mode?: AuthMode; redirectUrl?: string }) => {
+    openAuth(opts?.mode ?? 'signin');
   }, []);
 
   const logout = useCallback(async () => {
-    const p = read();
-    if (p) {
-      try { localStorage.setItem(KEY, JSON.stringify({ ...p, signedIn: false })); } catch { /* ignore */ }
-    }
-    emit();
+    await detachCloudAccount();
+    await cloudSignOut();
+    try { localStorage.removeItem('nursetrack-was-authenticated'); } catch { /* ignore */ }
   }, []);
 
-  return { user, isLoading: false, isAuthenticated: !!user, loginWithRedirect, logout };
+  const signIn = useCallback(async (input: { email: string; password: string }) => {
+    const user = await cloudSignIn(input);
+    try { localStorage.setItem('nursetrack-was-authenticated', 'true'); } catch { /* ignore */ }
+    return user;
+  }, []);
+
+  const signUp = useCallback(async (input: { email: string; password: string; name: string }) => {
+    const user = await cloudSignUp(input);
+    try { localStorage.setItem('nursetrack-was-authenticated', 'true'); } catch { /* ignore */ }
+    return user;
+  }, []);
+
+  return {
+    user,
+    isLoading: cloud.status === 'loading',
+    isAuthenticated: !!user,
+    isGuest: !user,
+    cloud,
+    loginWithRedirect,
+    logout,
+    signIn,
+    signUp,
+    refreshAccount: async () => { await refreshAccountRemote(); },
+  };
 }
+
+export { getCloudAuthState };

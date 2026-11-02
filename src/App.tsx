@@ -4,7 +4,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 import { Timer, CheckCircle2, Plus, Loader2, Stethoscope, Wheat, GraduationCap } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
-import { useAuth } from '@/platform/auth';
+import { useAuth, type AuthMode } from '@/platform/auth';
+import { updateAccountProfile } from '@/platform/cloud/authStore';
+import { startSyncEngine, stopSyncEngine, syncNow, useSyncState } from '@/platform/cloud/syncEngine';
 import { syncData, saveTopic, saveDailyLog, saveSettings, deleteRecords, saveSubjects, createSession, updateSession, deleteSession as deleteSessionEndpoint, migrateSessions } from '@/platform/api';
 import { useDebouncedCallback } from 'use-debounce';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -65,7 +67,9 @@ const FlashcardDeck = lazy(() => import('./components/FlashcardDeck'));
 const TopicDetailSheet = lazy(() => import('./components/syllabus/TopicDetailSheet'));
 const ReminderPopup = lazy(() => import('./components/reminders/ReminderPopup'));
 const NotificationCenter = lazy(() => import('./components/NotificationCenter'));
-const CloudDataManager = lazy(() => import('./components/cloud/CloudDataManager'));
+const SyncCenter = lazy(() => import('./components/cloud/SyncCenter'));
+const AuthScreen = lazy(() => import('./components/auth/AuthScreen'));
+const CloudGate = lazy(() => import('./components/cloud/CloudGate'));
 
 // Prefetch all lazy chunks during idle time so tab switches are instant
 if (typeof window !== 'undefined') {
@@ -176,194 +180,6 @@ function PageSkeleton() {
         ))}
       </div>
       <div className="h-20 bg-muted/8 rounded-2xl animate-skeleton" style={{ animationDelay: '400ms' }} />
-    </div>
-  );
-}
-
-function LandingPageIcon({ mode }: { mode?: StudentMode | null }) {
-  if (mode === 'agriculture') return <Wheat className="w-4.5 h-4.5 text-primary-foreground" />;
-  if (mode === 'nursing') return <Stethoscope className="w-4.5 h-4.5 text-primary-foreground" />;
-  return <GraduationCap className="w-4.5 h-4.5 text-primary-foreground" />;
-}
-
-function LandingPage({ onLogin, onSignup, onGuest, mode }: { onLogin: () => void; onSignup: () => void; onGuest: () => void; mode?: StudentMode | null }) {
-  const brand = getBrandConfig(mode);
-  const features = brand.features;
-  const stats = brand.stats.map((s, i) => ({ ...s, delay: 0.4 + i * 0.1 }));
-  const appName = getAppName(mode);
-
-  return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Warm parchment background */}
-      <div className="fixed inset-0 mesh-gradient" />
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-primary/5 blur-[120px]" />
-        <div className="absolute bottom-[-15%] right-[-10%] w-[45%] h-[45%] rounded-full bg-secondary/6 blur-[100px]" />
-      </div>
-
-      <div className="relative z-10">
-        {/* Header bar */}
-        <motion.header
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="flex items-center justify-between px-5 sm:px-8 py-5 max-w-5xl mx-auto"
-        >
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-md">
-              <LandingPageIcon mode={mode} />
-            </div>
-            <span className="font-heading text-foreground text-lg">{appName}</span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-secondary/12 text-secondary font-bold border border-secondary/15">PRO</span>
-          </div>
-          <Button variant="ghost" onClick={onLogin} className="text-xs font-semibold text-muted-foreground hover:text-foreground rounded-xl">
-            Sign In
-          </Button>
-        </motion.header>
-
-        {/* Hero section */}
-        <section className="px-5 sm:px-8 pt-12 sm:pt-20 pb-16 max-w-3xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="sec-eyebrow mb-6"
-          >
-            {brand.tagline}
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="text-4xl sm:text-5xl lg:text-6xl leading-[1.12] mb-5"
-            dangerouslySetInnerHTML={{ __html: brand.heroTitle }}
-          />
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto mb-8"
-          >
-            {brand.heroDesc}
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6"
-          >
-            <Button onClick={onSignup} size="lg"
-              className="w-full sm:w-auto h-13 px-8 text-sm font-bold rounded-2xl shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.97] transition-all duration-200">
-              Start free →
-            </Button>
-            <Button onClick={onGuest} variant="outline" size="lg"
-              className="w-full sm:w-auto h-13 px-8 text-sm font-semibold rounded-2xl hover:bg-card/80 border-border/25 hover:border-border/40 transition-all duration-200">
-              Try as guest
-            </Button>
-          </motion.div>
-
-          {/* Mode Cards — show on generic landing */}
-          {!mode && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.5 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6"
-            >
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-card/50 border border-border/20 backdrop-blur-sm">
-                <Stethoscope className="w-4 h-4 text-primary" />
-                <span className="text-[11px] font-bold text-foreground">Nursing Students</span>
-                <span className="text-[9px] text-muted-foreground">NurseTrack Pro</span>
-              </div>
-              <span className="text-[10px] text-muted-foreground font-bold">+</span>
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-card/50 border border-border/20 backdrop-blur-sm">
-                <Wheat className="w-4 h-4 text-secondary" />
-                <span className="text-[11px] font-bold text-foreground">Agriculture Students</span>
-                <span className="text-[9px] text-muted-foreground">SP AGRO Pro</span>
-              </div>
-            </motion.div>
-          )}
-
-          <div className="flex items-center justify-center gap-6 mt-4">
-            {stats.map((s, i) => (
-              <motion.div key={s.label} className="contents">
-                {i > 0 && <div className="w-px h-8 bg-border" />}
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: s.delay }}
-                  className="text-center"
-                >
-                  <p className="text-xl sm:text-2xl font-heading text-foreground">{s.value}</p>
-                  <p className="text-[10px] text-muted-foreground font-semibold tracking-wider uppercase">{s.label}</p>
-                </motion.div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* Features grid */}
-        <section className="px-5 sm:px-8 pb-20 max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="sec-eyebrow text-center mb-3">{brand.eyebrow}</div>
-            <h2 className="text-xl sm:text-2xl text-center mb-2">Everything you need to <em>succeed.</em></h2>
-            <p className="text-sm text-muted-foreground text-center mb-10">15+ features designed specifically for exam prep</p>
-          </motion.div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {features.map((f, i) => (
-              <motion.div
-                key={f.title}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ duration: 0.5, delay: i * 0.06 }}
-                className="glass-card glass-hover p-5 group cursor-default"
-              >
-                <span className="text-2xl block mb-3 group-hover:scale-110 transition-transform duration-300">{f.icon}</span>
-                <h3 className="text-xs font-bold text-foreground mb-1 font-sans">{f.title}</h3>
-                <p className="text-[10px] leading-relaxed text-muted-foreground">{f.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* Bottom CTA */}
-        <section className="px-5 sm:px-8 pb-20 max-w-2xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.6 }}
-            className="glass-card glass-tint-primary p-8 sm:p-10 rounded-3xl"
-          >
-            <div className="sec-eyebrow mb-3">{brand.ctaText}</div>
-            <h2 className="text-xl sm:text-2xl mb-3">How much can you learn <em>by next month?</em></h2>
-            <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-              Five minutes a day. Free to start. No card needed.
-            </p>
-            <Button onClick={onSignup} size="lg"
-              className="h-12 px-10 text-sm font-bold rounded-2xl shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all">
-              Create Free Account →
-            </Button>
-          </motion.div>
-        </section>
-
-        {/* Footer */}
-        <footer className="px-5 sm:px-8 pb-8 text-center">
-          <p className="text-[10px] text-muted-foreground/50 font-mono tracking-wide">
-            {brand.footerText}
-          </p>
-        </footer>
-      </div>
     </div>
   );
 }
@@ -539,9 +355,12 @@ function AppInner() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user: authUser, isLoading: authLoading, loginWithRedirect, logout } = useAuth();
-  const [guestMode, setGuestMode] = useState(false);
+  const cloudSync = useSyncState();
+  const [guestMode, setGuestMode] = useState(() => {
+    try { return localStorage.getItem('rj-guest-mode-v1') === '1'; } catch { return false; }
+  });
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
-  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
+  const [authScreenMode, setAuthScreenMode] = useState<AuthMode | null>(null);
   const [pomodoroPreFill, setPomodoroPreFill] = useState<{ subjectId?: string; unitId?: string; topicId?: string } | null>(null);
   const [syllabusNavTarget, setSyllabusNavTarget] = useState<{ subjectId?: string; unitId?: string } | null>(null);
 
@@ -1602,13 +1421,14 @@ function AppInner() {
       if (updatedUser.coverGradient) localStorage.setItem('nursetrack-cover-gradient', updatedUser.coverGradient);
       else localStorage.removeItem('nursetrack-cover-gradient');
     } catch {}
-    // Save avatar/coverGradient to cloud
+    // Save avatar/coverGradient to the account so every device sees the same photo
     if (!authUser) return;
     const changes: Record<string, string | undefined> = {};
     if (updatedUser.avatar !== undefined) changes.avatar = updatedUser.avatar;
     if (updatedUser.coverGradient !== undefined) changes.coverGradient = updatedUser.coverGradient;
     if (Object.keys(changes).length > 0) {
       saveSettings(changes).catch(() => {});
+      updateAccountProfile(changes).catch(() => { /* retried on the next profile edit */ });
     }
   }, [authUser]);
 
@@ -1858,48 +1678,88 @@ function AppInner() {
   // Auth loading — ultra-premium animated splash
   const studentMode = settings.studentMode || 'nursing';
 
-  // Mark user as "was authenticated" whenever we have a valid auth user
-  // so we can auto-redirect on return visits instead of showing the landing page
+  const studentModeKnown = studentMode;
+
+  // Account → data lifecycle. The engine only runs while an account is signed in;
+  // guest mode keeps everything purely on this device.
   useEffect(() => {
-    if (authUser) {
-      try { localStorage.setItem('nursetrack-was-authenticated', 'true'); } catch {}
+    if (!authUser) {
+      stopSyncEngine();
+      return;
     }
-  }, [authUser]);
+    startSyncEngine();
+    return () => stopSyncEngine();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser?.id]);
+
+  // Any part of the app can request the premium auth screen (guest banner, AI gate…).
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const mode = (event as CustomEvent<{ mode?: AuthMode }>).detail?.mode;
+      setAuthScreenMode(mode === 'signup' ? 'signup' : 'signin');
+    };
+    const onSignedOut = () => setAuthScreenMode(null);
+    const onOpenSyncCenter = () => {
+      setProfileOpen(false);
+      setCloudDataOpen(true);
+    };
+    window.addEventListener('rj:open-auth', onOpen);
+    window.addEventListener('rj:cloud-signed-out', onSignedOut);
+    window.addEventListener('rj:open-sync-center', onOpenSyncCenter);
+    return () => {
+      window.removeEventListener('rj:open-auth', onOpen);
+      window.removeEventListener('rj:cloud-signed-out', onSignedOut);
+      window.removeEventListener('rj:open-sync-center', onOpenSyncCenter);
+    };
+  }, []);
+
+  // Signed in (first time or returning) → close any auth overlay.
+  useEffect(() => { if (authUser) setAuthScreenMode(null); }, [authUser]);
+
+  // The guest choice is remembered so a reload does not bounce the student back
+  // to the sign-in screen (offline-first means offline stays offline).
+  useEffect(() => {
+    try {
+      if (authUser) localStorage.removeItem('rj-guest-mode-v1');
+      else if (guestMode) localStorage.setItem('rj-guest-mode-v1', '1');
+    } catch { /* ignore */ }
+  }, [authUser, guestMode]);
+
+  const continueOffline = useCallback(() => {
+    setGuestMode(true);
+    setAuthScreenMode(null);
+    try { localStorage.setItem('rj-guest-mode-v1', '1'); } catch { /* ignore */ }
+    toast.success('Offline mode — everything stays on this device');
+  }, []);
 
   if (authLoading) {
-    return (
-      <SplashScreen mode={studentMode} />
-    );
+    return <SplashScreen mode={studentModeKnown} />;
   }
 
-  // Not logged in — auto-redirect returning users to login instead of showing landing page
+  // Not signed in: the premium account screen is the front door.
   if (!authUser && !guestMode) {
-    // Check if this user was previously authenticated (returning user whose session expired)
-    const wasAuthenticated = (() => { try { return localStorage.getItem('nursetrack-was-authenticated') === 'true'; } catch { return false; } })();
-
-    if (wasAuthenticated && !autoLoginAttempted) {
-      // Auto-redirect to login — this will either:
-      // 1. Instantly restore their session if the token is still valid (seamless)
-      // 2. Show the login form directly if the token expired (faster than landing → click sign in)
-      setAutoLoginAttempted(true);
-      loginWithRedirect({ redirectUrl: window.location.href });
-      return <SplashScreen mode={studentMode} />;
-    }
-
     return (
       <>
         <Toaster position="top-center" />
-        <LandingPage
-          onLogin={() => loginWithRedirect()}
-          onSignup={() => loginWithRedirect()}
-          onGuest={() => setGuestMode(true)}
-          mode={null}
-        />
+        <Suspense fallback={<SplashScreen mode={studentModeKnown} />}>
+          <AuthScreen
+            mode={authScreenMode ?? 'signin'}
+            onContinueOffline={continueOffline}
+          />
+        </Suspense>
       </>
     );
   }
 
   const isGuest = !authUser && guestMode;
+
+  // One headline status for the header + Sync Center, derived from the engine.
+  const cloudSyncStatus: 'idle' | 'syncing' | 'saved' | 'error' = isGuest
+    ? 'idle'
+    : cloudSync.phase === 'syncing' ? 'syncing'
+      : cloudSync.phase === 'synced' ? 'saved'
+        : (cloudSync.phase === 'error' || cloudSync.phase === 'offline') ? 'error'
+          : 'idle';
 
   // Build user object from auth or guest
   const user = isGuest ? {
@@ -1916,11 +1776,16 @@ function AppInner() {
     coverGradient: localCoverGradient ?? authUser!.coverGradient ?? '0',
   };
 
-  const handleLogout = () => {
-    if (isGuest) { setGuestMode(false); return; }
-    // Clear the auto-login flag so the user sees the landing page after manual logout
-    try { localStorage.removeItem('nursetrack-was-authenticated'); } catch {}
-    logout();
+  const handleLogout = async () => {
+    if (isGuest) {
+      setGuestMode(false);
+      try { localStorage.removeItem('rj-guest-mode-v1'); } catch { /* ignore */ }
+      return;
+    }
+    setProfileOpen(false);
+    setCloudDataOpen(false);
+    try { localStorage.removeItem('nursetrack-was-authenticated'); } catch { /* ignore */ }
+    try { await logout(); } catch { /* the local session is cleared regardless */ }
   };
 
   const handleOpenPomodoroForSubject = (subjectId: string, unitId?: string, topicId?: string) => {
@@ -2036,7 +1901,7 @@ function AppInner() {
         xpProgress={xpLevelProgress}
         onLevelClick={handleLevelClick}
         onOpenSearch={openSearch}
-        syncStatus={isGuest ? 'idle' : syncStatus}
+        syncStatus={isGuest ? 'idle' : cloudSyncStatus}
         dueReminders={dueReminders.length + todos.filter(t => !t.completed && t.dueDate <= getLocalDateStr()).length}
         onOpenReminders={openReminders}
         studentMode={studentMode}
@@ -2045,7 +1910,7 @@ function AppInner() {
       {/* Sync indicator — inline below header with dismiss */}
       {isGuest && !guestBannerDismissed && (
         <div className="sticky top-14 z-40 flex items-center justify-center gap-2 py-2 material-ultra-thin border-b border-chart-4/10">
-          <button onClick={() => loginWithRedirect()}
+          <button onClick={() => loginWithRedirect({ mode: 'signup' })}
             className="flex items-center gap-2 text-[11px] font-semibold text-chart-4 hover:text-chart-4/80 transition-colors">
             <span className="w-1.5 h-1.5 rounded-full bg-chart-4 animate-pulse" />
             Guest Mode — Sign up to sync your data
@@ -2262,20 +2127,32 @@ function AppInner() {
       <AnimatePresence>
         {cloudDataOpen && (
           <Suspense fallback={<div className="fixed inset-0 z-[100] bg-background flex items-center justify-center"><div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
-            <CloudDataManager
+            <SyncCenter
               appState={appState} settings={settings} history={history} trash={trash} reminders={reminders}
-              syncStatus={isGuest ? 'idle' : syncStatus} dbSessions={dbSessions}
+              dbSessions={dbSessions} dailyLogs={appState.dailyLogs}
               onClose={() => setCloudDataOpen(false)}
-              onTriggerSync={() => {
-                if (isGuest) { toast.error('Sign up to enable cloud sync'); return; }
-                saveSubjectsToCloud(appState.subjects);
-                saveSubjectsToCloud.flush();
-                toast.success('☁️ Sync triggered');
-              }}
             />
           </Suspense>
         )}
       </AnimatePresence>
+
+      {/* Guest → account upgrade: full-screen premium auth */}
+      <AnimatePresence>
+        {isGuest && authScreenMode && (
+          <Suspense fallback={null}>
+            <AuthScreen
+              mode={authScreenMode}
+              onClose={() => setAuthScreenMode(null)}
+              onContinueOffline={() => setAuthScreenMode(null)}
+            />
+          </Suspense>
+        )}
+      </AnimatePresence>
+
+      {/* First-sync decision + "cloud changes applied" refresh */}
+      <Suspense fallback={null}>
+        <CloudGate />
+      </Suspense>
 
       <AnimatePresence>
         {profileOpen && (
