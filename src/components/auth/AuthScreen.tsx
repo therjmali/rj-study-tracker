@@ -21,8 +21,8 @@ import { Input } from '@project/components/ui/input';
 import { toast } from 'sonner';
 import { getAppName } from '../../lib/brandConfig';
 import {
-  getCloudEndpoint, isNativePlatform, normalizeEndpoint, probeServer,
-  setCloudEndpoint, getStoredEndpoint,
+  getCloudEndpoint, isCloudConfigured, isNativePlatform, normalizeEndpoint,
+  probeServer, setCloudEndpoint, getStoredEndpoint,
 } from '../../platform/cloud/config';
 import { useCloudAuth } from '../../platform/cloud/authStore';
 import { useAuth, type AuthMode } from '../../platform/auth';
@@ -64,7 +64,9 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [serverOpen, setServerOpen] = useState(false);
+  // A build that cannot reach any server (the APK without VITE_CLOUD_URL) opens
+  // the address field straight away — the fix should be the first thing visible.
+  const [serverOpen, setServerOpen] = useState(() => !isCloudConfigured());
   const [serverValue, setServerValue] = useState(getStoredEndpoint() || getCloudEndpoint());
   const [serverState, setServerState] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle');
   const [serverMessage, setServerMessage] = useState('');
@@ -113,6 +115,12 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
       if (password !== confirm) { setError('Those passwords do not match.'); return; }
     }
     if (!password) { setError('Enter your password.'); return; }
+    if (!cloud.configured) {
+      // No server address on this build (typical for an APK built without VITE_CLOUD_URL).
+      setServerOpen(true);
+      setError('Add your sync server address below, then sign in — or keep studying offline.');
+      return;
+    }
 
     setBusy(true);
     try {
@@ -230,6 +238,27 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
                 );
               })}
             </div>
+
+            {!cloud.configured && (
+              <div className="mx-5 mt-5 flex items-start gap-2.5 rounded-xl border border-chart-4/30 bg-chart-4/8 px-3.5 py-3">
+                <Server className="w-3.5 h-3.5 mt-0.5 shrink-0 text-chart-4" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11.5px] font-bold text-foreground">Connect your sync server to sign in</p>
+                  <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted-foreground">
+                    This build has no server address yet. Paste one once and it is remembered on this device.
+                  </p>
+                  {!serverOpen && (
+                    <button
+                      type="button"
+                      onClick={() => { setServerOpen(true); setServerState('idle'); }}
+                      className="mt-2 text-[10.5px] font-bold text-primary hover:underline underline-offset-2"
+                    >
+                      Add server address
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             <form onSubmit={submit} className="p-5 sm:p-6 space-y-3.5" noValidate>
               <AnimatePresence mode="wait">
@@ -422,8 +451,8 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
                 <Server className="w-3.5 h-3.5 text-muted-foreground" />
                 <span className="flex-1 text-[10.5px] font-semibold text-muted-foreground">
                   Sync server
-                  <span className="ml-1.5 font-mono text-[10px] text-muted-foreground/70">
-                    {getCloudEndpoint() || 'not set'}
+                  <span className={`ml-1.5 font-mono text-[10px] ${cloud.configured ? 'text-muted-foreground/70' : 'text-chart-4'}`}>
+                    {cloud.configured ? (getCloudEndpoint() || 'not set') : 'not connected'}
                   </span>
                 </span>
                 {isNativePlatform() && <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted/30 text-muted-foreground font-bold">APK</span>}
@@ -440,8 +469,9 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
                   >
                     <div className="px-5 pb-5 space-y-2.5">
                       <p className="text-[10.5px] leading-relaxed text-muted-foreground">
-                        Your own RJ Tracker sync server. HTTPS only{isNativePlatform() ? ' — the app needs a full address' : ''}.
-                        Leave blank to use this site&apos;s <code className="font-mono">/api</code>.
+                        {isNativePlatform()
+                          ? <>Your own RJ Tracker sync server — a full <code className="font-mono">https://</code> address, e.g. <code className="font-mono">https://sync.example.com</code>. The app cannot use a relative path.</>
+                          : <>Your own RJ Tracker sync server. HTTPS only. Leave blank to use this site&apos;s <code className="font-mono">/api</code>.</>}
                       </p>
                       <div className="flex gap-2">
                         <div className="relative flex-1">

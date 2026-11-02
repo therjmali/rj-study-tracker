@@ -28,6 +28,11 @@
 - `server/.env.example` documents every switch (port, data dir, secret, origins, proxy trust, payload caps).
 - Tests: 15 API integration tests + 11 three-way merge tests (`npm run test:server`).
 
+**Android APK**
+- A build that ships without a configured server no longer dead-ends on sign-in: the screen says so, opens the address field immediately, and keeps “Continue offline on this device” one tap away.
+- Signed-out **Cloud sync** now offers both “Create an account” and “I already have an account”, and shows which server it is pointing at.
+- Release pages are generated from this changelog (`scripts/release-notes.mjs`), so the download page always explains what actually changed.
+
 **Polish & fixes**
 - The service worker never caches `/api` (a stale pull would look like data loss).
 - Debounced localStorage writers pause during a cloud merge so a stale React state cannot overwrite merged data before the app reloads.

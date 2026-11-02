@@ -292,6 +292,15 @@ export default function SyncCenter({ appState, settings, history, trash, reminde
           <Button className="w-full h-11 rounded-xl font-bold" onClick={() => { window.dispatchEvent(new CustomEvent('rj:open-auth', { detail: { mode: 'signup' } })); onClose(); }}>
             Create an account
           </Button>
+          <button
+            onClick={() => { window.dispatchEvent(new CustomEvent('rj:open-auth', { detail: { mode: 'signin' } })); onClose(); }}
+            className="w-full h-10 rounded-xl border border-border/30 bg-card/30 text-[12px] font-semibold text-foreground hover:bg-card/60 transition-colors"
+          >
+            I already have an account
+          </button>
+          <p className="text-[10.5px] text-muted-foreground/80 leading-relaxed">
+            Sync server: <span className="font-mono text-muted-foreground">{cloud.endpoint || 'not set'}</span>
+          </p>
         </div>
       </motion.div>
     );
