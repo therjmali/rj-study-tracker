@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: rj-tracker-sync
+    runtime: docker
+    plan: 0.5c-512mb
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    disk:
+      name: rj-tracker-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: PORT
+        value: "8787"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: DATA_DIR
+        value: /data
+      - key: TRUST_PROXY
+        value: "1"
+      - key: CLOUD_SECRET
+        generateValue: true
+      - key: CLOUD_ORIGINS
+        value: "https://therjmali.github.io,https://localhost,capacitor://localhost"
