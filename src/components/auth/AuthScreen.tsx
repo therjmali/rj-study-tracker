@@ -10,20 +10,17 @@
  * to think about infrastructure, but a self-hosted install can be pointed at
  * any URL without rebuilding the APK.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowRight, Check, ChevronDown, Cloud, CloudOff, Eye, EyeOff, Globe2, Loader2,
+  ArrowRight, Check, Cloud, CloudOff, Eye, EyeOff, Loader2,
   LockKeyhole, Mail, Server, ShieldCheck, Sparkles, Stethoscope, User, Wifi,
 } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
 import { toast } from 'sonner';
 import { getAppName } from '../../lib/brandConfig';
-import {
-  getCloudEndpoint, isCloudConfigured, isNativePlatform, normalizeEndpoint,
-  probeServer, setCloudEndpoint, getStoredEndpoint,
-} from '../../platform/cloud/config';
+import { isCloudConfigured } from '../../platform/cloud/config';
 import { useCloudAuth } from '../../platform/cloud/authStore';
 import { useAuth, type AuthMode } from '../../platform/auth';
 import { setEphemeralSession } from '../../platform/cloud/session';
@@ -64,12 +61,6 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // A build that cannot reach any server (the APK without VITE_CLOUD_URL) opens
-  // the address field straight away — the fix should be the first thing visible.
-  const [serverOpen, setServerOpen] = useState(() => !isCloudConfigured());
-  const [serverValue, setServerValue] = useState(getStoredEndpoint() || getCloudEndpoint());
-  const [serverState, setServerState] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle');
-  const [serverMessage, setServerMessage] = useState('');
   const [remember, setRemember] = useState(true);
 
   const emailRef = useRef<HTMLInputElement>(null);
@@ -80,28 +71,6 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
     setError(null);
     if (mode === 'signup') setTimeout(() => emailRef.current?.focus(), 60);
   }, [mode]);
-
-  const submitServer = useCallback(async () => {
-    const normalized = normalizeEndpoint(serverValue);
-    if (!normalized) {
-      setServerState('fail');
-      setServerMessage('Enter a full address, e.g. https://sync.mydomain.com');
-      return;
-    }
-    setServerState('testing');
-    setServerMessage('Checking…');
-    const probe = await probeServer(normalized);
-    if (probe.ok) {
-      setCloudEndpoint(normalized);
-      setServerValue(normalized);
-      setServerState('ok');
-      setServerMessage('Connected. Sign in or create your account.');
-      toast.success('Sync server connected');
-    } else {
-      setServerState('fail');
-      setServerMessage(probe.error ?? 'Could not reach that server.');
-    }
-  }, [serverValue]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,9 +85,7 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
     }
     if (!password) { setError('Enter your password.'); return; }
     if (!cloud.configured) {
-      // No server address on this build (typical for an APK built without VITE_CLOUD_URL).
-      setServerOpen(true);
-      setError('Add your sync server address below, then sign in — or keep studying offline.');
+      setError('Cloud sign-in is not set up in this build yet. You can keep studying offline as a guest.');
       return;
     }
 
@@ -243,19 +210,10 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
               <div className="mx-5 mt-5 flex items-start gap-2.5 rounded-xl border border-chart-4/30 bg-chart-4/8 px-3.5 py-3">
                 <Server className="w-3.5 h-3.5 mt-0.5 shrink-0 text-chart-4" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11.5px] font-bold text-foreground">Connect your sync server to sign in</p>
+                  <p className="text-[11.5px] font-bold text-foreground">Cloud sign-in is not set up in this build</p>
                   <p className="mt-0.5 text-[10.5px] leading-relaxed text-muted-foreground">
-                    This build has no server address yet. Paste one once and it is remembered on this device.
+                    You can keep studying offline as a guest. Add the Supabase URL and key at build time to enable accounts.
                   </p>
-                  {!serverOpen && (
-                    <button
-                      type="button"
-                      onClick={() => { setServerOpen(true); setServerState('idle'); }}
-                      className="mt-2 text-[10.5px] font-bold text-primary hover:underline underline-offset-2"
-                    >
-                      Add server address
-                    </button>
-                  )}
                 </div>
               </div>
             )}
@@ -440,73 +398,6 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
               </p>
             </form>
 
-            {/* Server configuration */}
-            <div className="border-t border-border/10">
-              <button
-                type="button"
-                onClick={() => setServerOpen(v => !v)}
-                className="w-full flex items-center gap-2 px-5 py-3 text-left hover:bg-muted/5 transition-colors"
-                aria-expanded={serverOpen}
-              >
-                <Server className="w-3.5 h-3.5 text-muted-foreground" />
-                <span className="flex-1 text-[10.5px] font-semibold text-muted-foreground">
-                  Sync server
-                  <span className={`ml-1.5 font-mono text-[10px] ${cloud.configured ? 'text-muted-foreground/70' : 'text-chart-4'}`}>
-                    {cloud.configured ? (getCloudEndpoint() || 'not set') : 'not connected'}
-                  </span>
-                </span>
-                {isNativePlatform() && <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted/30 text-muted-foreground font-bold">APK</span>}
-                <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${serverOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {serverOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="px-5 pb-5 space-y-2.5">
-                      <p className="text-[10.5px] leading-relaxed text-muted-foreground">
-                        {isNativePlatform()
-                          ? <>Your own RJ Tracker sync server — a full <code className="font-mono">https://</code> address, e.g. <code className="font-mono">https://sync.example.com</code>. The app cannot use a relative path.</>
-                          : <>Your own RJ Tracker sync server. HTTPS only. Leave blank to use this site&apos;s <code className="font-mono">/api</code>.</>}
-                      </p>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Globe2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
-                          <Input
-                            value={serverValue}
-                            onChange={e => { setServerValue(e.target.value); setServerState('idle'); }}
-                            placeholder="https://sync.example.com"
-                            autoCapitalize="none"
-                            spellCheck={false}
-                            inputMode="url"
-                            className="h-10 pl-9 rounded-xl bg-card/40 border-border/25 font-mono text-[11px]"
-                          />
-                        </div>
-                        <Button type="button" size="sm" variant="outline" onClick={submitServer} className="h-10 rounded-xl text-[11px] font-bold px-3">
-                          {serverState === 'testing' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Connect'}
-                        </Button>
-                      </div>
-                      {serverMessage && (
-                        <p className={`text-[10.5px] font-semibold ${serverState === 'ok' ? 'text-secondary' : serverState === 'fail' ? 'text-destructive' : 'text-muted-foreground'}`}>
-                          {serverMessage}
-                        </p>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => { setCloudEndpoint(null); setServerValue(getCloudEndpoint()); setServerState('idle'); setServerMessage(''); }}
-                        className="text-[10px] font-semibold text-muted-foreground hover:text-foreground underline underline-offset-2"
-                      >
-                        Use the default for this install
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
           </div>
 
           <p className="mt-4 text-center text-[10px] text-muted-foreground/60 leading-relaxed">

@@ -33,14 +33,13 @@ jobs:
 
       - name: Build web bundle (root base path for the APK)
         env:
-          # Optional repository variable: the default sync server for the APK.
-          # Students can still change it in-app (Sign in → Sync server).
-          VITE_CLOUD_URL: ${{ vars.CLOUD_URL }}
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
         run: |
-          if [ -n "${VITE_CLOUD_URL}" ]; then
-            echo "::notice::Cloud endpoint baked into the APK: ${VITE_CLOUD_URL}"
+          if [ -n "${VITE_SUPABASE_URL}" ] && [ -n "${VITE_SUPABASE_ANON_KEY}" ]; then
+            echo "::notice::Supabase project baked into the APK: ${VITE_SUPABASE_URL}"
           else
-            echo "::warning::No CLOUD_URL repository variable — this APK asks the student for a sync-server address on the sign-in screen (guest mode still works offline). Set CLOUD_URL and re-run this workflow to ship a build that signs in out of the box."
+            echo "::warning::SUPABASE_URL / SUPABASE_ANON_KEY repository variables are missing — this APK will only support offline guest mode."
           fi
           VITE_BASE=/ npm run build
 
