@@ -80,11 +80,25 @@ npm run build        # outputs dist/
 
 ## Android APK
 
-Push a tag (e.g. `git tag v14.0.0 && git push --tags`) or run **Actions → Build Android APK**.
+Push a tag (e.g. `git tag v14.1.0 && git push origin v14.1.0`) or run **Actions → Build Android APK**.
 The workflow bundles the app inside a Capacitor shell, signs it with the release key stored in
-repository secrets and publishes the APK under **Releases**. The APK never loads the website, so
-it works fully offline; cloud sync talks to the server you enter in-app (or `CLOUD_URL` baked in).
-Exports (backups, ZIPs, reports) open the Android share sheet.
+repository secrets and publishes the APK under **Releases**, with a release body generated from
+`CHANGELOG.md` (`scripts/release-notes.mjs`). The APK never loads the website, so it works fully
+offline; exports (backups, ZIPs, reports) open the Android share sheet.
+
+**Sign-in inside the APK** needs a reachable sync server, because a bundled app has no origin to
+fall back to:
+
+```bash
+# once: bake the address of your deployed server into the next build
+gh variable set CLOUD_URL --body https://sync.example.com
+# then rebuild (existing tags are re-published with the single newest APK)
+gh workflow run "Build Android APK"
+```
+
+Without `CLOUD_URL` the build still installs and runs offline; the sign-in screen then asks for the
+address once and remembers it on the device (Sign in → Sync server). Re-running the workflow for a
+tag replaces the APK on that release instead of piling up builds.
 
 ## Architecture
 
