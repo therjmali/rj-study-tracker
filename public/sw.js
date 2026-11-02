@@ -61,6 +61,8 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // AI providers, etc. go straight to the network
+  // Cloud sync API: always live, never cached (a stale pull would look like data loss).
+  if (/\/api(\/|$)/.test(url.pathname)) return;
 
   if (url.pathname.startsWith(FILE_PREFIX)) {
     event.respondWith(serveFile(req, url.pathname.slice(FILE_PREFIX.length)));

@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { isSyncWriteGuarded, notifyLocalChange } from '@/platform/cloud/changeBus';
 
 // Keys that hold large data get a longer debounce
 const HEAVY_KEYS = new Set(['nursing-tracker-v6', 'nursing-history-v1']);
@@ -58,7 +59,11 @@ export function useLocalStorage<T>(key: string, defaultValue: T): [T, (v: T | ((
     }
     if (!dirtyRef.current) return;
     dirtyRef.current = false;
+    // A cloud merge is being written right now: never push a stale React value
+    // over it — the app reloads with the merged data instead.
+    if (isSyncWriteGuarded()) return;
     try { localStorage.setItem(key, JSON.stringify(latestRef.current)); } catch {}
+    notifyLocalChange(key);
   }, [key]);
 
   const set = useCallback((v: T | ((prev: T) => T)) => {

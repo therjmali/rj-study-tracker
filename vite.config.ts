@@ -6,6 +6,21 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
+
+/**
+ * Cloud sync server used by `npm run dev` / `npm run preview`.
+ * The browser only ever talks to `/api` on its own origin, so there is no CORS
+ * setup to get wrong in development and the preview host works unchanged.
+ */
+const CLOUD_DEV_TARGET = process.env.CLOUD_DEV_URL || 'http://127.0.0.1:8787';
+const cloudProxy = {
+  '/api': {
+    target: CLOUD_DEV_TARGET,
+    changeOrigin: true,
+    secure: false,
+    rewrite: (path: string) => path.replace(/^\/api/, ''),
+  },
+};
 const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'));
 
 /** GitHub Pages serves the site from /<repo>/; the deploy workflow passes it in as VITE_BASE. */
@@ -107,6 +122,8 @@ export default defineConfig(() => ({
     reportCompressedSize: false,
     chunkSizeWarningLimit: 900,
   },
-  server: { host: true, port: 5173 },
-  preview: { host: true, port: 4173 },
+  // `allowedHosts: true` keeps cloud IDE / tunnel previews working (the dev
+  // server is bound to 0.0.0.0 by design). Production is static files only.
+  server: { host: true, port: 5173, allowedHosts: true, proxy: cloudProxy },
+  preview: { host: true, port: 4173, allowedHosts: true, proxy: cloudProxy },
 }));

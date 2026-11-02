@@ -77,7 +77,7 @@ function ProfileSetup({ open, onClose }: { open: boolean; onClose: () => void })
           </div>
           <div>
             <h2 className="font-heading text-xl text-foreground leading-tight">Set up your profile</h2>
-            <p className="text-[12px] text-muted-foreground">No account or password — it’s only a name on this device.</p>
+            <p className="text-[12px] text-muted-foreground">Shown on your reports. Saved to your account (and this device) so every device agrees.</p>
           </div>
         </div>
 
