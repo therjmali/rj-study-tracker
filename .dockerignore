@@ -1,0 +1,10 @@
+# Keep the build context tiny: the server image only needs server/.
+node_modules
+dist
+.git
+.github
+android
+server/data
+*.log
+*.apk
+*.keystore

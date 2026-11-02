@@ -24,6 +24,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Verify (types + sync server & merge tests)
+        run: npm run typecheck && npm run test:server
+
       - name: Build web bundle (root base path for the APK)
         env:
           # Optional repository variable: the default sync server for the APK.

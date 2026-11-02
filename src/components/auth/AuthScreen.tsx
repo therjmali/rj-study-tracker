@@ -26,6 +26,7 @@ import {
 } from '../../platform/cloud/config';
 import { useCloudAuth } from '../../platform/cloud/authStore';
 import { useAuth, type AuthMode } from '../../platform/auth';
+import { setEphemeralSession } from '../../platform/cloud/session';
 
 interface Props {
   mode?: AuthMode;
@@ -115,15 +116,14 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
 
     setBusy(true);
     try {
+      // Decide storage before the session is written (localStorage vs this tab only).
+      setEphemeralSession(!remember);
       if (isSignup) {
         await signUp({ email: cleanEmail, password, name: name.trim() });
         toast.success('🎉 Account created — your device data is being uploaded');
       } else {
         await signIn({ email: cleanEmail, password });
         toast.success('Welcome back');
-      }
-      if (!remember) {
-        try { sessionStorage.setItem('rj-remember-me', 'off'); } catch { /* ignore */ }
       }
       onClose?.();
     } catch (err) {

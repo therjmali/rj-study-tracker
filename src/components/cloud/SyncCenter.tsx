@@ -370,13 +370,16 @@ export default function SyncCenter({ appState, settings, history, trash, reminde
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-bold text-foreground truncate">{user?.name || 'Student'}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[14px] font-bold text-foreground truncate">{user?.name || 'Student'}</p>
+                      <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-black tracking-[0.12em] border border-primary/15 shrink-0">PRO</span>
+                    </div>
                     <p className="text-[11px] text-muted-foreground truncate">{user?.email}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-secondary"><ShieldCheck className="w-3 h-3" /> Private account</span>
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-secondary"><ShieldCheck className="w-3 h-3" /> Personal cloud</span>
                       <span className="text-[9px] text-muted-foreground">·</span>
                       <button onClick={() => { setTab('devices'); }} className="text-[9px] font-bold text-primary hover:underline">
-                        {devices.length || 'Your'} device{devices.length === 1 ? '' : 's'}
+                        {devices.length > 0 ? `${devices.length} device${devices.length === 1 ? '' : 's'}` : 'Devices'}
                       </button>
                     </div>
                   </div>
