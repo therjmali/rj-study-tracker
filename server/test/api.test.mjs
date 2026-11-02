@@ -10,10 +10,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { createApp } from '../index.mjs';
+
+const run = promisify(execFile);
 
 let app;
 let base;
+let dataDir;
 
 async function api(pathname, { method = 'GET', token, body, headers = {} } = {}) {
   const res = await fetch(`${base}${pathname}`, {
@@ -43,7 +49,7 @@ const account = {
 let session;
 
 before(async () => {
-  const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rj-sync-test-'));
+  dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rj-sync-test-'));
   app = await createApp({ dataDir });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   base = `http://127.0.0.1:${app.server.address().port}`;
@@ -238,6 +244,35 @@ test('changing the password signs out every other session', async () => {
   assert.equal(fresh.status, 200);
   account.password = 'NewStudy2026';
   session = { ...session, token: changed.json.token, refreshToken: changed.json.refreshToken };
+});
+
+test('reset-password.mjs takes effect on a running server', async () => {
+  const script = fileURLToPath(new URL('../reset-password.mjs', import.meta.url));
+  const next = 'ResetPass2027';
+  const out = await run(process.execPath, [script, account.email, next], { env: { ...process.env, DATA_DIR: dataDir } });
+  assert.match(out.stdout, /Password updated/);
+
+  // The token minted before the reset must be dead — no restart, no waiting.
+  const revoked = await api('/v1/me', { token: session.token });
+  assert.equal(revoked.status, 401);
+
+  const oldLogin = await api('/v1/auth/login', { method: 'POST', body: { email: account.email, password: account.password } });
+  assert.equal(oldLogin.status, 401);
+
+  const login = await api('/v1/auth/login', {
+    method: 'POST',
+    body: { email: account.email, password: next, deviceId: account.deviceId, deviceName: account.deviceName },
+  });
+  assert.equal(login.status, 200);
+
+  session = { token: login.json.token, refreshToken: login.json.refreshToken };
+  account.password = next;
+
+  // ...and a later sync write must not resurrect the old hash.
+  const push = await api('/v1/sync', { method: 'POST', token: session.token, body: { baseVersion: 0, sections: {} } });
+  assert.ok([200, 409].includes(push.status));
+  const relogin = await api('/v1/auth/login', { method: 'POST', body: { email: account.email, password: account.password } });
+  assert.equal(relogin.status, 200);
 });
 
 test('repeated bad logins are throttled', async () => {

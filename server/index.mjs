@@ -318,6 +318,10 @@ export async function createApp(options = {}) {
 
   async function handle(req, res) {
     setCors(req, res);
+    // Accounts may be edited from another process (reset-password.mjs while the
+    // server is up). Re-read changed files before answering, so the reset takes
+    // effect immediately instead of waiting for a restart.
+    await store.refreshFromDisk();
     if (req.method === 'OPTIONS') {
       res.writeHead(204, { 'Cache-Control': 'no-store' });
       res.end();

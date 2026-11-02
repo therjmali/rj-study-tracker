@@ -12,7 +12,7 @@
 - Sections are merged **three-way** against the last synced copy — subjects → units → topics → individual fields, plus sessions, daily logs, todos, reminders, notes, achievements, coins and settings.
 - Optimistic concurrency: every push names the document version it merged against; a concurrent edit returns `409` with the current document, and the client merges and retries instead of overwriting.
 - Unresolvable field differences are kept and listed in **Cloud sync → Recovery**, never dropped silently.
-- First contact with an account that already has data asks once: **Merge both · Use cloud · Use device**.
+- First contact with an account that already has data asks once: **Merge both · Use cloud · Use device** — the choice applies to that one sync and is never replayed later.
 
 **Cloud Sync Center**
 - Live status, last sync, cloud version, pending changes and payload size.
@@ -24,7 +24,9 @@
 **Server (`server/`)**
 - Single-file, zero-dependency Node API with atomic JSON storage (`server/data/users/*.json`), HMAC tokens, revision history and health endpoint.
 - `Dockerfile`, `docker-compose.yml`, `server/README.md` (Render/Fly/Railway/VPS + nginx + systemd), `reset-password.mjs`.
-- Tests: 14 API integration tests + 11 three-way merge tests (`npm run test:server`).
+- `reset-password.mjs` works against a **running** server: accounts are re-read from disk before each request, so the new password and the “sign out every device” revocation apply immediately (and a queued write can no longer resurrect the old hash).
+- `server/.env.example` documents every switch (port, data dir, secret, origins, proxy trust, payload caps).
+- Tests: 15 API integration tests + 11 three-way merge tests (`npm run test:server`).
 
 **Polish & fixes**
 - The service worker never caches `/api` (a stale pull would look like data loss).
