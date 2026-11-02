@@ -44,7 +44,8 @@ Open the app, create an account, and repeat on a second device (or a second brow
 the same email and password gives the same data. Everything else is automatic.
 
 Production deployment (Docker, Render/Fly/Railway, VPS + nginx, systemd) and the full API are
-documented in **[`server/README.md`](server/README.md)**.
+documented in **[`server/README.md`](server/README.md)**. For the ready-to-deploy Render Blueprint and
+GitHub Pages account configuration, follow **[`AUTH_SETUP.md`](AUTH_SETUP.md)**.
 
 ### Pointing the app at your server
 
