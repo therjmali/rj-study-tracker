@@ -45,6 +45,12 @@ if ! grep -q "TimerActionReceiver" "$MANIFEST"; then
   sed -i 's#</application>#    <receiver android:name=".TimerActionReceiver" android:exported="false" />\n    </application>#' "$MANIFEST"
 fi
 
+# Cloud sync: the bundled WebView must be allowed to reach the sync server.
+# (Capacitor templates already include this; re-assert it so a template change cannot break sync.)
+if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
+  sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET" />\n    <application#' "$MANIFEST"
+fi
+
 # Version
 GRADLE=android/app/build.gradle
 sed -i -E "s/versionCode [0-9]+/versionCode ${VERSION_CODE}/; s/versionName \"[^\"]*\"/versionName \"${VERSION_NAME}\"/" "$GRADLE"

@@ -8,3 +8,6 @@ dist
 # generated native project
 /android/
 *.keystore
+
+# sync server data (accounts, tokens, restore points)
+/server/data/

@@ -25,6 +25,10 @@ jobs:
       - run: npm ci
 
       - name: Build web bundle (root base path for the APK)
+        env:
+          # Optional repository variable: the default sync server for the APK.
+          # Students can still change it in-app (Settings → Cloud sync → Sync server).
+          VITE_CLOUD_URL: ${{ vars.CLOUD_URL }}
         run: VITE_BASE=/ npm run build
 
       - name: Prepare Android project
@@ -78,5 +82,5 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           [ "${GITHUB_REF_TYPE}" = "tag" ] || TAG="apk-build-${{ github.run_number }}"
           gh release create "$TAG" "$APK_FILE" --title "RJ Tracker Pro ${TAG}" \
-            --notes "Local-first Android APK — the whole app is bundled and works fully offline. Install, then export a Backup from the old app and import it in the new one." \
+            --notes "Local-first Android APK with cloud sync — the whole app is bundled and works fully offline. Sign in on the first screen to keep the same data across devices, or continue offline. Coming from v13? Export a Backup from the old app and import it here." \
             || gh release upload "$TAG" "$APK_FILE" --clobber

@@ -1,5 +1,37 @@
 # Changelog
 
+## 14.0.0 — Cloud accounts & multi-device sync
+
+**A real sign-in system**
+- Premium sign-in / create-account screen replaces the old name-only landing page: email + password, show/hide, strength meter, confirm field, remember-me, and an honest “Forgot password?” path via the server CLI.
+- Accounts live on **your own sync server** (`server/`): scrypt password hashing, 30-minute access tokens, rotating 90-day refresh tokens, per-IP and per-email rate limits, optional origin allow-list.
+- Guest mode is now a first-class choice: “Continue offline on this device” keeps everything local, is remembered across reloads, and can be upgraded to an account later without losing a topic (existing device data is uploaded on the first sync).
+
+**Multi-device sync that cannot silently delete work**
+- Background engine: pushes 2.5 s after you stop editing, pulls every 45 s, on reconnect and on app resume. Nothing waits for the network.
+- Sections are merged **three-way** against the last synced copy — subjects → units → topics → individual fields, plus sessions, daily logs, todos, reminders, notes, achievements, coins and settings.
+- Optimistic concurrency: every push names the document version it merged against; a concurrent edit returns `409` with the current document, and the client merges and retries instead of overwriting.
+- Unresolvable field differences are kept and listed in **Cloud sync → Recovery**, never dropped silently.
+- First contact with an account that already has data asks once: **Merge both · Use cloud · Use device**.
+
+**Cloud Sync Center**
+- Live status, last sync, cloud version, pending changes and payload size.
+- Device list with last activity, rename this device, remote sign-out and “sign out every other device”.
+- Restore points: the last 20 accepted versions on the server, restorable in one tap.
+- Conflicts log, full refresh, download/upload between device and cloud, clear cloud copy, delete account.
+- Settings → Cloud & Sync entry, header cloud indicator, and a new `/cloud` overlay route.
+
+**Server (`server/`)**
+- Single-file, zero-dependency Node API with atomic JSON storage (`server/data/users/*.json`), HMAC tokens, revision history and health endpoint.
+- `Dockerfile`, `docker-compose.yml`, `server/README.md` (Render/Fly/Railway/VPS + nginx + systemd), `reset-password.mjs`.
+- Tests: 14 API integration tests + 11 three-way merge tests (`npm run test:server`).
+
+**Polish & fixes**
+- The service worker never caches `/api` (a stale pull would look like data loss).
+- Debounced localStorage writers pause during a cloud merge so a stale React state cannot overwrite merged data before the app reloads.
+- Profile photo and cover gradient now follow the account across devices.
+- `npm run dev` proxies `/api` to the local sync server; `VITE_CLOUD_URL` + an in-app server field cover web, self-hosting and the APK.
+
 ## 13.0.0 — Focus Timer release
 
 **One timer, zero confusion**
