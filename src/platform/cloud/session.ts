@@ -27,14 +27,37 @@ export interface CloudSession {
 }
 
 const KEY = 'rj-cloud-session-v1';
+const EPHEMERAL_KEY = 'rj-session-ephemeral';
 const CHANGE = 'rj:cloud-session-changed';
+
+function readRaw(): string | null {
+  try {
+    const persisted = localStorage.getItem(KEY);
+    if (persisted) return persisted;
+  } catch { /* ignore */ }
+  try { return sessionStorage.getItem(KEY); } catch { return null; }
+}
+
+/**
+ * "Keep me signed in" off → the session lives in sessionStorage only, so closing
+ * the browser signs the device out (the refresh token is still revocable remotely).
+ */
+export function setEphemeralSession(ephemeral: boolean): void {
+  try {
+    if (ephemeral) localStorage.setItem(EPHEMERAL_KEY, '1');
+    else localStorage.removeItem(EPHEMERAL_KEY);
+  } catch { /* ignore */ }
+}
+
+function isEphemeral(): boolean {
+  try { return localStorage.getItem(EPHEMERAL_KEY) === '1'; } catch { return false; }
+}
 
 let snapshot: CloudSession | null | undefined;
 let lastRaw: string | null | undefined;
 
 export function getSession(): CloudSession | null {
-  let raw: string | null = null;
-  try { raw = localStorage.getItem(KEY); } catch { /* ignore */ }
+  const raw = readRaw();
   if (snapshot !== undefined && raw === lastRaw) return snapshot;
   lastRaw = raw;
   if (!raw) { snapshot = null; return snapshot; }
@@ -59,8 +82,16 @@ export function getSession(): CloudSession | null {
 
 export function setSession(session: CloudSession | null): void {
   try {
-    if (!session) localStorage.removeItem(KEY);
-    else localStorage.setItem(KEY, JSON.stringify(session));
+    if (!session) {
+      localStorage.removeItem(KEY);
+      sessionStorage.removeItem(KEY);
+    } else if (isEphemeral()) {
+      localStorage.removeItem(KEY);
+      sessionStorage.setItem(KEY, JSON.stringify(session));
+    } else {
+      sessionStorage.removeItem(KEY);
+      localStorage.setItem(KEY, JSON.stringify(session));
+    }
   } catch { /* ignore */ }
   snapshot = undefined;
   lastRaw = undefined;

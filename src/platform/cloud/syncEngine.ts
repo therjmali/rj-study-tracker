@@ -342,6 +342,8 @@ export function stopSyncEngine(): void {
   queued = false;
   running = null;
   pendingChoice = null;
+  // No reload is coming after this point: let normal saves resume.
+  setSyncWriteGuard(false);
   setState({ phase: 'disabled', needsChoice: null, pendingKeys: [], error: null });
 }
 

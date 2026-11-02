@@ -49,6 +49,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Verify (types + sync server & merge tests)
+        run: npm run typecheck && npm run test:server
+
       - name: Build
         env:
           # Optional repository variable pointing at your sync server,
