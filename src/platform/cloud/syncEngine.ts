@@ -616,7 +616,13 @@ export async function resolveFirstSync(choice: 'merge' | 'cloud' | 'device'): Pr
   saveMeta({ ...meta, firstSyncDecision: choice, userId: meta.userId ?? session?.user.id ?? null });
   pendingChoice = null;
   setState({ needsChoice: null, phase: 'syncing' });
-  return syncNow(`first-sync:${choice}`);
+  try {
+    return await syncNow(`first-sync:${choice}`);
+  } finally {
+    // The choice applies to exactly one sync — never let a destructive option
+    // linger and re-run on the next poll.
+    saveMeta({ ...loadMeta(), firstSyncDecision: null });
+  }
 }
 
 /* ── manual, explicit operations ────────────────────────────────────── */
@@ -625,18 +631,22 @@ export async function resolveFirstSync(choice: 'merge' | 'cloud' | 'device'): Pr
 export async function pullCloudOverDevice(): Promise<SyncResult> {
   const meta = loadMeta();
   saveMeta({ ...meta, firstSyncDecision: 'cloud' });
-  const result = await syncNow('pull-cloud');
-  saveMeta({ ...loadMeta(), firstSyncDecision: null });
-  return result;
+  try {
+    return await syncNow('pull-cloud');
+  } finally {
+    saveMeta({ ...loadMeta(), firstSyncDecision: null });
+  }
 }
 
 /** Replace the cloud copy with this device's data. */
 export async function pushDeviceOverCloud(): Promise<SyncResult> {
   const meta = loadMeta();
   saveMeta({ ...meta, firstSyncDecision: 'device' });
-  const result = await syncNow('push-device');
-  saveMeta({ ...loadMeta(), firstSyncDecision: null });
-  return result;
+  try {
+    return await syncNow('push-device');
+  } finally {
+    saveMeta({ ...loadMeta(), firstSyncDecision: null });
+  }
 }
 
 /** Forget the last-synced base and re-download every section. */
