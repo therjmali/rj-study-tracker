@@ -80,7 +80,16 @@ jobs:
             keytool -genkeypair -keystore debug.keystore -storepass android -keypass android -alias dbg -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=debug"
             "$BT/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out "$OUT" aligned.apk
           fi
-          "$BT/apksigner" verify --print-certs "$OUT" | head -3
+          "$BT/apksigner" verify --print-certs "$OUT" | head -3 | tee -a "$GITHUB_STEP_SUMMARY"
+          {
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| APK | \`$OUT\` |"
+            echo "| Size | $(du -h "$OUT" | cut -f1) |"
+            echo "| versionName | $VERSION_NAME |"
+            echo "| versionCode | ${{ github.run_number }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
           echo "APK_FILE=$OUT" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
