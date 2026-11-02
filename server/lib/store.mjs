@@ -34,6 +34,8 @@ export class UserStore {
     this.emailIndex = new Map(); // lowercased email -> id
     this.pendingWrites = new Map(); // id -> { user, timer, promise, resolve }
     this.flushChain = Promise.resolve();
+    this.stamps = new Map(); // id -> mtimeMs of the file this process last read/wrote
+    this.refreshChain = Promise.resolve();
   }
 
   async init() {
@@ -43,11 +45,14 @@ export class UserStore {
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
       try {
-        const raw = await fs.readFile(path.join(this.usersDir, file), 'utf8');
+        const full = path.join(this.usersDir, file);
+        const raw = await fs.readFile(full, 'utf8');
         const user = JSON.parse(raw);
         if (user && typeof user.id === 'string') {
           this.users.set(user.id, user);
           if (user.email) this.emailIndex.set(String(user.email).toLowerCase(), user.id);
+          const stat = await fs.stat(full).catch(() => null);
+          if (stat) this.stamps.set(user.id, stat.mtimeMs);
         }
       } catch (err) {
         // Never lose a file because it failed to parse: park it for inspection.
@@ -133,8 +138,11 @@ export class UserStore {
     clearTimeout(entry.timer);
     const { user, resolve, reject } = entry;
     this.flushChain = this.flushChain.catch(() => undefined).then(async () => {
+      const file = path.join(this.usersDir, `${id}.json`);
       try {
-        await this.#writeAtomic(path.join(this.usersDir, `${id}.json`), JSON.stringify(user));
+        await this.#writeAtomic(file, JSON.stringify(user));
+        const stat = await fs.stat(file).catch(() => null);
+        if (stat) this.stamps.set(id, stat.mtimeMs);
         resolve?.();
       } catch (err) {
         reject?.(err);
@@ -154,6 +162,50 @@ export class UserStore {
     await this.flushChain.catch(() => undefined);
   }
 
+  /**
+   * Pick up account files that changed on disk behind our back — most
+   * importantly `reset-password.mjs`, which runs in its own process while this
+   * one keeps serving. Without this the running server would answer with the
+   * old hash (and keep accepting tokens the owner just revoked), and its next
+   * write would silently undo the reset.
+   *
+   * Coalesced: concurrent callers share one scan, so a burst of requests costs
+   * a single readdir.
+   */
+  refreshFromDisk() {
+    this.refreshChain = this.refreshChain
+      .catch(() => undefined)
+      .then(() => this.#refreshNow());
+    return this.refreshChain;
+  }
+
+  async #refreshNow() {
+    let files;
+    try { files = await fs.readdir(this.usersDir); } catch { return; }
+    for (const file of files) {
+      if (!file.endsWith('.json')) continue;
+      const full = path.join(this.usersDir, file);
+      const stat = await fs.stat(full).catch(() => null);
+      if (!stat) continue;
+      const id = file.slice(0, -'.json'.length);
+      if (this.pendingWrites.has(id)) continue; // our own newer edit wins
+      if (this.stamps.get(id) === stat.mtimeMs) continue;
+      try {
+        const user = JSON.parse(await fs.readFile(full, 'utf8'));
+        if (!user || typeof user.id !== 'string' || user.id !== id) continue;
+        const previous = this.users.get(id);
+        if (previous?.email && previous.email !== user.email) {
+          this.emailIndex.delete(String(previous.email).toLowerCase());
+        }
+        this.users.set(id, user);
+        if (user.email) this.emailIndex.set(String(user.email).toLowerCase(), id);
+        this.stamps.set(id, stat.mtimeMs);
+      } catch {
+        // Half-written or hand-edited file: leave the cached copy alone.
+      }
+    }
+  }
+
   async deleteUser(user) {
     const entry = this.pendingWrites.get(user.id);
     if (entry) clearTimeout(entry.timer);
@@ -161,6 +213,7 @@ export class UserStore {
     this.users.delete(user.id);
     this.emailIndex.delete(String(user.email).toLowerCase());
     try { await fs.unlink(path.join(this.usersDir, `${user.id}.json`)); } catch { /* already gone */ }
+    this.stamps.delete(user.id);
     await this.#persistIndex();
   }
 

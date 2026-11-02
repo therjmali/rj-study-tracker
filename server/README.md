@@ -143,6 +143,8 @@ WantedBy=multi-user.target
 
 ```bash
 # reset a forgotten password (also signs every device out)
+# safe to run while the server is up: it re-reads changed account files
+# before answering, so the new password and the revocation apply at once
 node server/reset-password.mjs riya@example.com 'NewPassword123'
 
 # tests (API + the three-way merge used by the client)
