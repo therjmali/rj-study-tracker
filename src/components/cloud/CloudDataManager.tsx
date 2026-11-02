@@ -16,9 +16,11 @@ interface Props {
   trash: TrashItem[];
   reminders: Reminder[];
   syncStatus: 'idle' | 'syncing' | 'saved' | 'error';
-  onClose: () => void;
+  onClose?: () => void;
   onTriggerSync: () => void;
   dbSessions?: DbStudySession[];
+  /** Render as a section inside the Sync Center instead of a full-screen page. */
+  embedded?: boolean;
 }
 
 interface DataCategory {
@@ -53,7 +55,7 @@ function getLastModified(): string {
   return 'Unknown';
 }
 
-export default function CloudDataManager({ appState, settings, history, trash, reminders, syncStatus, onClose, onTriggerSync, dbSessions }: Props) {
+export default function CloudDataManager({ appState, settings, history, trash, reminders, syncStatus, onClose, onTriggerSync, dbSessions, embedded = false }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string; lsKey: string } | null>(null);
 
@@ -129,9 +131,10 @@ export default function CloudDataManager({ appState, settings, history, trash, r
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
       transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-      className="fixed inset-0 z-[100] bg-background overflow-y-auto">
+      className={embedded ? 'w-full' : 'fixed inset-0 z-[100] bg-background overflow-y-auto'}>
 
-      {/* Header */}
+      {/* Header (full-screen mode only) */}
+      {!embedded && (
       <div className="sticky top-0 z-10 glass-header border-b border-border/20">
         <div className="flex items-center gap-3 px-4 sm:px-6 h-14 max-w-3xl mx-auto">
           <button onClick={onClose} className="w-8 h-8 rounded-xl bg-muted/20 flex items-center justify-center hover:bg-muted/30 transition-colors">
@@ -159,8 +162,18 @@ export default function CloudDataManager({ appState, settings, history, trash, r
           </div>
         </div>
       </div>
+      )}
 
-      <div className="max-w-3xl mx-auto px-4 py-5 pb-10 space-y-4">
+      <div className={embedded ? 'space-y-4' : 'max-w-3xl mx-auto px-4 py-5 pb-10 space-y-4'}>
+        {embedded && (
+          <div className="rounded-2xl border border-border/15 bg-card/25 p-3.5 flex items-start gap-2.5">
+            <Database className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <p className="text-[10.5px] text-muted-foreground leading-relaxed">
+              Everything below lives on this device. Sections marked as synced also have a copy on
+              your server; anything else stays here by design.
+            </p>
+          </div>
+        )}
         {/* Overview Card */}
         <GlowCard className="p-4" paper>
           <div className="flex items-center gap-3 mb-3">

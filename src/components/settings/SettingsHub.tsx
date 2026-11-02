@@ -15,6 +15,7 @@ import AppIconPanel from '../platform/AppIconPanel';
 import NotificationsPanel from '../platform/NotificationsPanel';
 import AutoBackupPanel from '../platform/AutoBackupPanel';
 import TrashTab from '../profile/TrashTab';
+import CloudSettingsPanel from '../cloud/CloudSettingsPanel';
 import TextLayoutSettings from './TextLayoutSettings';
 import {
   DisplayModeSettings, AccentColorSettings, StudentModeSettings, StudyGoalsSettings, SRSSettings,
@@ -65,12 +66,19 @@ type ItemId =
   | 'notifications'
   | 'autoBackup'
   | 'backup' | 'trash'
+  | 'cloudSync'
   | 'shortcuts' | 'help';
 
 interface ItemMeta { id: ItemId; icon: string; title: string; description: string; keywords: string[] }
 interface CategoryMeta { id: string; icon: string; title: string; subtitle: string; items: ItemMeta[] }
 
 const CATEGORIES: CategoryMeta[] = [
+  {
+    id: 'cloud', icon: '☁️', title: 'Cloud & Sync', subtitle: 'Your account, devices and multi-device sync',
+    items: [
+      { id: 'cloudSync', icon: '☁️', title: 'Account & Devices', description: 'Sign in, sync now, see every device, restore points and conflicts', keywords: ['cloud', 'sync', 'account', 'login', 'sign in', 'sign up', 'password', 'device', 'devices', 'multi device', 'restore point', 'backup', 'online', 'server', 'merge', 'conflict', 'email'] },
+    ],
+  },
   {
     id: 'insights', icon: '📊', title: 'Progress & Rewards', subtitle: 'Your stats, streaks, badges and XP',
     items: [
@@ -150,7 +158,7 @@ const LEGACY_SECTION: Record<string, { cat: string; item?: ItemId }> = {
 
 interface FlatItem extends ItemMeta { catId: string; catTitle: string; haystack: string; titleN: string }
 
-const SUGGESTIONS = ['Dark mode', 'Text size', 'Daily goal', 'Backup', 'Reminder', 'Timer'];
+const SUGGESTIONS = ['Dark mode', 'Text size', 'Daily goal', 'Cloud sync', 'Backup', 'Reminder', 'Timer'];
 
 export default function SettingsHub(props: SettingsHubProps) {
   const { subjects, dailyLogs, settings, onUpdateSettings, dbSessions, trash, reminders, onUpdateReminders, onOpenHelp, initialSection } = props;
@@ -259,6 +267,7 @@ export default function SettingsHub(props: SettingsHubProps) {
       case 'appIcon': return <AppIconPanel />;
       case 'notifications': return <NotificationsPanel />;
       case 'autoBackup': return <AutoBackupPanel />;
+      case 'cloudSync': return <CloudSettingsPanel />;
       case 'backup': return <BackupTab appState={props.appState} onImport={props.onImport} onReset={props.onReset} onClearHistory={props.onClearHistory} subjects={subjects} settings={settings} history={props.history} trash={trash} user={props.user} onUpdateUser={props.onUpdateUser} />;
       case 'trash': return <TrashTab trash={trash} onRestore={props.onRestoreTrash} onDelete={props.onDeleteTrash} onEmpty={props.onEmptyTrash} />;
       case 'shortcuts': return <KeyboardShortcutsSettings />;

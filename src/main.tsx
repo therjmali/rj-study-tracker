@@ -13,6 +13,7 @@ import { installNativeActionDrain } from './platform/nativeActions';
 import { installFocusLog } from './platform/focusLog';
 import { installNativeBridge } from './platform/native';
 import { scheduleDailySnapshot } from './platform/snapshots';
+import { initializeCloudAuth } from './platform/cloud/authStore';
 
 const queryClient = new QueryClient();
 
@@ -37,8 +38,12 @@ function RuntimeErrorFallback({ error }: { error: Error }) {
   );
 }
 
-// Hydrate durable storage first so the app boots with all of the student's data.
-bootStorage().finally(() => {
+// Hydrate durable storage first so the app boots with all of the student's data,
+// then restore the cloud session (a cached session means instant offline start).
+bootStorage()
+  .catch(() => undefined)
+  .then(() => initializeCloudAuth().catch(() => undefined))
+  .finally(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <ErrorBoundary fallbackRender={p => <RuntimeErrorFallback error={p.error} />}>

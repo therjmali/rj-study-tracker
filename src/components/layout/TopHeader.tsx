@@ -62,10 +62,16 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
           <button
             onClick={onOpenCloudData}
             className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-muted/30 active:scale-90 transition-all"
-            title="View stored data"
+            title={syncStatus === 'syncing' ? 'Cloud sync — syncing…' : syncStatus === 'saved' ? 'Cloud sync — everything is saved' : syncStatus === 'error' ? 'Cloud sync — needs attention' : 'Cloud sync & devices'}
+            aria-label="Open cloud sync"
           >
             {syncStatus === 'syncing' && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary/60" />}
-            {syncStatus === 'saved' && <Cloud className="w-3.5 h-3.5 text-secondary/80" />}
+            {syncStatus === 'saved' && (
+              <span className="relative flex items-center justify-center">
+                <Cloud className="w-3.5 h-3.5 text-secondary/80" />
+                <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-secondary border border-background" />
+              </span>
+            )}
             {syncStatus === 'error' && <CloudOff className="w-3.5 h-3.5 text-destructive/80" />}
             {syncStatus === 'idle' && <Cloud className="w-3.5 h-3.5 text-muted-foreground/50" />}
           </button>
