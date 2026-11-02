@@ -1,5 +1,12 @@
 # Changelog
 
+## 15.0.0 — Supabase accounts & free cloud sync
+
+- Email + password accounts and multi-device sync now run on **Supabase (free tier)** instead of the self-hosted Node server. Same offline-first engine and three-way merge.
+- Per-user **Row-Level Security**: sync tables are read-only to clients and written only through version-checked database functions scoped to `auth.uid()`.
+- First sign-in keeps an untouched local copy of on-device data and verifies the upload before finishing.
+- See `SUPABASE_SETUP.md`.
+
 ## 14.1.0 — Notification that opens your topic
 
 - **Tap the running timer → your topic.** Tapping the notification (or the floating timer) opens the window of the topic you are studying, with its live timer card. With no topic linked it opens the Focus Timer. Works from a cold start (waits for your syllabus to load).

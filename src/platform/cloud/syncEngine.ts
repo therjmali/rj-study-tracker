@@ -16,7 +16,9 @@
  *    it merged against (409 → merge → retry, up to four times).
  */
 import { useSyncExternalStore } from 'react';
-import { CloudError, request } from './http';
+import { CloudError } from './http';
+import { pullDoc, pushDoc, listRevisions, restoreRevisionRemote, wipeRemote, type RemoteDoc } from './remote';
+import { createPreMigrationBackup, markMigrationVerified } from './migrate';
 import { getSession } from './session';
 import { getCloudAuthState } from './authStore';
 import { getCloudEndpoint, isCloudConfigured } from './config';
@@ -86,15 +88,6 @@ const AUTOSYNC_KEY = 'rj-cloud-autosync-v1';
 const POLL_MS = 45_000;
 const LOCAL_DEBOUNCE_MS = 2500;
 const MAX_CONFLICTS = 40;
-
-interface RemoteDoc {
-  version: number;
-  updatedAt: string;
-  sections: Record<string, { hash: string; updatedAt: string; deviceId?: string | null }>;
-  data: Record<string, unknown>;
-  changedKeys?: string[];
-  bytes?: number;
-}
 
 export interface SyncResult {
   ok: boolean;
@@ -414,7 +407,7 @@ async function performSync(reason: string): Promise<SyncResult> {
     .map(def => (meta.serverHashes[def.key] ? `${def.key}:${meta.serverHashes[def.key]}` : null))
     .filter(Boolean) as string[];
   const have = haveParts.join(',');
-  const doc = await request<RemoteDoc>(`/v1/sync${have ? `?have=${encodeURIComponent(have)}` : ''}`);
+  const doc = await pullDoc(have);
   const remote = remoteFromDoc(doc, base);
 
   const localCount = Object.keys(local).length;
@@ -438,6 +431,11 @@ async function performSync(reason: string): Promise<SyncResult> {
     });
     return { ok: false, reason, skipped: true, error: 'Choose how to combine this device with the cloud copy.' };
   }
+
+  // First time THIS account touches THIS device: keep an untouched copy of the
+  // on-device data before anything is merged or uploaded (see migrate.ts).
+  const firstContact = !meta.userId;
+  if (firstContact && localCount > 0) await createPreMigrationBackup(session.user.id, local);
 
   const decision = meta.firstSyncDecision ?? (remoteCount === 0 ? 'device' : 'merge');
 
@@ -495,10 +493,7 @@ async function performSync(reason: string): Promise<SyncResult> {
 
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
-      const res = await request<{ version: number; updatedAt: string; sections: RemoteDoc['sections']; applied: string[]; rejected?: Array<{ key: string; reason: string }>; unchanged?: boolean }>('/v1/sync', {
-        method: 'POST',
-        body: { baseVersion: version, sections, deletions },
-      });
+      const res = await pushDoc({ baseVersion: version, sections, deletions });
       version = res.version;
       serverSections = res.sections ?? serverSections;
       appliedToServer = res.applied ?? [];
@@ -556,6 +551,13 @@ async function performSync(reason: string): Promise<SyncResult> {
         }
       }
     }
+  }
+
+  if (firstContact && localCount > 0) {
+    // Every section that existed on the device must now exist in the cloud.
+    const missing = Object.keys(local).filter(k => !(k in serverSections) && merged[k] !== undefined);
+    if (missing.length) throw new CloudError(`Upload check failed for: ${missing.join(', ')}. Your device data was not changed.`, 'migration_unverified', 0);
+    await markMigrationVerified(session.user.id);
   }
 
   const appliedKeys = applySectionsToDevice(merged);
@@ -666,15 +668,11 @@ export interface Revision {
 }
 
 export async function fetchRevisions(): Promise<Revision[]> {
-  const data = await request<{ revisions: Revision[] }>('/v1/sync/revisions');
-  return data.revisions;
+  return listRevisions();
 }
 
 export async function restoreRevision(version: number): Promise<SyncResult> {
-  const data = await request<{ version: number; data: Record<string, unknown>; sections: RemoteDoc['sections'] }>('/v1/sync/restore', {
-    method: 'POST',
-    body: { version },
-  });
+  const data = await restoreRevisionRemote(version);
   const applied = applySectionsToDevice(data.data);
   await saveBase(data.data);
   const meta = loadMeta();
@@ -693,7 +691,7 @@ export async function restoreRevision(version: number): Promise<SyncResult> {
 }
 
 export async function wipeCloudCopy(): Promise<void> {
-  await request('/v1/sync', { method: 'DELETE', body: { confirm: 'DELETE' } });
+  await wipeRemote();
   await clearBase();
   clearMeta();
   setState({ phase: 'idle', version: 0, lastSyncAt: null, pendingKeys: [], needsChoice: null });

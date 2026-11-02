@@ -49,7 +49,7 @@ export function setEphemeralSession(ephemeral: boolean): void {
   } catch { /* ignore */ }
 }
 
-function isEphemeral(): boolean {
+export function isEphemeral(): boolean {
   try { return localStorage.getItem(EPHEMERAL_KEY) === '1'; } catch { return false; }
 }
 
