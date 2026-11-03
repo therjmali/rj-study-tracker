@@ -83,6 +83,11 @@ export function useAutoBackupSettings(): AutoBackupSettings {
 
 const patch = (p: Partial<AutoBackupSettings>) => saveAutoBackupSettings({ ...getAutoBackupSettings(), ...p });
 
+/** Log a manual download in the same history the automatic backups use (drives the status strip). */
+export function recordBackup(rec: BackupRecord): void {
+  patch({ history: [rec, ...getAutoBackupSettings().history].slice(0, 30) });
+}
+
 /* ───────────────────────────── native bridge ───────────────────────────── */
 
 interface Bridge {

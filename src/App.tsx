@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 import { Timer, CheckCircle2, Plus, Loader2, Stethoscope, Wheat, GraduationCap } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
-import { useAuth, type AuthMode } from '@/platform/auth';
+import { useAuth, saveProfile, type AuthMode } from '@/platform/auth';
 import { updateAccountProfile } from '@/platform/cloud/authStore';
 import { startSyncEngine, stopSyncEngine, syncNow, useSyncState } from '@/platform/cloud/syncEngine';
 import { syncData, saveTopic, saveDailyLog, saveSettings, deleteRecords, saveSubjects, createSession, updateSession, deleteSession as deleteSessionEndpoint, migrateSessions } from '@/platform/api';
@@ -1464,6 +1464,13 @@ function AppInner() {
     } catch {}
     // Save avatar/coverGradient to the account so every device sees the same photo
     if (!authUser) return;
+    // Display name (edited in the profile editor): applied instantly and saved to the account
+    const nextName = (updatedUser.name ?? '').trim();
+    const currentName = `${authUser.firstName || ''} ${authUser.lastName || ''}`.trim();
+    if (nextName && nextName !== currentName) {
+      const [firstName, ...rest] = nextName.split(/\s+/);
+      saveProfile({ firstName, lastName: rest.join(' ') });
+    }
     const changes: Record<string, string | undefined> = {};
     if (updatedUser.avatar !== undefined) changes.avatar = updatedUser.avatar;
     if (updatedUser.coverGradient !== undefined) changes.coverGradient = updatedUser.coverGradient;

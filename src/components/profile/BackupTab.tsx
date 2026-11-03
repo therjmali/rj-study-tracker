@@ -12,6 +12,9 @@ import { APP_VERSION } from '../../types';
 import { getUnifiedTotalMinutes } from '../../lib/utils';
 import GlowCard from '../shared/GlowCard';
 import ImportPreviewDialog, { type FileStats } from './ImportPreviewDialog';
+import ExactRestoreDialog from '../data/ExactRestoreDialog';
+import { isExactBackup } from '../../platform/backupRestore';
+import { recordBackup } from '../../platform/autoBackup';
 
 export default function BackupTab({ appState, onImport, onReset, onClearHistory, subjects, settings, history, trash, user, onUpdateUser }: {
   appState: AppState; onImport: (s: AppState) => void; onReset: () => void; onClearHistory: () => void; subjects?: Subject[];
@@ -25,6 +28,8 @@ export default function BackupTab({ appState, onImport, onReset, onClearHistory,
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFileName, setPreviewFileName] = useState('');
   const [parsedBackup, setParsedBackup] = useState<any>(null);
+  const [exactDoc, setExactDoc] = useState<any>(null);
+  const [exactName, setExactName] = useState('');
   const [previewFileStats, setPreviewFileStats] = useState<FileStats>({ subjects: 0, units: 0, topics: 0, completed: 0, dailyLogs: 0, history: 0, sessions: 0, mcqs: 0, folders: 0, reminders: 0 });
   const { push: pushNotif } = useNotifications();
 
@@ -58,8 +63,10 @@ export default function BackupTab({ appState, onImport, onReset, onClearHistory,
     const a = document.createElement('a');
     const dateStr = new Date().toISOString().split('T')[0];
     const timeStr = new Date().toTimeString().slice(0, 5).replace(':', '');
-    a.href = url; a.download = `RJ-TRACKER-FULL-AZ-Backup-${dateStr}-${timeStr}.json`; a.click();
+    const fileName = `RJ-TRACKER-FULL-AZ-Backup-${dateStr}-${timeStr}.json`;
+    a.href = url; a.download = fileName; a.click();
     URL.revokeObjectURL(url);
+    recordBackup({ at: new Date().toISOString(), name: fileName, bytes: blob.size, ok: true, where: 'Downloads', reason: 'Manual download' });
     toast.success(`📦 Full A-Z backup exported! (${topicCount} topics, ${totalMcqs} MCQs, ${subjectCount} subjects, filters & UI state)`);
   };
 
@@ -86,7 +93,15 @@ export default function BackupTab({ appState, onImport, onReset, onClearHistory,
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const data = JSON.parse(rewriteVirtualUrls(ev.target?.result as string));
+        const text = ev.target?.result as string;
+        const probe = JSON.parse(text);
+        if (isExactBackup(probe)) {
+          // v8: exact restore with integrity check — parsed untouched so the checksums still match.
+          setExactDoc(probe);
+          setExactName(file.name);
+          return;
+        }
+        const data = JSON.parse(rewriteVirtualUrls(text));
         void importFiles(data.files);
         if (data.appState?.subjects && data.appState?.dailyLogs) {
           setParsedBackup(data);
@@ -281,6 +296,7 @@ export default function BackupTab({ appState, onImport, onReset, onClearHistory,
 
       <DownloadSection appState={appState} subjects={subjects || []} />
 
+      <ExactRestoreDialog doc={exactDoc} fileName={exactName} onClose={() => setExactDoc(null)} />
       <ImportPreviewDialog
         open={previewOpen}
         onClose={() => { setPreviewOpen(false); setParsedBackup(null); }}
