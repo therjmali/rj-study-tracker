@@ -24,6 +24,17 @@ const authStorage = {
   },
 };
 
+const STORAGE_KEY = 'rj-supabase-auth-v1';
+
+/**
+ * Remove the saved Supabase session from this device no matter what.
+ * supabase-js keeps the session when its server-side sign-out call fails (offline, timeout, 5xx),
+ * which would silently sign the user back in after a reload — so logging out never relies on it.
+ */
+export function clearSupabaseSession(): void {
+  for (const key of [STORAGE_KEY, `${STORAGE_KEY}-code-verifier`, `${STORAGE_KEY}-user`]) authStorage.removeItem(key);
+}
+
 let client: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient {
@@ -34,7 +45,7 @@ export function getSupabase(): SupabaseClient {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,
-      storageKey: 'rj-supabase-auth-v1',
+      storageKey: STORAGE_KEY,
       storage: authStorage,
     },
   });
