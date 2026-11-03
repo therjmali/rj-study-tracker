@@ -342,7 +342,7 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
                 {!isSignup && (
                   <button
                     type="button"
-                    onClick={() => toast.info('Ask your sync-server admin to reset it with: node server/reset-password.mjs <email>')}
+                    onClick={() => toast.info('Open Supabase → Authentication → Users, pick your account and set a new password.')}
                     className="text-[11px] font-semibold text-primary hover:underline underline-offset-2"
                   >
                     Forgot password?
