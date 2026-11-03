@@ -238,11 +238,12 @@ function recordConflicts(key: string, conflicts: MergeConflict[]): SyncConflictR
   });
 }
 
-function applySectionsToDevice(target: Record<string, unknown>): string[] {
+function applySectionsToDevice(target: Record<string, unknown>, skip: ReadonlySet<string> = new Set()): string[] {
   const changed: string[] = [];
   setSyncWriteGuard(true);
   try {
     for (const def of SYNC_SECTIONS) {
+      if (skip.has(def.key)) continue;   // changed on this device while we were syncing → newer than this merge
       const next = target[def.key];
       const currentRaw = (() => { try { return localStorage.getItem(def.key); } catch { return null; } })();
       const current = (() => {
@@ -358,8 +359,8 @@ export function syncNow(reason = 'manual'): Promise<SyncResult> {
     return Promise.resolve({ ok: false, reason, skipped: true, error: 'Not signed in' });
   }
   if (!isCloudConfigured()) {
-    setState({ phase: 'error', error: 'No sync server is configured on this device.' });
-    return Promise.resolve({ ok: false, reason, skipped: true, error: 'No sync server configured' });
+    setState({ phase: 'error', error: 'Cloud sync is not set up in this build.' });
+    return Promise.resolve({ ok: false, reason, skipped: true, error: 'Cloud not configured' });
   }
   running = performSync(reason)
     .catch((err: unknown) => {
@@ -401,7 +402,6 @@ async function performSync(reason: string): Promise<SyncResult> {
   }
 
   const base = await loadBase();
-  const local = readAllLocalSections();
 
   const haveParts = SYNC_SECTIONS
     .map(def => (meta.serverHashes[def.key] ? `${def.key}:${meta.serverHashes[def.key]}` : null))
@@ -409,6 +409,9 @@ async function performSync(reason: string): Promise<SyncResult> {
   const have = haveParts.join(',');
   const doc = await pullDoc(have);
   const remote = remoteFromDoc(doc, base);
+  // Read the device data AFTER the network round-trip: the app keeps writing while we wait
+  // (default values at start-up, edits), and the merge must start from the freshest copy.
+  const local = readAllLocalSections();
 
   const localCount = Object.keys(local).length;
   const remoteCount = Object.keys(remote).length;
@@ -560,7 +563,18 @@ async function performSync(reason: string): Promise<SyncResult> {
     await markMigrationVerified(session.user.id);
   }
 
-  const appliedKeys = applySectionsToDevice(merged);
+  // The app (or the user) may have written to the device while we were talking to the server.
+  // Those values are NEWER than this merge: never overwrite or delete them — they are picked
+  // up by the follow-up sync below. (Without this, defaults created at start-up were deleted
+  // and the app reloaded in an endless loop.)
+  const sig = (value: unknown): string => (value === undefined ? '\u2205' : fingerprint(value));
+  const freshNow = readAllLocalSections();
+  const touched = new Set<string>();
+  for (const def of SYNC_SECTIONS) {
+    if (sig(freshNow[def.key]) !== sig(local[def.key])) touched.add(def.key);
+  }
+
+  const appliedKeys = applySectionsToDevice(merged, touched);
   // Between writing merged data and the reload that re-reads it, no debounced
   // React write may land on top of it.
   if (appliedKeys.length) setSyncWriteGuard(true);
@@ -571,13 +585,23 @@ async function performSync(reason: string): Promise<SyncResult> {
     endpoint,
     version,
     serverHashes: Object.fromEntries(Object.entries(serverSections).map(([key, section]) => [key, section.hash])),
-    localFingerprints: Object.fromEntries(Object.entries(merged).map(([key, value]) => [key, fingerprint(value)])),
+    localFingerprints: Object.fromEntries(
+      Object.keys(merged).map(key => [key, touched.has(key) ? sig(local[key]) : fingerprint(merged[key])]),
+    ),
     lastSyncAt: new Date().toISOString(),
     lastError: null,
     // The choice is consumed by this sync; later syncs always merge normally.
     firstSyncDecision: null,
   };
-  await saveBase(merged);
+  // Keys touched mid-sync keep the OLD common ancestor so the next sync can still merge a
+  // concurrent remote change with the newer local edit instead of overwriting one of them.
+  const baseToSave: Record<string, unknown> = { ...merged };
+  for (const key of touched) {
+    if (merged[key] === undefined) continue;
+    if (sig(merged[key]) === sig(local[key])) continue;
+    if (base[key] === undefined) delete baseToSave[key]; else baseToSave[key] = base[key];
+  }
+  await saveBase(baseToSave);
   saveMeta(nextMeta);
 
   const allConflicts = [...newConflicts, ...state.conflicts].slice(0, MAX_CONFLICTS);
@@ -598,6 +622,9 @@ async function performSync(reason: string): Promise<SyncResult> {
 
   if (appliedKeys.length) {
     window.dispatchEvent(new CustomEvent('rj:cloud-data-applied', { detail: { keys: appliedKeys, reason } }));
+  } else if (touched.size > 0) {
+    // Newer local values are waiting: upload them shortly (no reload needed).
+    setTimeout(() => { void syncNow('settle'); }, 700);
   }
 
   return {

@@ -12,6 +12,22 @@ import { ArrowLeftRight, Cloud, Loader2, RefreshCw, Smartphone, Sparkles } from 
 import { Button } from '@project/components/ui/button';
 import { toast } from 'sonner';
 import { resolveFirstSync, useSyncState } from '../../platform/cloud/syncEngine';
+import { setSyncWriteGuard } from '../../platform/cloud/changeBus';
+
+const RELOAD_LOG_KEY = 'rj-cloud-reload-log-v1';
+const RELOAD_WINDOW_MS = 30_000;
+const RELOAD_MAX = 2;
+
+/** Records an automatic reload; returns false when we are reloading too often (a loop). */
+function allowAutoReload(): boolean {
+  try {
+    const now = Date.now();
+    const recent = (JSON.parse(sessionStorage.getItem(RELOAD_LOG_KEY) || '[]') as number[]).filter(t => now - t < RELOAD_WINDOW_MS);
+    if (recent.length >= RELOAD_MAX) { sessionStorage.setItem(RELOAD_LOG_KEY, JSON.stringify(recent)); return false; }
+    sessionStorage.setItem(RELOAD_LOG_KEY, JSON.stringify([...recent, now]));
+  } catch { /* sessionStorage unavailable → allow */ }
+  return true;
+}
 
 export default function CloudGate() {
   const sync = useSyncState();
@@ -22,6 +38,16 @@ export default function CloudGate() {
     const onApplied = (event: Event) => {
       const detail = (event as CustomEvent<{ reason?: string }>).detail;
       if (detail?.reason === 'restore') return; // the Sync Center reloads itself
+      if (!allowAutoReload()) {
+        // Safety net: never trap the user in a refresh loop. Let normal saving resume and ask for a manual refresh.
+        setSyncWriteGuard(false);
+        toast.info('☁️ Cloud changes are ready', {
+          description: 'Pull down or tap Refresh when convenient.',
+          duration: 10_000,
+          action: { label: 'Refresh', onClick: () => window.location.reload() },
+        });
+        return;
+      }
       setReloading(true);
       toast.info('☁️ Changes from another device were applied', {
         description: 'Refreshing so everything is up to date.',
