@@ -9,7 +9,7 @@ import type { Session } from '@supabase/supabase-js';
 import { getCloudEndpoint, isCloudConfigured, probeServer } from './config';
 import { CloudError, toCloudError } from './http';
 import { getDeviceIdentity, renameDevice } from './device';
-import { getSupabase } from './supabase';
+import { clearSupabaseSession, getSupabase } from './supabase';
 import {
   CloudSession, CloudUser, getSession, setSession, subscribeSession, patchSession,
 } from './session';
@@ -86,25 +86,28 @@ function wasRegistered(userId: string): boolean {
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
 
-async function loadProfile(userId: string, fallbackName: string): Promise<Partial<CloudUser>> {
+async function loadProfile(userId: string, fallback: Partial<CloudUser> & { name: string }): Promise<Partial<CloudUser>> {
   try {
     const { data, error } = await getSupabase()
       .from('profiles').select('name, avatar, cover_gradient').eq('user_id', userId).maybeSingle();
-    if (error || !data) return { name: fallbackName };
+    if (error || !data) return fallback;
     return {
-      name: data.name || fallbackName,
-      avatar: data.avatar ?? undefined,
-      coverGradient: data.cover_gradient ?? undefined,
+      name: data.name || fallback.name,
+      avatar: data.avatar ?? fallback.avatar,
+      coverGradient: data.cover_gradient ?? fallback.coverGradient,
     };
   } catch {
-    return { name: fallbackName };
+    return fallback;
   }
 }
 
 async function toCloudUser(session: Session): Promise<CloudUser> {
   const u = session.user;
   const metaName = String((u.user_metadata as { name?: string } | null)?.name ?? '') || (u.email ?? '').split('@')[0];
-  const profile = await loadProfile(u.id, metaName);
+  // If the profile can't be fetched (offline, error) keep what this device already knows instead of reverting.
+  const cached = getSession()?.user;
+  const known = cached && cached.id === u.id ? cached : null;
+  const profile = await loadProfile(u.id, { name: known?.name || metaName, avatar: known?.avatar, coverGradient: known?.coverGradient });
   return {
     id: u.id,                       // ← the Supabase uid; every row in the database is keyed by it
     email: u.email ?? '',
@@ -322,6 +325,7 @@ export async function signUp(input: { email: string; password: string; name: str
 
 export async function signOut(options: { silent?: boolean } = {}): Promise<void> {
   try { await getSupabase().auth.signOut({ scope: 'local' }); } catch { /* signing out locally is what matters */ }
+  clearSupabaseSession();     // guarantees a reload can never sign the user back in
   setSession(null);
   set({ status: 'signed-out', user: null, session: null, error: null, busy: false, offlineNotice: null });
   if (!options.silent) window.dispatchEvent(new Event('rj:cloud-signed-out'));
@@ -396,6 +400,7 @@ export async function deleteCloudAccount(password: string): Promise<void> {
   const { error } = await getSupabase().rpc('delete_my_account');
   if (error) throw toCloudError(error);
   try { await getSupabase().auth.signOut({ scope: 'local' }); } catch { /* ignore */ }
+  clearSupabaseSession();
   setSession(null);
   set({ status: 'signed-out', user: null, session: null, busy: false });
 }

@@ -1,5 +1,17 @@
 # Changelog
 
+## 15.1.0 — Profile editor, Data Center, exact backups, full-settings sync
+
+- **One profile section:** a single profile card with **Edit profile** and **Log out**. The editor sheet covers name, photo (upload or emoji), cover colour, password change, log out and delete account, with validation and an unsaved-changes guard. Guests get a tailored version.
+- **Search on top:** the settings search now lives in a sticky header that stays visible while you scroll; results scroll into view. "logout", "password", "download", "verify" … all find their setting.
+- **Live status strip:** cloud sync, last backup, storage protection and app version — each chip jumps to the relevant setting.
+- **Data Center (Settings → Backup, Data & Trash):** download everything from this device or the **cloud copy**, run a backup self-test, compare every section with the cloud (in sync / uploading / only on device …), and browse an A–Z inventory of everything stored.
+- **Exact backups (format v8):** every stored value is saved byte-for-byte with a SHA-256 per item and an overall checksum. Restore verifies the file first, takes a safety snapshot, writes the exact values, reads every key back, and can also replace the cloud copy. Keys outside the data catalog can never be written by a backup file. The AI key is only included if you opt in.
+- **Fixed lossy backups:** string settings such as the dashboard clock style used to be exported as `null`; notification times and several other preferences were missing. All are now included and verified.
+- **Every setting syncs:** clock style, calendar options, notification & reminder times and onboarding now follow your account (AI keys stay on the device).
+- **First sync of a new device prefers your account's settings** over start-up defaults instead of overwriting them.
+- **Logout is bulletproof:** the saved session is always removed, even if the server can't be reached; a reload can no longer sign you back in. Profile name changes are applied instantly and kept if the profile can't be fetched.
+
 ## 15.0.1 — Fix: endless "Changes from another device were applied" refresh loop
 
 - **Root cause:** on a fresh sign-in the app creates default values (study sessions, excluded subjects…) while the first sync round-trip is in flight. The sync had read the device data *before* that round-trip, so when it finished it treated the new values as deleted, wiped them and reloaded the app — which created them again, forever.

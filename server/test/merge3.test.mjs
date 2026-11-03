@@ -147,3 +147,20 @@ test('deepEqual is key-order independent', () => {
   assert.equal(deepEqual({ a: 1, b: [1, { c: 2, d: 3 }] }, { b: [1, { d: 3, c: 2 }], a: 1 }), true);
   assert.equal(deepEqual({ a: 1 }, { a: 2 }), false);
 });
+
+test('first sync of a joining device can prefer the account value on a conflict (settings must not be overwritten by defaults)', () => {
+  // Fresh device wrote its default "digital"; the account already says "analog"; no common ancestor.
+  const prefer = mergeThreeWay(undefined, 'digital', 'analog', 'nursetrack-clock-mode', 'remote');
+  assert.equal(prefer.value, 'analog');
+  assert.equal(prefer.conflicts[0].resolution, 'remote');
+  // Nested settings: conflicting leaf follows the account, local-only leaf is still kept.
+  const nested = mergeThreeWay(undefined, { theme: 'default', extra: 1 }, { theme: 'ocean' }, 'settings', 'remote');
+  assert.equal(nested.value.theme, 'ocean');
+  assert.equal(nested.value.extra, 1);
+});
+
+test('normal syncs still keep this device on a conflict', () => {
+  const r = mergeThreeWay('a', 'b', 'c', 'k');
+  assert.equal(r.value, 'b');
+  assert.equal(r.conflicts[0].resolution, 'local');
+});
