@@ -34,6 +34,13 @@ export const SYNC_SECTIONS: SyncSectionDef[] = [
   { key: 'nursing-trash-v1', label: 'Trash', group: 'content', type: 'json' },
   { key: 'nursetrack-avatar', label: 'Profile photo', group: 'preferences', type: 'string' },
   { key: 'nursetrack-cover-gradient', label: 'Profile cover', group: 'preferences', type: 'string' },
+  // Smaller preferences that used to stay on one device — now every setting follows the account.
+  { key: 'nursetrack-clock-mode', label: 'Dashboard clock style', group: 'preferences', type: 'string' },
+  { key: 'nursetrack-calendar-sync', label: 'Calendar ↔ syllabus link', group: 'preferences', type: 'string' },
+  { key: 'nursetrack-complete-week', label: 'Calendar: show complete weeks', group: 'preferences', type: 'string' },
+  { key: 'nursetrack-calendar-linked', label: 'Dashboard calendar link', group: 'preferences', type: 'json' },
+  { key: 'rj-notify-v1', label: 'Notification & daily reminder times', group: 'preferences', type: 'json' },
+  { key: 'nursetrack-onboarded-v7', label: 'Onboarding completed', group: 'preferences', type: 'string' },
 ];
 
 export const SYNC_SECTION_MAP: Record<string, SyncSectionDef> = Object.fromEntries(

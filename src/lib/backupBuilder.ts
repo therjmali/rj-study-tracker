@@ -6,6 +6,8 @@ import type { Subject, AppState, UserSettings, HistoryEntry, TrashItem, User } f
 import { APP_VERSION } from '../types';
 import { getUnifiedTotalMinutes } from './utils';
 import { exportAllFiles } from '../platform/files';
+import { flushAllLocalStorage } from '../hooks/useLocalStorage';
+import { BACKUP_VERSION, buildManifest, collectDeviceRaw } from '../platform/backupFormat';
 
 export interface BackupContext {
   appState: AppState;
@@ -14,12 +16,17 @@ export interface BackupContext {
   history?: HistoryEntry[];
   trash?: TrashItem[];
   user?: User;
+  /** Include the AI provider key in the file (off by default — it is a credential). */
+  includeSecrets?: boolean;
 }
 
 export interface BuiltBackup { data: Record<string, any>; topics: number; mcqs: number; subjects: number }
 
 export async function buildFullBackup(ctx: BackupContext): Promise<BuiltBackup> {
   const { appState, subjects, settings, history, trash, user } = ctx;
+  const includeSecrets = !!ctx.includeSecrets;
+  // Make sure no edit is still waiting in a debounce timer: the file must match what the screen shows.
+  flushAllLocalStorage();
   const readLocalStorage = (key: string) => {
     try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; }
   };
@@ -76,7 +83,7 @@ export async function buildFullBackup(ctx: BackupContext): Promise<BuiltBackup> 
     const attachedFiles = await exportAllFiles();
     const fullBackup = {
       files: attachedFiles,
-      _backupVersion: 'v7-full-az',
+      _backupVersion: BACKUP_VERSION,
       _exportedAt: new Date().toISOString(),
       _exportedTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       _app: 'RJ TRACKER Pro ' + APP_VERSION,
@@ -130,7 +137,7 @@ export async function buildFullBackup(ctx: BackupContext): Promise<BuiltBackup> 
       todos: readLocalStorage('nursetrack-todos'),
       calendarNotes: readLocalStorage('nursetrack-calendar-notes'),
       tickerPrefs: readLocalStorage('nursetrack-ticker-prefs'),
-      clockMode: readLocalStorage('nursetrack-clock-mode'),
+      clockMode: (() => { try { return localStorage.getItem('nursetrack-clock-mode'); } catch { return null; } })(),
       dbSessions: readLocalStorage('nursing-dbsessions-v1'),
       calendarSync: readLocalStorage('nursetrack-calendar-sync') ?? localStorage.getItem('nursetrack-calendar-sync'),
       excludedSubjects: readLocalStorage('nursetrack-excluded-subjects'),
@@ -175,5 +182,10 @@ export async function buildFullBackup(ctx: BackupContext): Promise<BuiltBackup> 
       })),
     };
 
-  return { data: fullBackup, topics: allTopicsList.length, mcqs: totalMcqs, subjects: allSubjects.length };
+  // ── Exact copy of every stored value + integrity manifest (this is what Restore uses) ──
+  const raw = collectDeviceRaw(includeSecrets);
+  const manifest = await buildManifest(raw, { app: fullBackup._app, source: 'device', includesSecrets: includeSecrets });
+  const complete = { ...fullBackup, raw, _manifest: manifest } as Record<string, any>;
+
+  return { data: complete, topics: allTopicsList.length, mcqs: totalMcqs, subjects: allSubjects.length };
 }

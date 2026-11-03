@@ -437,7 +437,7 @@ async function performSync(reason: string): Promise<SyncResult> {
 
   // First time THIS account touches THIS device: keep an untouched copy of the
   // on-device data before anything is merged or uploaded (see migrate.ts).
-  const firstContact = !meta.userId;
+  const firstContact = !meta.userId || !meta.lastSyncAt;   // no successful sync of this account on this device yet
   if (firstContact && localCount > 0) await createPreMigrationBackup(session.user.id, local);
 
   const decision = meta.firstSyncDecision ?? (remoteCount === 0 ? 'device' : 'merge');
@@ -471,7 +471,7 @@ async function performSync(reason: string): Promise<SyncResult> {
       }
       if (b !== undefined && deepEqual(b, l)) { merged[key] = r; continue; }
       if (b !== undefined && deepEqual(b, r)) { merged[key] = l; continue; }
-      const result = mergeThreeWay(b, l, r, key);
+      const result = mergeThreeWay(b, l, r, key, firstContact && decision === 'merge' ? 'remote' : 'local');
       merged[key] = result.value;
       if (result.conflictCount) newConflicts.push(...recordConflicts(key, result.conflicts));
     }
@@ -537,7 +537,7 @@ async function performSync(reason: string): Promise<SyncResult> {
         }
         if (b !== undefined && deepEqual(b, l)) { reMerged[key] = r; continue; }
         if (b !== undefined && deepEqual(b, r)) { reMerged[key] = l; continue; }
-        const result = mergeThreeWay(b, l, r, key);
+        const result = mergeThreeWay(b, l, r, key, firstContact && decision === 'merge' ? 'remote' : 'local');
         reMerged[key] = result.value;
         if (result.conflictCount) newConflicts.push(...recordConflicts(key, result.conflicts));
       }

@@ -78,6 +78,8 @@ function arrayIdentityMap(items: unknown): Map<string, unknown> | null {
 interface Ctx {
   conflicts: MergeConflict[];
   depth: number;
+  /** Which side wins a genuine disagreement (default: this device). */
+  prefer: 'local' | 'remote';
 }
 
 function mergeValue(base: unknown, local: unknown, remote: unknown, path: string, ctx: Ctx): unknown {
@@ -88,8 +90,8 @@ function mergeValue(base: unknown, local: unknown, remote: unknown, path: string
   if (hasBase && deepEqual(base, remote)) return local;
 
   if (ctx.depth >= MAX_DEPTH) {
-    ctx.conflicts.push({ path, base, local, remote, resolution: 'local' });
-    return local;
+    ctx.conflicts.push({ path, base, local, remote, resolution: ctx.prefer });
+    return ctx.prefer === 'remote' ? remote : local;
   }
   ctx.depth++;
 
@@ -160,15 +162,20 @@ function mergeValue(base: unknown, local: unknown, remote: unknown, path: string
 
     // Real disagreement on a scalar (or an unkeyed array): keep this device's
     // value, and tell the user precisely what the other device had.
-    ctx.conflicts.push({ path, base, local, remote, resolution: 'local' });
-    return local;
+    ctx.conflicts.push({ path, base, local, remote, resolution: ctx.prefer });
+    return ctx.prefer === 'remote' ? remote : local;
   } finally {
     ctx.depth--;
   }
 }
 
-export function mergeThreeWay<T = unknown>(base: unknown, local: unknown, remote: unknown, rootPath = ''): MergeResult<T> {
-  const ctx: Ctx = { conflicts: [], depth: 0 };
+/**
+ * `prefer` decides genuine disagreements. Normal syncing keeps this device's value; the very first
+ * sync of a device that is joining an existing account prefers the account's value, because the
+ * device's values are then usually just start-up defaults and must not overwrite real settings.
+ */
+export function mergeThreeWay<T = unknown>(base: unknown, local: unknown, remote: unknown, rootPath = '', prefer: 'local' | 'remote' = 'local'): MergeResult<T> {
+  const ctx: Ctx = { conflicts: [], depth: 0, prefer };
   const value = mergeValue(base, local, remote, rootPath, ctx);
   return {
     value: value as T,

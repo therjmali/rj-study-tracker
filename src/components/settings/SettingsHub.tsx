@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback, useDeferredValue } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, X, ChevronDown, ChevronRight, CornerDownLeft } from 'lucide-react';
 import { Input } from '@project/components/ui/input';
 import type { Subject, DailyLog, User, AppState, UserSettings, HistoryEntry, ExamConfig, TrashItem, Reminder, DbStudySession } from '../../types';
@@ -16,6 +17,7 @@ import NotificationsPanel from '../platform/NotificationsPanel';
 import AutoBackupPanel from '../platform/AutoBackupPanel';
 import TrashTab from '../profile/TrashTab';
 import CloudSettingsPanel from '../cloud/CloudSettingsPanel';
+import DataCenter from '../data/DataCenter';
 import TextLayoutSettings from './TextLayoutSettings';
 import {
   DisplayModeSettings, AccentColorSettings, StudentModeSettings, StudyGoalsSettings, SRSSettings,
@@ -53,9 +55,15 @@ export interface SettingsHubProps {
   onOpenHelp?: () => void;
   dbSessions?: DbStudySession[];
   initialSection?: string;
+  /** Opens the profile editor sheet (owned by ProfilePage). */
+  onEditProfile?: () => void;
+  /** When provided, the search box renders into this element (the sticky header) instead of inline. */
+  searchSlot?: HTMLElement | null;
+  /** Ask the hub to open a setting from outside (status chips). Change `n` to re-trigger. */
+  jump?: { id: string; n: number } | null;
 }
 
-type ItemId =
+export type ItemId =
   | 'analytics' | 'achievements'
   | 'displayMode' | 'accent' | 'textLayout'
   | 'studentMode' | 'goals' | 'exams' | 'srs'
@@ -66,13 +74,19 @@ type ItemId =
   | 'notifications'
   | 'autoBackup'
   | 'backup' | 'trash'
-  | 'cloudSync'
+  | 'cloudSync' | 'profile' | 'dataCenter'
   | 'shortcuts' | 'help';
 
 interface ItemMeta { id: ItemId; icon: string; title: string; description: string; keywords: string[] }
 interface CategoryMeta { id: string; icon: string; title: string; subtitle: string; items: ItemMeta[] }
 
 const CATEGORIES: CategoryMeta[] = [
+  {
+    id: 'account', icon: '👤', title: 'Profile & Account', subtitle: 'Your name, photo, password and log out',
+    items: [
+      { id: 'profile', icon: '✏️', title: 'Edit Profile', description: 'Change your name, photo and cover, update your password, or log out', keywords: ['profile', 'name', 'photo', 'avatar', 'picture', 'cover', 'email', 'password', 'account', 'logout', 'log out', 'sign out', 'signout', 'edit', 'personal', 'information', 'delete account'] },
+    ],
+  },
   {
     id: 'cloud', icon: '☁️', title: 'Cloud & Sync', subtitle: 'Your account, devices and multi-device sync',
     items: [
@@ -133,7 +147,8 @@ const CATEGORIES: CategoryMeta[] = [
   {
     id: 'data', icon: '💾', title: 'Backup, Data & Trash', subtitle: 'Export, restore, recover and reset your data',
     items: [
-      { id: 'backup', icon: '🛡️', title: 'Backup & Restore', description: 'Export everything, import a backup, clear history or reset', keywords: ['backup', 'export', 'import', 'restore', 'download', 'json', 'reset', 'clear', 'history', 'delete', 'documentation', 'data', 'save'] },
+      { id: 'dataCenter', icon: '🗄️', title: 'Data Center — Download & Verify', description: 'Download everything (device or cloud copy), self-test your backup and see the A–Z list of what is stored', keywords: ['data', 'download', 'export', 'backup', 'cloud copy', 'verify', 'self test', 'inventory', 'a-z', 'az', 'all data', 'all settings', 'checksum', 'integrity', 'compare', 'sync status', 'size', 'storage'] },
+      { id: 'backup', icon: '🛡️', title: 'Import, Restore & Reset', description: 'Restore from a backup file, merge data, clear history or reset the app', keywords: ['backup', 'import', 'restore', 'json', 'reset', 'clear', 'history', 'delete', 'merge', 'upload', 'file', 'recover'] },
       { id: 'trash', icon: '🗑️', title: 'Trash', description: 'Restore or permanently delete removed subjects', keywords: ['trash', 'bin', 'deleted', 'recover', 'restore', 'remove', 'empty'] },
     ],
   },
@@ -161,7 +176,8 @@ interface FlatItem extends ItemMeta { catId: string; catTitle: string; haystack:
 const SUGGESTIONS = ['Dark mode', 'Text size', 'Daily goal', 'Cloud sync', 'Backup', 'Reminder', 'Timer'];
 
 export default function SettingsHub(props: SettingsHubProps) {
-  const { subjects, dailyLogs, settings, onUpdateSettings, dbSessions, trash, reminders, onUpdateReminders, onOpenHelp, initialSection } = props;
+  const { subjects, dailyLogs, settings, onUpdateSettings, dbSessions, trash, reminders, onUpdateReminders, onOpenHelp, initialSection, onEditProfile, searchSlot, jump } = props;
+  const rootRef = useRef<HTMLDivElement>(null);
 
   // Which sections are even available (some depend on optional callbacks)
   const categories = useMemo(() => CATEGORIES
@@ -236,6 +252,19 @@ export default function SettingsHub(props: SettingsHubProps) {
     return () => cancelAnimationFrame(raf);
   }, [scrollTarget]);
 
+  // Status chips (and other outside callers) can open a setting directly
+  useEffect(() => {
+    if (!jump) return;
+    const target = flat.find(i => i.id === jump.id);
+    if (target) goTo(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jump?.n]);
+
+  // Results render in the body while the (sticky) search box stays at the top: bring them into view
+  useEffect(() => {
+    if (searching) rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [searching]);
+
   // Deep-link on first mount
   useEffect(() => { if (initial?.item) setScrollTarget(initial.item); /* eslint-disable-next-line */ }, []);
 
@@ -268,6 +297,13 @@ export default function SettingsHub(props: SettingsHubProps) {
       case 'notifications': return <NotificationsPanel />;
       case 'autoBackup': return <AutoBackupPanel />;
       case 'cloudSync': return <CloudSettingsPanel />;
+      case 'profile': return (
+        <div className="space-y-3">
+          <p className="text-[12px] text-muted-foreground">Update how you appear across all your devices, change your password, or log out — all in one place.</p>
+          <button onClick={onEditProfile} className="w-full h-11 rounded-xl bg-primary text-primary-foreground text-sm font-bold active:scale-[0.99] transition-transform">Open profile editor</button>
+        </div>
+      );
+      case 'dataCenter': return <DataCenter appState={props.appState} subjects={subjects} settings={settings} history={props.history} trash={trash} user={props.user} />;
       case 'backup': return <BackupTab appState={props.appState} onImport={props.onImport} onReset={props.onReset} onClearHistory={props.onClearHistory} subjects={subjects} settings={settings} history={props.history} trash={trash} user={props.user} onUpdateUser={props.onUpdateUser} />;
       case 'trash': return <TrashTab trash={trash} onRestore={props.onRestoreTrash} onDelete={props.onDeleteTrash} onEmpty={props.onEmptyTrash} />;
       case 'shortcuts': return <KeyboardShortcutsSettings />;
@@ -278,27 +314,31 @@ export default function SettingsHub(props: SettingsHubProps) {
   const catBadge = (catId: string): string | undefined => (catId === 'data' && trash.length > 0 ? String(trash.length) : undefined);
   const staleDim = query !== deferredQuery;
 
+  const searchInput = (
+    <div className={`relative rounded-2xl border bg-card/40 transition-[border-color,box-shadow] duration-150 ${focused ? 'border-primary/50 shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]' : 'border-border/25'}`}>
+      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+      <Input
+        ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={onKeyDown}
+        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+        placeholder="Search all settings…"
+        role="combobox" aria-expanded={searching} aria-controls="settings-results" aria-label="Search settings"
+        autoComplete="off" autoCorrect="off" spellCheck={false} enterKeyHint="search"
+        className="h-11 pl-10 pr-10 border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+      />
+      {query && (
+        <button onClick={() => { setQuery(''); inputRef.current?.focus(); }} aria-label="Clear search"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-muted/40 hover:bg-muted/70 flex items-center justify-center active:scale-90 transition-[transform,background-color]">
+          <X className="w-3.5 h-3.5 text-muted-foreground" />
+        </button>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-3">
+    <div ref={rootRef} className="space-y-3" style={{ scrollMarginTop: 132 }}>
       {/* ── Search ── */}
       <div>
-        <div className={`relative rounded-2xl border bg-card/40 transition-[border-color,box-shadow] duration-150 ${focused ? 'border-primary/50 shadow-[0_0_0_3px_hsl(var(--primary)/0.10)]' : 'border-border/25'}`}>
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          <Input
-            ref={inputRef} value={query} onChange={e => setQuery(e.target.value)} onKeyDown={onKeyDown}
-            onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-            placeholder="Search settings — try “dark mode”, “text size”, “backup”…"
-            role="combobox" aria-expanded={searching} aria-controls="settings-results" aria-label="Search settings"
-            autoComplete="off" autoCorrect="off" spellCheck={false} enterKeyHint="search"
-            className="h-11 pl-10 pr-10 border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
-          />
-          {query && (
-            <button onClick={() => { setQuery(''); inputRef.current?.focus(); }} aria-label="Clear search"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-muted/40 hover:bg-muted/70 flex items-center justify-center active:scale-90 transition-[transform,background-color]">
-              <X className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-          )}
-        </div>
+        {searchSlot === undefined ? searchInput : searchSlot ? createPortal(searchInput, searchSlot) : null}
 
         {!searching && (focused || !openCat) && (
           <div className="flex gap-1.5 flex-wrap mt-2.5 animate-fade-in">
@@ -375,7 +415,7 @@ export default function SettingsHub(props: SettingsHubProps) {
                     {cat.items.map(item => {
                       const itemOpen = openItems.has(item.id);
                       return (
-                        <div key={item.id} id={`setting-${item.id}`} style={{ scrollMarginTop: 12 }}
+                        <div key={item.id} id={`setting-${item.id}`} style={{ scrollMarginTop: 128 }}
                           className="rounded-xl border border-border/15 bg-background/40 overflow-hidden">
                           <button onClick={() => toggleItem(item.id)} aria-expanded={itemOpen}
                             className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-muted/5 active:bg-muted/10 transition-colors">
