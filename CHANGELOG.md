@@ -1,5 +1,12 @@
 # Changelog
 
+## 15.0.1 — Fix: endless "Changes from another device were applied" refresh loop
+
+- **Root cause:** on a fresh sign-in the app creates default values (study sessions, excluded subjects…) while the first sync round-trip is in flight. The sync had read the device data *before* that round-trip, so when it finished it treated the new values as deleted, wiped them and reloaded the app — which created them again, forever.
+- The sync now reads device data after the network pull, and never overwrites or deletes anything that changed on the device during the sync; those newer values are uploaded by a follow-up sync (and keep the right merge ancestor).
+- Safety net: automatic cloud-refreshes are limited to 2 per 30 s; after that you get a "Refresh" button instead of a loop.
+- Copy cleanup: removed leftover references to the old self-hosted sync server.
+
 ## 15.0.0 — Supabase accounts & free cloud sync
 
 - Email + password accounts and multi-device sync now run on **Supabase (free tier)** instead of the self-hosted Node server. Same offline-first engine and three-way merge.

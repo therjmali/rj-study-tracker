@@ -299,7 +299,7 @@ export default function SyncCenter({ appState, settings, history, trash, reminde
             I already have an account
           </button>
           <p className="text-[10.5px] text-muted-foreground/80 leading-relaxed">
-            Sync server: <span className="font-mono text-muted-foreground">{cloud.endpoint || 'not set'}</span>
+            Cloud project: <span className="font-mono text-muted-foreground">{cloud.endpoint || 'not set'}</span>
           </p>
         </div>
       </motion.div>
