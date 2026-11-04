@@ -141,7 +141,7 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
       </div>
     </header>
     {showStreakWarning && (
-      <div className="sticky top-14 z-40 bg-chart-4/10 border-b border-chart-4/15 backdrop-blur-md">
+      <div className="bg-chart-4/10 border-b border-chart-4/15 backdrop-blur-md">
         <div className="flex items-center justify-center gap-2 px-4 py-2 max-w-6xl mx-auto">
           <Flame className="w-3.5 h-3.5 text-chart-4 animate-pulse shrink-0" />
           <span className="text-[11px] font-bold text-chart-4">

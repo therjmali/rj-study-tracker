@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { importFiles, rewriteVirtualUrls } from '@/platform/files';
 import { buildFullBackup } from '../../lib/backupBuilder';
-import { Download, Upload, Trash2, Lock, Shield, FileText, Code2, Globe } from 'lucide-react';
+import { Download, Upload, Trash2, Lock, Shield } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogCancel } from '@project/components/ui/alert-dialog';
@@ -294,8 +294,6 @@ export default function BackupTab({ appState, onImport, onReset, onClearHistory,
         </div>
       </GlowCard>
 
-      <DownloadSection appState={appState} subjects={subjects || []} />
-
       <ExactRestoreDialog doc={exactDoc} fileName={exactName} onClose={() => setExactDoc(null)} />
       <ImportPreviewDialog
         open={previewOpen}
@@ -333,54 +331,5 @@ export default function BackupTab({ appState, onImport, onReset, onClearHistory,
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-function DownloadSection({ appState, subjects }: { appState: AppState; subjects: Subject[] }) {
-  const downloadDocumentation = () => {
-    const totalTopics = subjects.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.length, 0), 0);
-    const doneTopics = subjects.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.filter(t => t.completed).length, 0), 0);
-    const doc = `# 🩺 NurseTrack Pro — Documentation\nGenerated: ${new Date().toLocaleString()}\n\nSubjects: ${subjects.length}\nTopics: ${doneTopics}/${totalTopics}\nDaily Logs: ${appState.dailyLogs.length}\n`;
-    const blob = new Blob([doc], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `NurseTrack-Pro-Doc-${new Date().toISOString().split('T')[0]}.md`; a.click();
-    URL.revokeObjectURL(url);
-    toast.success('📄 Documentation downloaded!');
-  };
-
-  return (
-    <GlowCard className="p-4" paper>
-      <h3 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
-        <Code2 className="w-4 h-4 text-primary" /> Export & Documentation
-      </h3>
-      <p className="text-xs text-muted-foreground mb-3">Download app documentation and source manifest.</p>
-      <div className="grid grid-cols-1 gap-2">
-        <Button variant="outline" onClick={downloadDocumentation} className="gap-2 h-11 text-xs justify-start">
-          <FileText className="w-4 h-4 text-primary" />
-          <div className="text-left">
-            <p className="font-bold">App Documentation</p>
-            <p className="text-[10px] text-muted-foreground font-normal">Quick summary • Markdown</p>
-          </div>
-        </Button>
-        <Button variant="outline" onClick={() => {
-          import('../../lib/docGenerator').then(({ generateDocHTML }) => {
-            const html = generateDocHTML(appState, subjects);
-            const blob = new Blob([html], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'NurseTrack-Pro-Visual-Docs-' + new Date().toISOString().split('T')[0] + '.html'; a.click();
-            URL.revokeObjectURL(url);
-            toast.success('🌐 Visual documentation downloaded!');
-          });
-        }} className="gap-2 h-11 text-xs justify-start">
-          <Globe className="w-4 h-4 text-accent" />
-          <div className="text-left">
-            <p className="font-bold">Visual Documentation (HTML)</p>
-            <p className="text-[10px] text-muted-foreground font-normal">Screen previews • Self-contained</p>
-          </div>
-        </Button>
-      </div>
-    </GlowCard>
   );
 }

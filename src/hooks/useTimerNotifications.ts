@@ -1,17 +1,17 @@
 import { useEffect, useRef } from 'react';
 import type { PomodoroSettings } from '../types';
-import { getTimerCore, type GlobalTimerState, type TimerCore } from './useGlobalTimer';
+import { getTimerCore, isCycleCore, type GlobalTimerState, type TimerCore } from './useGlobalTimer';
 import { timerClear, timerDone, timerPublish, timerSaved, type TimerNotifyPayload } from '../platform/timerNotify';
 
 const MODE_LABEL = {
   stopwatch: 'Stopwatch',
   countdown: 'Countdown',
 } as const;
-const PHASE_LABEL = { focus: 'Pomodoro focus', short: 'Short break', long: 'Long break' } as const;
+const PHASE_LABEL = { focus: 'Focus', short: 'Short break', long: 'Long break' } as const;
 
 function phaseTotalMs(core: TimerCore, pom: PomodoroSettings): number {
   if (core.appMode === 'stopwatch') return 0;
-  if (core.appMode === 'countdown') return core.focusDuration * 60_000;
+  if (!isCycleCore(core)) return core.focusDuration * 60_000;
   return (core.phase === 'focus' ? core.focusDuration : core.phase === 'short' ? pom.shortBreakMin : pom.longBreakMin) * 60_000;
 }
 
@@ -21,16 +21,17 @@ export interface TimerNotifyExtra { unitName?: string; subjectColor?: string }
 export function buildTimerPayload(core: TimerCore, pom: PomodoroSettings, extra: TimerNotifyExtra = {}): TimerNotifyPayload {
   const stopwatch = core.appMode === 'stopwatch';
   const running = stopwatch ? core.swRunning : core.cdRunning;
-  const modeLabel = stopwatch ? MODE_LABEL.stopwatch : core.appMode === 'countdown' ? MODE_LABEL.countdown : PHASE_LABEL[core.phase];
+  const cycle = isCycleCore(core);
+  const modeLabel = stopwatch ? MODE_LABEL.stopwatch : cycle ? PHASE_LABEL[core.phase] : MODE_LABEL.countdown;
   const link = core.topicName || core.subjectName;
-  const isBreak = core.appMode === 'pomodoro' && core.phase !== 'focus';
+  const isBreak = cycle && core.phase !== 'focus';
   const total = phaseTotalMs(core, pom);
 
-  const finishedFocus = core.appMode === 'pomodoro' && core.phase === 'focus';
-  const endTitle = core.appMode === 'countdown' ? '⏳ Countdown complete'
-    : finishedFocus ? '🍅 Focus session complete' : '☕ Break over';
-  const endBody = core.appMode === 'countdown' ? `${core.focusDuration} min of study logged${link ? ` · ${link}` : ''}.`
-    : finishedFocus ? 'Nice work — time for a break.' : 'Ready for the next focus session?';
+  const finishedFocus = cycle && core.phase === 'focus';
+  const endTitle = !cycle ? '⏳ Countdown complete'
+    : finishedFocus ? '🍅 Focus block complete' : '☕ Break over';
+  const endBody = !cycle ? `${core.focusDuration} min of study logged${link ? ` · ${link}` : ''}.`
+    : finishedFocus ? 'Nice work — time for a break.' : 'Ready for the next focus block?';
 
   return {
     v: 2,
@@ -56,8 +57,8 @@ export function buildTimerPayload(core: TimerCore, pom: PomodoroSettings, extra:
     stopLabel: isBreak ? 'Skip break' : 'Stop & Save',
     endTitle: core.appMode === 'stopwatch' ? '' : endTitle,
     endBody: core.appMode === 'stopwatch' ? '' : endBody,
-    nextId: core.appMode === 'pomodoro' ? 'timer-toggle' : '',
-    nextLabel: core.appMode === 'pomodoro' ? (finishedFocus ? 'Start break' : 'Start focus') : '',
+    nextId: cycle ? 'timer-toggle' : '',
+    nextLabel: cycle ? (finishedFocus ? 'Start break' : 'Start focus') : '',
   };
 }
 
@@ -100,14 +101,14 @@ export function useTimerNotifications(state: GlobalTimerState, pomodoro: Pomodor
   useEffect(() => {
     const onFinished = (e: Event) => {
       if (!document.hidden) return;
-      const d = (e as CustomEvent<{ mode: string; phase: string; minutes: number }>).detail;
+      const d = (e as CustomEvent<{ mode: string; cycle?: boolean; phase: string; minutes: number }>).detail;
       if (!d) return;
-      if (d.mode === 'countdown') {
+      if (!d.cycle) {
         void timerDone('⏳ Countdown complete', `${d.minutes} min of study logged.`);
       } else if (d.phase === 'focus') {
-        void timerDone('🍅 Focus session complete', 'Nice work — time for a break.', { id: 'timer-toggle', label: 'Start break' });
+        void timerDone('🍅 Focus block complete', 'Nice work — time for a break.', { id: 'timer-toggle', label: 'Start break' });
       } else {
-        void timerDone('☕ Break over', 'Ready for the next focus session?', { id: 'timer-toggle', label: 'Start focus' });
+        void timerDone('☕ Break over', 'Ready for the next focus block?', { id: 'timer-toggle', label: 'Start focus' });
       }
     };
     const onSaved = (e: Event) => {

@@ -63,7 +63,7 @@ export default function GamificationPanel({ subjects, dailyLogs, onPomodoroCompl
           <Gift className="w-4 h-4 mr-1" /> Rewards
         </Button>
         <Button variant={tab === 'pomodoro' ? 'default' : 'outline'} size="sm" onClick={() => setTab('pomodoro')}>
-          <Timer className="w-4 h-4 mr-1" /> Pomodoro 🍅
+          <Timer className="w-4 h-4 mr-1" /> Focus Timer ⏱️
         </Button>
       </div>
 

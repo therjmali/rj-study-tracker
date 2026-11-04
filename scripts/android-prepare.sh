@@ -62,7 +62,12 @@ fi
 GRADLE=android/app/build.gradle
 sed -i -E "s/versionCode [0-9]+/versionCode ${VERSION_CODE}/; s/versionName \"[^\"]*\"/versionName \"${VERSION_NAME}\"/" "$GRADLE"
 
-# Portrait only, like the web app
-sed -i 's/android:name="com.getcapacitor.myapp.MainActivity"/android:name="com.getcapacitor.myapp.MainActivity"\n            android:screenOrientation="portrait"/' android/app/src/main/AndroidManifest.xml || true
-grep -q 'screenOrientation' android/app/src/main/AndroidManifest.xml || sed -i '0,/android:name=".MainActivity"/s//android:name=".MainActivity"\n            android:screenOrientation="portrait"/' android/app/src/main/AndroidManifest.xml
+# Orientation: NO manifest lock. A portrait lock makes Android show the app as a narrow strip in the
+# middle of a tablet held in landscape. MainActivity keeps phones in portrait and lets tablets and
+# foldables rotate freely and fill the whole screen (the web layout switches to the side-navigation
+# layout from 1024 px wide). Also make sure nothing caps the window's aspect ratio.
+sed -i '/android:screenOrientation=/d; /android:maxAspectRatio=/d; /android.max_aspect_ratio/d' "$MANIFEST"
+if ! grep -q 'android:resizeableActivity' "$MANIFEST"; then
+  sed -i '0,/<activity/s//<activity\n            android:resizeableActivity="true"/' "$MANIFEST"
+fi
 echo "Prepared Android project: ${VERSION_NAME} (${VERSION_CODE})"

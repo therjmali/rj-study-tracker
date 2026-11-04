@@ -11,8 +11,8 @@ function fmt(sec: number) {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-const ICON = { pomodoro: '🍅', countdown: '⏳', stopwatch: '⏱️' } as const;
-const NAME = { pomodoro: 'Pomodoro', countdown: 'Countdown', stopwatch: 'Stopwatch' } as const;
+const ICON = { countdown: '⏳', stopwatch: '⏱️' } as const;
+const NAME = { countdown: 'Countdown', stopwatch: 'Stopwatch' } as const;
 
 interface Props {
   timer: GlobalTimerState;
@@ -27,10 +27,11 @@ export default function FloatingTimer({ timer, onClick, totalSec }: Props) {
   if (!timer.active && !timer.hasProgress) return null;
 
   const isStopwatch = timer.appMode === 'stopwatch';
+  const onBreak = timer.cycle && timer.phase !== 'focus';
   const display = isStopwatch ? fmt(swTime) : fmt(timeLeft);
   const label = timer.topicName
     ? timer.topicName.length > 12 ? timer.topicName.slice(0, 11) + '…' : timer.topicName
-    : NAME[timer.appMode];
+    : onBreak ? (timer.phase === 'long' ? 'Long break' : 'Short break') : NAME[timer.appMode];
 
   const total = totalSec ?? timer.focusDuration * 60;
   const pct = isStopwatch ? ((swTime % 3600) / 3600) * 100 : Math.max(0, Math.min(100, ((total - timeLeft) / total) * 100));
@@ -60,7 +61,7 @@ export default function FloatingTimer({ timer, onClick, totalSec }: Props) {
             strokeDasharray={circ} strokeDashoffset={dashOffset}
             style={{ transition: 'stroke-dashoffset 0.5s ease-out', filter: 'drop-shadow(0 0 4px hsl(var(--primary) / 0.4))' }} />
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center text-sm">{ICON[timer.appMode]}</span>
+        <span className="absolute inset-0 flex items-center justify-center text-sm">{onBreak ? '☕' : ICON[timer.appMode]}</span>
       </div>
 
       <div className="flex flex-col items-start">
