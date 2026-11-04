@@ -26,6 +26,7 @@ export interface CatalogEntry {
 const DEVICE_ENTRIES: CatalogEntry[] = [
   { key: 'rj-autobackup-v1', label: 'Auto-backup schedule & history', group: 'device', type: 'json', scope: 'device' },
   { key: 'rj-app-icon-v1', label: 'Custom app icon', group: 'device', type: 'json', scope: 'device' },
+  { key: 'rj-ui-zoom-v1', label: 'App zoom level', group: 'device', type: 'string', scope: 'device' },
   { key: 'nursetrack-chat-history', label: 'AI tutor chat history', group: 'device', type: 'json', scope: 'device' },
   { key: 'rj-local-profile-v1', label: 'Guest profile on this device', group: 'device', type: 'json', scope: 'device' },
   { key: 'nursetrack-install-dismissed', label: 'Install prompt dismissed', group: 'device', type: 'string', scope: 'device' },

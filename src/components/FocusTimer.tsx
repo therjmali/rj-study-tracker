@@ -16,12 +16,14 @@ const PHASES: Record<TimerPhase, { label: string; icon: React.ReactNode; color: 
   long: { label: 'Long Break', icon: <Zap className="w-4 h-4" />, color: 'text-accent', stroke: 'hsl(var(--accent))' },
 };
 
-/** The three ways to use the one Focus Timer — same names and icons everywhere in the app. */
+/** The two ways to use the one Focus Timer — same names and icons everywhere in the app. */
 export const TIMER_MODES: { id: TimerAppMode; icon: string; label: string; hint: string }[] = [
-  { id: 'pomodoro', icon: '🍅', label: 'Pomodoro', hint: 'Focus blocks with automatic breaks' },
-  { id: 'countdown', icon: '⏳', label: 'Countdown', hint: 'One block of any length, no breaks' },
+  { id: 'countdown', icon: '⏳', label: 'Countdown', hint: 'One block of any length' },
   { id: 'stopwatch', icon: '⏱️', label: 'Stopwatch', hint: 'Open-ended — counts up until you stop' },
 ];
+
+/** Icon for a saved session's mode (sessions saved by older versions may say "pomodoro"). */
+export const modeIcon = (mode: string): string => (mode === 'stopwatch' ? '⏱️' : mode === 'pomodoro' ? '🍅' : '⏳');
 
 export const TIMER_PRESETS = [15, 25, 30, 45, 60, 90];
 
@@ -90,13 +92,12 @@ export default function FocusTimer({ settings, subjects = [], initialSubjectId, 
 
   const isPreLinked = !!(initialSubjectId && initialTopicId);
   const isStopwatch = timer.appMode === 'stopwatch';
-  const isPomodoro = timer.appMode === 'pomodoro';
-  const isBreak = isPomodoro && timer.phase !== 'focus';
+  const isCycle = timer.cycle;
+  const isBreak = isCycle && timer.phase !== 'focus';
   const locked = timer.active || timer.hasProgress;
 
   const totalSec = isStopwatch ? 0
-    : timer.appMode === 'countdown' ? timer.focusDuration * 60
-    : (timer.phase === 'focus' ? timer.focusDuration : timer.phase === 'short' ? settings.shortBreakMin : settings.longBreakMin) * 60;
+    : (!isCycle || timer.phase === 'focus' ? timer.focusDuration : timer.phase === 'short' ? settings.shortBreakMin : settings.longBreakMin) * 60;
 
   const displaySec = isStopwatch ? swTime : timeLeft;
   const elapsedSec = isStopwatch ? swTime : Math.max(0, totalSec - timeLeft);
@@ -105,7 +106,7 @@ export default function FocusTimer({ settings, subjects = [], initialSubjectId, 
   const circumference = 2 * Math.PI * 54;
   const offset = circumference - (Math.min(100, pct) / 100) * circumference;
   const subjectColor = selectedSubject?.color;
-  const strokeColor = subjectColor || (isStopwatch ? 'hsl(var(--primary))' : isPomodoro ? PHASES[timer.phase].stroke : 'hsl(var(--accent))');
+  const strokeColor = subjectColor || (isStopwatch ? 'hsl(var(--primary))' : isCycle ? PHASES[timer.phase].stroke : 'hsl(var(--accent))');
 
   const canSave = !isBreak && elapsedSec >= 30 && locked;
   const saveMinutes = Math.max(1, Math.round(elapsedSec / 60));
@@ -114,7 +115,9 @@ export default function FocusTimer({ settings, subjects = [], initialSubjectId, 
     ? (isStopwatch
       ? (timer.sessionStartedAt ? `Started at ${atClock(timer.sessionStartedAt)}` : 'Running')
       : `Ends at ${atClock(Date.now() + timeLeft * 1000)}`)
-    : timer.hasProgress ? 'Paused' : TIMER_MODES.find(m => m.id === timer.appMode)?.hint ?? '';
+    : timer.hasProgress ? 'Paused'
+    : isCycle ? 'Focus blocks with automatic breaks'
+    : TIMER_MODES.find(m => m.id === timer.appMode)?.hint ?? '';
 
   const todayMinutes = log.reduce((a, e) => a + e.minutes, 0);
 
@@ -133,8 +136,8 @@ export default function FocusTimer({ settings, subjects = [], initialSubjectId, 
 
   return (
     <div className="space-y-4">
-      {/* Mode selector — the one place where Pomodoro / Countdown / Stopwatch are chosen */}
-      <div role="tablist" aria-label="Timer mode" className="grid grid-cols-3 gap-1.5 rounded-2xl border border-border/20 bg-card/40 p-1">
+      {/* Mode selector — the one place where Countdown / Stopwatch are chosen */}
+      <div role="tablist" aria-label="Timer mode" className="grid grid-cols-2 gap-1.5 rounded-2xl border border-border/20 bg-card/40 p-1">
         {TIMER_MODES.map(m => {
           const on = timer.appMode === m.id;
           return (
@@ -204,7 +207,7 @@ export default function FocusTimer({ settings, subjects = [], initialSubjectId, 
 
           <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
             <span className="text-[11px] font-bold text-muted-foreground mb-1">
-              {TIMER_MODES.find(m => m.id === timer.appMode)?.icon} {isPomodoro ? PHASES[timer.phase].label : TIMER_MODES.find(m => m.id === timer.appMode)?.label}
+              {isBreak ? (timer.phase === 'short' ? '☕' : '🌿') : TIMER_MODES.find(m => m.id === timer.appMode)?.icon} {isCycle ? PHASES[timer.phase].label : TIMER_MODES.find(m => m.id === timer.appMode)?.label}
             </span>
             <span className="text-4xl font-black font-mono text-foreground leading-none tracking-tight tabular-nums">
               {fmtClock(displaySec)}
@@ -220,7 +223,7 @@ export default function FocusTimer({ settings, subjects = [], initialSubjectId, 
         </div>
       </div>
 
-      {/* Length presets (Pomodoro focus + Countdown) */}
+      {/* Length presets (Countdown) */}
       {!isStopwatch && !isBreak && (
         <div className="flex flex-wrap gap-2 items-center justify-center">
           {TIMER_PRESETS.map(p => (
@@ -240,8 +243,25 @@ export default function FocusTimer({ settings, subjects = [], initialSubjectId, 
         </div>
       )}
 
-      {/* Pomodoro phase switcher */}
-      {isPomodoro && (
+      {/* Auto breaks — the old Pomodoro, now one switch inside Countdown */}
+      {!isStopwatch && (
+        <button type="button" role="switch" aria-checked={isCycle} onClick={() => actions.setCycle(!isCycle)}
+          className={`w-full flex items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left transition-colors ${isCycle ? 'border-primary/40 bg-primary/8' : 'border-border/20 bg-card/30'} ${locked ? 'opacity-60' : ''}`}>
+          <span className="text-lg shrink-0">🍅</span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[12px] font-bold text-foreground">Auto breaks</span>
+            <span className="block text-[10px] text-muted-foreground leading-snug">
+              {isCycle ? `Short break after each block, long break every 4th (${settings.shortBreakMin} / ${settings.longBreakMin} min)` : 'Turn on for focus → break cycles'}
+            </span>
+          </span>
+          <span className={`relative w-10 h-6 rounded-full shrink-0 transition-colors ${isCycle ? 'bg-primary' : 'bg-muted-foreground/30'}`}>
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isCycle ? 'translate-x-4' : ''}`} />
+          </span>
+        </button>
+      )}
+
+      {/* Phase switcher (only while auto breaks are on) */}
+      {isCycle && (
         <div className="flex justify-center gap-2">
           {(['focus', 'short', 'long'] as TimerPhase[]).map(m => (
             <Button key={m} variant={timer.phase === m ? 'default' : 'outline'} size="sm" onClick={() => actions.switchPhase(m)}
@@ -309,7 +329,7 @@ export default function FocusTimer({ settings, subjects = [], initialSubjectId, 
             {log.slice(-8).reverse().map((s, i) => (
               <div key={i} className="flex items-center gap-2 text-[10px]">
                 <span className="text-muted-foreground font-mono w-12">{s.time}</span>
-                <span className="shrink-0">{TIMER_MODES.find(m => m.id === s.mode)?.icon}</span>
+                <span className="shrink-0">{modeIcon(s.mode)}</span>
                 <span className="font-bold text-foreground truncate">{s.label}</span>
                 <span className="font-mono text-muted-foreground ml-auto">{fmtDuration(s.minutes)}</span>
               </div>

@@ -24,6 +24,7 @@ import { topicMatchesFilter, topicMatchesSearch, type SyllabusFilterState } from
 import { toast } from 'sonner';
 import DeepSearchToggle from '../shared/DeepSearchToggle';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { zoomModifier } from '../../platform/zoom';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -554,7 +555,7 @@ const SubjectCard = memo(function SubjectCard({
             <DeepSearchToggle enabled={localDeepSearch} onToggle={() => setLocalDeepSearch(p => !p)} />
           </div>
           {editModeAll ? (
-          <DndContext sensors={unitDndSensors} collisionDetection={closestCenter} onDragEnd={handleUnitDragEnd}>
+          <DndContext sensors={unitDndSensors} collisionDetection={closestCenter} modifiers={[zoomModifier]} onDragEnd={handleUnitDragEnd}>
             <SortableContext items={origSubject.units.map(u => u.id)} strategy={verticalListSortingStrategy}>
           {origSubject.units.map((unit, idx) => (
             <SortableUnitWrapper key={unit.id} id={unit.id} isDragActive>

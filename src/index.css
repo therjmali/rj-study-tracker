@@ -3,6 +3,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* App-wide Zoom: `zoom` on <html> also multiplies viewport units, so every vh/vw in the compiled CSS is
+   rewritten to these variables (see postcss.config.js), which divide the zoom back out. */
+:root {
+  --rj-zoom: 1;
+  --rj-vh: calc(1vh / var(--rj-zoom));
+  --rj-svh: calc(1svh / var(--rj-zoom));
+  --rj-lvh: calc(1lvh / var(--rj-zoom));
+  --rj-dvh: calc(1dvh / var(--rj-zoom));
+  --rj-vw: calc(1vw / var(--rj-zoom));
+  --rj-svw: calc(1svw / var(--rj-zoom));
+  --rj-lvw: calc(1lvw / var(--rj-zoom));
+  --rj-dvw: calc(1dvw / var(--rj-zoom));
+}
+
 @layer base {
   :root {
     /* Backfilled during migration to 2.0 */

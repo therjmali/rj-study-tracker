@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowLeft, LogOut, PencilLine } from 'lucide-react';
 import { isImageAvatar } from '@/lib/avatar';
@@ -54,10 +54,22 @@ export default function ProfilePage(props: Props) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
-  const [searchSlot, setSearchSlot] = useState<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
   const [jump, setJump] = useState<{ id: string; n: number } | null>(null);
 
   const isPhotoUrl = isImageAvatar(user.avatar);
+
+  // The settings search sticks right below the title bar; tell it exactly how tall that bar is.
+  useLayoutEffect(() => {
+    const header = headerRef.current; const host = scrollRef.current;
+    if (!header || !host) return;
+    const set = () => host.style.setProperty('--settings-header-h', `${Math.round(header.getBoundingClientRect().height / (Number(getComputedStyle(document.documentElement).getPropertyValue('--rj-zoom')) || 1))}px`);
+    set();
+    const ro = new ResizeObserver(set); ro.observe(header);
+    window.addEventListener('resize', set);
+    return () => { ro.disconnect(); window.removeEventListener('resize', set); };
+  }, []);
 
   const stats = useMemo(() => getStats(subjects, dailyLogs, dbSessions), [subjects, dailyLogs, dbSessions]);
   const totalTopics = subjects.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.length, 0), 0);
@@ -69,12 +81,12 @@ export default function ProfilePage(props: Props) {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
       transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-      className="fixed inset-0 z-[100] bg-background overflow-y-auto will-change-transform" style={{ willChange: 'scroll-position, transform' }}>
+      ref={scrollRef} className="fixed inset-0 z-[100] bg-background overflow-y-auto will-change-transform" style={{ willChange: 'scroll-position, transform' }}>
 
-      {/* ── Sticky top bar: title + settings search, always within reach ── */}
-      <div className="sticky top-0 z-30 bg-background border-b border-border/20 shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      {/* ── Sticky title bar ── */}
+      <div ref={headerRef} className="sticky top-0 z-30 bg-background border-b border-border/20 shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="max-w-2xl mx-auto px-4 pt-2.5 pb-2.5">
-          <div className="flex items-center gap-2.5 mb-2">
+          <div className="flex items-center gap-2.5">
             <button onClick={onClose} aria-label="Back" className="w-8 h-8 rounded-full bg-card/60 flex items-center justify-center border border-border/20 active:scale-90 transition-transform">
               <ArrowLeft className="w-4 h-4 text-foreground" />
             </button>
@@ -83,7 +95,6 @@ export default function ProfilePage(props: Props) {
               <X className="w-4 h-4 text-foreground" />
             </button>
           </div>
-          <div ref={setSearchSlot} />
         </div>
       </div>
 
@@ -143,7 +154,7 @@ export default function ProfilePage(props: Props) {
           </button>
         )}
 
-        {/* ── Settings Hub (search box is portalled into the sticky bar above) ── */}
+        {/* ── Settings Hub: search + suggestions sit directly below the AI Tutor card ── */}
         <SettingsHub
           user={user} onUpdateUser={onUpdateUser} subjects={subjects} dailyLogs={dailyLogs} appState={appState}
           settings={settings} onUpdateSettings={onUpdateSettings} onImport={onImport} onReset={onReset} onClearHistory={onClearHistory}
@@ -151,7 +162,7 @@ export default function ProfilePage(props: Props) {
           trash={trash} onRestoreTrash={onRestoreTrash} onDeleteTrash={onDeleteTrash} onEmptyTrash={onEmptyTrash}
           reminders={reminders} onUpdateReminders={onUpdateReminders} onOpenHelp={onOpenHelp}
           dbSessions={dbSessions} initialSection={initialSection}
-          onEditProfile={() => setEditorOpen(true)} searchSlot={searchSlot} jump={jump}
+          onEditProfile={() => setEditorOpen(true)} jump={jump}
         />
       </div>
 
