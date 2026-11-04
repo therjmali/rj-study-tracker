@@ -1208,12 +1208,12 @@ function AppInner() {
     });
   }, [appState.subjects, updateSubjects, addHistoryEntries, saveTopicToCloud, globalTopicDetail]);
 
-  const handlePomodoroComplete_inner = useCallback((data: { minutes: number; subjectId?: string; unitId?: string; topicId?: string; mode?: 'pomodoro' | 'countdown' | 'stopwatch'; startedAt?: number; endedAt?: number; note?: string }) => {
+  const handlePomodoroComplete_inner = useCallback((data: { minutes: number; subjectId?: string; unitId?: string; topicId?: string; mode?: 'pomodoro' | 'countdown' | 'stopwatch'; cycle?: boolean; startedAt?: number; endedAt?: number; note?: string }) => {
     const { minutes, subjectId, unitId, topicId } = data;
     const sessionEnd = new Date(data.endedAt || Date.now());
     const sessionStart = new Date(data.startedAt || sessionEnd.getTime() - minutes * 60_000);
     const today = getLocalDateStr(sessionEnd);
-    const modeTag = data.mode === 'stopwatch' ? 'Stopwatch' : data.mode === 'countdown' ? 'Countdown' : 'Pomodoro';
+    const modeTag = data.mode === 'stopwatch' ? 'Stopwatch' : 'Countdown';
 
     // Find subject/topic names for the session
     const subject = subjectId ? appState.subjects.find(s => s.id === subjectId) : undefined;
@@ -1957,7 +1957,7 @@ function AppInner() {
 
       {/* Sync indicator — inline below header with dismiss */}
       {isGuest && !guestBannerDismissed && (
-        <div className="sticky top-14 z-40 flex items-center justify-center gap-2 py-2 material-ultra-thin border-b border-chart-4/10">
+        <div className="flex items-center justify-center gap-2 py-2 material-ultra-thin border-b border-chart-4/10">
           <button onClick={() => loginWithRedirect({ mode: 'signup' })}
             className="flex items-center gap-2 text-[11px] font-semibold text-chart-4 hover:text-chart-4/80 transition-colors">
             <span className="w-1.5 h-1.5 rounded-full bg-chart-4 animate-pulse" />
@@ -1991,7 +1991,7 @@ function AppInner() {
 
       {/* Floating Mini-Player — hidden on AI tab to avoid overlap */}
       {activeTab !== 'gamification' && <FloatingTimer timer={timerState} onClick={() => openRunningTopic()}
-        totalSec={(timerState.appMode === 'countdown' || timerState.phase === 'focus' ? timerState.focusDuration : timerState.phase === 'short' ? settings.pomodoroSettings.shortBreakMin : settings.pomodoroSettings.longBreakMin) * 60} />}
+        totalSec={(!timerState.cycle || timerState.phase === 'focus' ? timerState.focusDuration : timerState.phase === 'short' ? settings.pomodoroSettings.shortBreakMin : settings.pomodoroSettings.longBreakMin) * 60} />}
 
       <BottomSheet open={pomodoroOpen} onClose={() => { setPomodoroOpen(false); setPomodoroPreFill(null); }} title="⏱️ Focus Timer">
         <ErrorBoundary fallbackTitle="Focus Timer crashed">

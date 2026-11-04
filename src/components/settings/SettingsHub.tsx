@@ -10,15 +10,14 @@ import GamificationPanel from '../GamificationPanel';
 import ExamCountdown from '../ExamCountdown';
 import ReminderManager from '../reminders/ReminderManager';
 import OverviewTab from '../profile/OverviewTab';
-import BackupTab from '../profile/BackupTab';
 import AiDevicePanel from '../platform/AiDevicePanel';
 import AppIconPanel from '../platform/AppIconPanel';
 import NotificationsPanel from '../platform/NotificationsPanel';
 import AutoBackupPanel from '../platform/AutoBackupPanel';
-import TrashTab from '../profile/TrashTab';
 import CloudSettingsPanel from '../cloud/CloudSettingsPanel';
-import DataCenter from '../data/DataCenter';
+import DataHub, { type DataHubTab } from '../data/DataHub';
 import TextLayoutSettings from './TextLayoutSettings';
+import ZoomSettings from './ZoomSettings';
 import {
   DisplayModeSettings, AccentColorSettings, StudentModeSettings, StudyGoalsSettings, SRSSettings,
   PomodoroSettingsPanel, HelpGuideSettings, KeyboardShortcutsSettings,
@@ -65,7 +64,7 @@ export interface SettingsHubProps {
 
 export type ItemId =
   | 'analytics' | 'achievements'
-  | 'displayMode' | 'accent' | 'textLayout'
+  | 'displayMode' | 'accent' | 'textLayout' | 'zoom'
   | 'studentMode' | 'goals' | 'exams' | 'srs'
   | 'pomodoroTool' | 'pomodoroPrefs'
   | 'reminders'
@@ -73,8 +72,7 @@ export type ItemId =
   | 'appIcon'
   | 'notifications'
   | 'autoBackup'
-  | 'backup' | 'trash'
-  | 'cloudSync' | 'profile' | 'dataCenter'
+  | 'cloudSync' | 'profile' | 'dataHub'
   | 'shortcuts' | 'help';
 
 interface ItemMeta { id: ItemId; icon: string; title: string; description: string; keywords: string[] }
@@ -105,6 +103,7 @@ const CATEGORIES: CategoryMeta[] = [
     items: [
       { id: 'displayMode', icon: '🌗', title: 'Display Mode', description: 'Parchment, Ink or Papyrus — light and dark themes', keywords: ['theme', 'dark', 'light', 'mode', 'amoled', 'night', 'parchment', 'ink', 'papyrus', 'sepia', 'ancient'] },
       { id: 'accent', icon: '🎨', title: 'Accent Colour', description: 'The highlight colour used across the app', keywords: ['color', 'colour', 'accent', 'palette', 'tint', 'highlight'] },
+      { id: 'zoom', icon: '🔍', title: 'Zoom', description: 'Zoom the whole app in or out, with a live preview', keywords: ['zoom', 'scale', 'magnify', 'bigger', 'smaller', 'larger', 'enlarge', 'shrink', 'size', 'tablet', 'landscape', 'display', 'percent', 'fit', 'whole app', 'everything', 'preview', 'pinch', 'in', 'out'] },
       { id: 'textLayout', icon: '🔤', title: 'Text Size & Layout', description: 'Unit, module and topic font sizes, presets and row density', keywords: ['text', 'font', 'size', 'bigger', 'smaller', 'large', 'small', 'universal', 'density', 'compact', 'spacious', 'spacing', 'readable', 'unit', 'module', 'topic', 'layout'] },
     ],
   },
@@ -120,8 +119,8 @@ const CATEGORIES: CategoryMeta[] = [
   {
     id: 'focus', icon: '⏱️', title: 'Focus & Productivity', subtitle: 'Focus Timer and session preferences',
     items: [
-      { id: 'pomodoroTool', icon: '⏱️', title: 'Focus Timer', description: 'Pomodoro, Countdown or Stopwatch — start a session right here', keywords: ['pomodoro', 'timer', 'focus', 'session', 'stopwatch', 'start', 'productivity'] },
-      { id: 'pomodoroPrefs', icon: '⚙️', title: 'Focus Timer Preferences', description: 'Focus and break lengths, auto-start and sound', keywords: ['pomodoro', 'timer', 'break', 'duration', 'minutes', 'sound', 'beep', 'auto start', 'focus'] },
+      { id: 'pomodoroTool', icon: '⏱️', title: 'Focus Timer', description: 'Countdown (with auto breaks) or Stopwatch — start a session right here', keywords: ['pomodoro', 'countdown', 'auto breaks', 'timer', 'focus', 'session', 'stopwatch', 'start', 'productivity'] },
+      { id: 'pomodoroPrefs', icon: '⚙️', title: 'Countdown & Break Preferences', description: 'Default length, auto-break lengths, auto-start and sound', keywords: ['pomodoro', 'timer', 'break', 'duration', 'minutes', 'sound', 'beep', 'auto start', 'focus'] },
     ],
   },
   {
@@ -145,11 +144,9 @@ const CATEGORIES: CategoryMeta[] = [
     ],
   },
   {
-    id: 'data', icon: '💾', title: 'Backup, Data & Trash', subtitle: 'Export, restore, recover and reset your data',
+    id: 'data', icon: '💾', title: 'Backup, Data & Trash', subtitle: 'Download, restore, recover and reset your data',
     items: [
-      { id: 'dataCenter', icon: '🗄️', title: 'Data Center — Download & Verify', description: 'Download everything (device or cloud copy), self-test your backup and see the A–Z list of what is stored', keywords: ['data', 'download', 'export', 'backup', 'cloud copy', 'verify', 'self test', 'inventory', 'a-z', 'az', 'all data', 'all settings', 'checksum', 'integrity', 'compare', 'sync status', 'size', 'storage'] },
-      { id: 'backup', icon: '🛡️', title: 'Import, Restore & Reset', description: 'Restore from a backup file, merge data, clear history or reset the app', keywords: ['backup', 'import', 'restore', 'json', 'reset', 'clear', 'history', 'delete', 'merge', 'upload', 'file', 'recover'] },
-      { id: 'trash', icon: '🗑️', title: 'Trash', description: 'Restore or permanently delete removed subjects', keywords: ['trash', 'bin', 'deleted', 'recover', 'restore', 'remove', 'empty'] },
+      { id: 'dataHub', icon: '🗄️', title: 'Backup, Data & Trash', description: 'Download and verify everything, restore or reset, and recover deleted subjects — all in one place', keywords: ['data', 'download', 'export', 'backup', 'cloud copy', 'verify', 'self test', 'inventory', 'a-z', 'az', 'all data', 'all settings', 'checksum', 'integrity', 'compare', 'sync status', 'size', 'storage', 'import', 'restore', 'json', 'reset', 'clear', 'history', 'delete', 'merge', 'upload', 'file', 'recover', 'trash', 'bin', 'deleted', 'remove', 'empty'] },
     ],
   },
   {
@@ -226,16 +223,23 @@ export default function SettingsHub(props: SettingsHubProps) {
 
   /* ── navigation ── */
   const [scrollTarget, setScrollTarget] = useState<ItemId | null>(null);
+  const [dataTab, setDataTab] = useState<{ tab: DataHubTab; n: number }>({ tab: 'download', n: 0 });
   const toggleCat = useCallback((id: string) => setOpenCat(prev => (prev === id ? null : id)), []);
   const toggleItem = useCallback((id: ItemId) => setOpenItems(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }), []);
 
   const goTo = useCallback((it: { id: ItemId; catId: string }) => {
+    if (it.id === 'dataHub') {
+      // Land on the tab that matches what was searched for ("trash", "restore", …)
+      const q = normalizeText(query);
+      const tab: DataHubTab = /trash|bin|delet|recover|empty/.test(q) ? 'trash' : /restor|import|reset|clear|merge|upload|json|file/.test(q) ? 'restore' : 'download';
+      setDataTab(d => ({ tab, n: d.n + 1 }));
+    }
     setOpenCat(it.catId);
     setOpenItems(prev => new Set(prev).add(it.id));
     setQuery('');
     inputRef.current?.blur();
     setScrollTarget(it.id);
-  }, []);
+  }, [query]);
 
   // After the target has rendered, scroll it into view and flash it once
   useEffect(() => {
@@ -285,6 +289,7 @@ export default function SettingsHub(props: SettingsHubProps) {
       case 'displayMode': return <DisplayModeSettings settings={settings} onUpdate={onUpdateSettings} />;
       case 'accent': return <AccentColorSettings settings={settings} onUpdate={onUpdateSettings} />;
       case 'textLayout': return <TextLayoutSettings settings={settings} onUpdate={onUpdateSettings} />;
+      case 'zoom': return <ZoomSettings />;
       case 'studentMode': return <StudentModeSettings settings={settings} onUpdate={onUpdateSettings} />;
       case 'goals': return <StudyGoalsSettings settings={settings} onUpdate={onUpdateSettings} />;
       case 'exams': return <ExamCountdown subjects={subjects} exams={props.exams} onUpdateExams={props.onUpdateExams} />;
@@ -303,9 +308,12 @@ export default function SettingsHub(props: SettingsHubProps) {
           <button onClick={onEditProfile} className="w-full h-11 rounded-xl bg-primary text-primary-foreground text-sm font-bold active:scale-[0.99] transition-transform">Open profile editor</button>
         </div>
       );
-      case 'dataCenter': return <DataCenter appState={props.appState} subjects={subjects} settings={settings} history={props.history} trash={trash} user={props.user} />;
-      case 'backup': return <BackupTab appState={props.appState} onImport={props.onImport} onReset={props.onReset} onClearHistory={props.onClearHistory} subjects={subjects} settings={settings} history={props.history} trash={trash} user={props.user} onUpdateUser={props.onUpdateUser} />;
-      case 'trash': return <TrashTab trash={trash} onRestore={props.onRestoreTrash} onDelete={props.onDeleteTrash} onEmpty={props.onEmptyTrash} />;
+      case 'dataHub': return (
+        <DataHub appState={props.appState} subjects={subjects} settings={settings} history={props.history} trash={trash} user={props.user}
+          onUpdateUser={props.onUpdateUser} onImport={props.onImport} onReset={props.onReset} onClearHistory={props.onClearHistory}
+          onRestoreTrash={props.onRestoreTrash} onDeleteTrash={props.onDeleteTrash} onEmptyTrash={props.onEmptyTrash}
+          initialTab={dataTab.n > 0 ? dataTab.tab : undefined} nonce={dataTab.n} />
+      );
       case 'shortcuts': return <KeyboardShortcutsSettings />;
       case 'help': return onOpenHelp ? <HelpGuideSettings onOpenHelp={onOpenHelp} /> : null;
     }
@@ -335,13 +343,15 @@ export default function SettingsHub(props: SettingsHubProps) {
   );
 
   return (
-    <div ref={rootRef} className="space-y-3" style={{ scrollMarginTop: 132 }}>
-      {/* ── Search ── */}
+    <div ref={rootRef} className="space-y-3" style={{ scrollMarginTop: 'calc(var(--settings-header-h, 56px) + 4px)' }}>
+      {/* ── Search: sits right under the AI Tutor card and stays in reach (below the title bar) while scrolling ── */}
       <div>
-        {searchSlot === undefined ? searchInput : searchSlot ? createPortal(searchInput, searchSlot) : null}
+        <div className="sticky z-20 -mx-4 px-4 py-2 bg-background/95 backdrop-blur-md" style={{ top: 'var(--settings-header-h, 56px)' }}>
+          {searchSlot === undefined ? searchInput : searchSlot ? createPortal(searchInput, searchSlot) : null}
+        </div>
 
         {!searching && (focused || !openCat) && (
-          <div className="flex gap-1.5 flex-wrap mt-2.5 animate-fade-in">
+          <div className="flex gap-1.5 flex-wrap mt-1.5 animate-fade-in">
             {SUGGESTIONS.map(s => (
               <button key={s} onMouseDown={e => e.preventDefault()} onClick={() => { setQuery(s); inputRef.current?.focus(); }}
                 className="text-[11px] font-semibold px-2.5 py-1 rounded-full border border-border/25 bg-card/30 text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-primary/5 active:scale-95 transition-[transform,background-color,border-color,color] duration-150">
@@ -415,7 +425,7 @@ export default function SettingsHub(props: SettingsHubProps) {
                     {cat.items.map(item => {
                       const itemOpen = openItems.has(item.id);
                       return (
-                        <div key={item.id} id={`setting-${item.id}`} style={{ scrollMarginTop: 128 }}
+                        <div key={item.id} id={`setting-${item.id}`} style={{ scrollMarginTop: 'calc(var(--settings-header-h, 56px) + 76px)' }}
                           className="rounded-xl border border-border/15 bg-background/40 overflow-hidden">
                           <button onClick={() => toggleItem(item.id)} aria-expanded={itemOpen}
                             className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-muted/5 active:bg-muted/10 transition-colors">

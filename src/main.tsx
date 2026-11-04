@@ -1,4 +1,5 @@
 import { StrictMode } from 'react';
+import { MotionConfig } from 'framer-motion';
 import { createRoot } from 'react-dom/client';
 import { ErrorBoundary } from 'react-error-boundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -14,6 +15,7 @@ import { installFocusLog } from './platform/focusLog';
 import { installNativeBridge } from './platform/native';
 import { scheduleDailySnapshot } from './platform/snapshots';
 import { initializeCloudAuth } from './platform/cloud/authStore';
+import { applyZoom, zoomPagePoint } from './platform/zoom';
 
 const queryClient = new QueryClient();
 
@@ -42,14 +44,17 @@ function RuntimeErrorFallback({ error }: { error: Error }) {
 // then restore the cloud session (a cached session means instant offline start).
 bootStorage()
   .catch(() => undefined)
+  .then(() => { applyZoom(); }) // durable storage may have restored the saved zoom level
   .then(() => initializeCloudAuth().catch(() => undefined))
   .finally(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <ErrorBoundary fallbackRender={p => <RuntimeErrorFallback error={p.error} />}>
         <QueryClientProvider client={queryClient}>
-          <App />
-          <PlatformHost />
+          <MotionConfig transformPagePoint={zoomPagePoint}>
+            <App />
+            <PlatformHost />
+          </MotionConfig>
         </QueryClientProvider>
       </ErrorBoundary>
     </StrictMode>,

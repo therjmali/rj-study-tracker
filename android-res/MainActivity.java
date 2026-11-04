@@ -6,6 +6,7 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.database.Cursor;
@@ -68,6 +69,13 @@ public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+
+    // Phones stay in portrait; tablets and foldables rotate freely (respecting the user's rotation lock)
+    // and fill the whole screen instead of being letterboxed into a portrait strip.
+    boolean largeScreen = getResources().getConfiguration().smallestScreenWidthDp >= 600;
+    setRequestedOrientation(largeScreen
+        ? ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+        : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
     WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 

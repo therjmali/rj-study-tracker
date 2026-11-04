@@ -10,6 +10,8 @@ import {
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { TopicStatus } from '../../types';
+import { zoomModifier } from '../../platform/zoom';
+
 import type { TopicEdit } from './BulkUnitEditor';
 
 type SortKind = 'az' | 'module' | 'difficulty' | 'status' | 'reverse';
@@ -317,7 +319,7 @@ export default function ReorderPanel({ topics, commit, updateTopic, undoCount, o
 
       {/* List */}
       <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain -mx-1 px-1">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[lockX]}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[zoomModifier, lockX]}
           measuring={{ droppable: { strategy: MeasuringStrategy.WhileDragging } }}
           onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setActiveId(null)}>
           <SortableContext items={ids} strategy={verticalListSortingStrategy}>
