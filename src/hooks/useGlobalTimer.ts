@@ -1,9 +1,9 @@
 /**
  * Focus Timer engine — ONE timer for the whole app.
  *
- * Modes (what the student sees everywhere, with the same names and icons):
- *   • pomodoro  🍅  focus → break cycles (25 / 5 / 15 by default)
- *   • countdown ⏳  one custom block, no breaks
+ * Two modes (what the student sees everywhere, with the same names and icons):
+ *   • countdown ⏳  one block of any length. With "auto breaks" switched on it becomes a focus →
+ *                   break cycle (the old Pomodoro: short break after each block, long every 4th)
  *   • stopwatch ⏱️  open-ended, count up
  *
  * Design rules
@@ -19,13 +19,15 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { toast } from 'sonner';
 import type { PomodoroSettings } from '../types';
 
-export type TimerAppMode = 'pomodoro' | 'countdown' | 'stopwatch';
+export type TimerAppMode = 'countdown' | 'stopwatch';
 export type TimerPhase = 'focus' | 'short' | 'long';
 
 export interface TimerSessionData {
   minutes: number;
   seconds: number;
   mode: TimerAppMode;
+  /** The Countdown ran as a focus → break cycle (auto breaks on). */
+  cycle?: boolean;
   startedAt: number;
   endedAt: number;
   subjectId?: string;
@@ -45,7 +47,9 @@ export interface TimerSessionData {
 export interface GlobalTimerState {
   appMode: TimerAppMode;
   phase: TimerPhase;
-  /** Pomodoro / countdown is counting down. */
+  /** Countdown with auto breaks (focus → break cycles). Always false for the Stopwatch. */
+  cycle: boolean;
+  /** Countdown is counting down. */
   running: boolean;
   /** Stopwatch is counting up. */
   swRunning: boolean;
@@ -75,6 +79,8 @@ export interface TimerTick {
 export interface GlobalTimerActions {
   setAppMode: (m: TimerAppMode) => void;
   switchPhase: (m: TimerPhase) => void;
+  /** Turn automatic breaks (focus cycles) on or off for the Countdown. */
+  setCycle: (on: boolean) => void;
   /** Mode-aware start / pause / resume. */
   toggle: (at?: number) => void;
   /** Mode-aware: discard the current session. */
@@ -106,9 +112,10 @@ export interface GlobalTimerActions {
 export interface TimerCore {
   appMode: TimerAppMode;
   phase: TimerPhase;
+  /** Countdown runs as focus → break cycles. */
+  cycle: boolean;
   focusDuration: number;
-  /** Remembered length of each mode, so changing Countdown never changes the Pomodoro focus length. */
-  pomoMin: number;
+  /** Remembered Countdown length (restored when switching back from the Stopwatch). */
   countdownMin: number;
   customMinutes: number;
   sessions: number;
@@ -162,7 +169,10 @@ export function getTimerCore(): TimerCore | null { return latestCore; }
 
 /* ── Persistence ───────────────────────────────────────────────────── */
 const STORAGE_KEY = 'rj-focus-timer-v2';
-const MODES: TimerAppMode[] = ['pomodoro', 'countdown', 'stopwatch'];
+const MODES: TimerAppMode[] = ['countdown', 'stopwatch'];
+
+/** Countdown with auto breaks → the focus/short/long phases apply. */
+export const isCycleCore = (c: Pick<TimerCore, 'appMode' | 'cycle'>): boolean => c.appMode === 'countdown' && c.cycle;
 const PHASES: TimerPhase[] = ['focus', 'short', 'long'];
 
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -170,7 +180,7 @@ const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
 function defaultCore(s: PomodoroSettings): TimerCore {
   return {
-    appMode: 'pomodoro', phase: 'focus', focusDuration: s.focusMin, pomoMin: s.focusMin, countdownMin: 30, customMinutes: s.focusMin, sessions: 0,
+    appMode: 'countdown', phase: 'focus', cycle: false, focusDuration: s.focusMin, countdownMin: s.focusMin, customMinutes: s.focusMin, sessions: 0,
     cdRunning: false, cdEndAt: 0, cdRemMs: s.focusMin * 60_000,
     swRunning: false, swStartAt: 0, swElapsedMs: 0,
     subjectId: '', unitId: '', topicId: '', topicName: '', subjectName: '', note: '',
@@ -185,14 +195,15 @@ function loadCore(s: PomodoroSettings): TimerCore {
     if (!raw) return def;
     const p = JSON.parse(raw) as Record<string, unknown>;
     if (!p || typeof p !== 'object') return def;
-    const appMode = MODES.includes(p.appMode as TimerAppMode) ? (p.appMode as TimerAppMode) : def.appMode;
-    const phase = PHASES.includes(p.phase as TimerPhase) ? (p.phase as TimerPhase) : def.phase;
+    // Older versions had a third "pomodoro" mode: it is now a Countdown with auto breaks switched on.
+    const legacyPomodoro = p.appMode === 'pomodoro';
+    const appMode: TimerAppMode = legacyPomodoro ? 'countdown' : MODES.includes(p.appMode as TimerAppMode) ? (p.appMode as TimerAppMode) : def.appMode;
+    const cycle = appMode === 'countdown' && (legacyPomodoro || p.cycle === true);
+    const phase = cycle && PHASES.includes(p.phase as TimerPhase) ? (p.phase as TimerPhase) : 'focus';
     const focusDuration = Math.max(1, Math.min(480, num(p.focusDuration, def.focusDuration)));
-    const stored = Math.max(1, Math.min(480, num(p.focusDuration, def.focusDuration)));
-    const pomoMin = Math.max(1, Math.min(480, num(p.pomoMin, appMode === 'countdown' ? def.pomoMin : stored)));
-    const countdownMin = Math.max(1, Math.min(480, num(p.countdownMin, appMode === 'countdown' ? stored : 30)));
+    const countdownMin = Math.max(1, Math.min(480, num(p.countdownMin, focusDuration)));
     return {
-      appMode, phase, focusDuration, pomoMin, countdownMin,
+      appMode, phase, cycle, focusDuration, countdownMin,
       customMinutes: Math.max(1, Math.min(480, num(p.customMinutes, focusDuration))),
       sessions: Math.max(0, Math.floor(num(p.sessions, 0))),
       cdRunning: p.cdRunning === true, cdEndAt: num(p.cdEndAt, 0),
@@ -254,12 +265,12 @@ export function useGlobalTimer(
 
     const phaseMs = (c: TimerCore, phase: TimerPhase = c.phase) => {
       const s = settingsRef.current;
-      if (c.appMode === 'countdown') return c.focusDuration * 60_000;
+      if (!isCycleCore(c)) return c.focusDuration * 60_000;
       return (phase === 'focus' ? c.focusDuration : phase === 'short' ? s.shortBreakMin : s.longBreakMin) * 60_000;
     };
 
     const derive = (c: TimerCore): GlobalTimerState => ({
-      appMode: c.appMode, phase: c.phase,
+      appMode: c.appMode, phase: c.phase, cycle: isCycleCore(c),
       running: c.cdRunning, swRunning: c.swRunning, active: c.cdRunning || c.swRunning,
       hasProgress: c.appMode === 'stopwatch'
         ? !c.swRunning && c.swElapsedMs > 0
@@ -307,7 +318,7 @@ export function useGlobalTimer(
     const log = (c: TimerCore, seconds: number, startedAt: number, endedAt: number): TimerSessionData => {
       const minutes = Math.max(1, Math.round(seconds / 60));
       const data: TimerSessionData = {
-        minutes, seconds, mode: c.appMode, startedAt, endedAt,
+        minutes, seconds, mode: c.appMode, cycle: isCycleCore(c) || undefined, startedAt, endedAt,
         subjectId: c.subjectId || undefined, unitId: c.unitId || undefined, topicId: c.topicId || undefined,
         subjectName: c.subjectName || undefined, topicName: c.topicName || undefined,
         note: c.note.trim() || undefined,
@@ -323,6 +334,7 @@ export function useGlobalTimer(
       if (!c.cdRunning) return;
       const endedAt = c.cdEndAt;
       const finishedMode = c.appMode;
+      const finishedCycle = isCycleCore(c);
       const finishedPhase = c.phase;
       const finishedMinutes = c.focusDuration;
       c.cdRunning = false;
@@ -330,22 +342,22 @@ export function useGlobalTimer(
       playBeep();
       try {
         window.dispatchEvent(new CustomEvent('rj:timer-finished', {
-          detail: { mode: finishedMode, phase: finishedPhase, minutes: finishedMinutes, endedAt },
+          detail: { mode: finishedMode, cycle: finishedCycle, phase: finishedPhase, minutes: finishedMinutes, endedAt },
         }));
       } catch { /* ignore */ }
 
-      if (c.appMode === 'countdown' || c.phase === 'focus') {
+      if (!finishedCycle || c.phase === 'focus') {
         if (c.lastLoggedEnd !== endedAt) {
           c.lastLoggedEnd = endedAt;
           const total = c.focusDuration * 60;
           log(c, total, c.sessionStartedAt || endedAt - total * 1000, endedAt);
           c.sessions += 1;
-          toast.success(c.appMode === 'countdown'
+          toast.success(!finishedCycle
             ? `⏳ Countdown complete — ${c.focusDuration} min logged`
             : `🍅 Focus #${c.sessions} done — ${c.focusDuration} min logged`);
         }
         clearSession(c);
-        if (c.appMode === 'countdown') {
+        if (!finishedCycle) {
           c.cdRemMs = phaseMs(c);
         } else {
           c.phase = c.sessions % 4 === 0 ? 'long' : 'short';
@@ -375,8 +387,7 @@ export function useGlobalTimer(
     };
 
     const setLength = (c: TimerCore, m: number) => {
-      c.focusDuration = m; c.customMinutes = m;
-      if (c.appMode === 'countdown') c.countdownMin = m; else c.pomoMin = m;
+      c.focusDuration = m; c.customMinutes = m; c.countdownMin = m;
     };
 
     const guardIdle = (what: string): boolean => {
@@ -393,17 +404,25 @@ export function useGlobalTimer(
         if (!guardIdle('switching modes')) return;
         c.appMode = m;
         c.phase = 'focus';
-        if (m === 'pomodoro') c.focusDuration = c.pomoMin;
-        else if (m === 'countdown') c.focusDuration = c.countdownMin;
+        if (m === 'countdown') c.focusDuration = c.countdownMin;
         c.customMinutes = c.focusDuration;
         c.cdRemMs = phaseMs(c);
         c.swElapsedMs = 0;
         clearSession(c);
         commit();
       },
+      setCycle: (on) => {
+        const c = core();
+        if (c.appMode !== 'countdown' || on === c.cycle) return;
+        if (!guardIdle('changing auto breaks')) return;
+        c.cycle = on;
+        c.phase = 'focus';
+        c.cdRemMs = phaseMs(c);
+        commit();
+      },
       switchPhase: (p) => {
         const c = core();
-        if (c.appMode !== 'pomodoro' || p === c.phase) return;
+        if (!isCycleCore(c) || p === c.phase) return;
         if (!guardIdle('changing the phase')) return;
         c.phase = p;
         c.cdRemMs = phaseMs(c);
@@ -428,7 +447,7 @@ export function useGlobalTimer(
           if (c.cdRemMs <= 0) c.cdRemMs = phaseMs(c);
           c.cdEndAt = at + c.cdRemMs;
           c.cdRunning = true;
-          if (!c.sessionStartedAt && (c.appMode === 'countdown' || c.phase === 'focus')) {
+          if (!c.sessionStartedAt && (!isCycleCore(c) || c.phase === 'focus')) {
             c.sessionStartedAt = at - (phaseMs(c) - c.cdRemMs);
           }
         }
@@ -447,7 +466,7 @@ export function useGlobalTimer(
         let seconds = 0;
         if (c.appMode === 'stopwatch') {
           seconds = Math.round((c.swRunning ? Math.max(0, at - c.swStartAt) : c.swElapsedMs) / 1000);
-        } else if (c.appMode === 'countdown' || c.phase === 'focus') {
+        } else if (!isCycleCore(c) || c.phase === 'focus') {
           const remaining = c.cdRunning ? Math.max(0, c.cdEndAt - at) : c.cdRemMs;
           seconds = Math.round((phaseMs(c) - remaining) / 1000);
         }
@@ -463,7 +482,7 @@ export function useGlobalTimer(
           toast.info('Under 30 seconds — nothing was logged.');
         }
         c.swElapsedMs = 0; c.swStartAt = 0;
-        if (c.appMode === 'pomodoro') c.phase = 'focus';
+        c.phase = 'focus';
         c.cdRemMs = phaseMs(c);
         clearSession(c);
         commit();
@@ -556,13 +575,17 @@ export function useGlobalTimer(
     if (c.cdRunning && c.cdEndAt <= Date.now()) api.finishCountdown();
   }, [api]);
 
-  // Keep an idle Pomodoro in step with the configured focus length.
+  // When the default focus length is changed in Settings, an idle Countdown follows it right away
+  // (never on launch — that would undo the length the student picked last time).
+  const lastFocusMin = useRef(settings.focusMin);
   useEffect(() => {
+    if (lastFocusMin.current === settings.focusMin) return;
+    lastFocusMin.current = settings.focusMin;
     const c = api.core();
-    if (c.appMode !== 'pomodoro' || c.phase !== 'focus' || c.cdRunning || c.swRunning) return;
-    if (c.cdRemMs < c.focusDuration * 60_000) return;
+    if (c.appMode !== 'countdown' || c.phase !== 'focus' || c.cdRunning || c.swRunning) return;
+    if (c.cdRemMs < c.focusDuration * 60_000) return; // part-way through a session
     if (c.focusDuration === settings.focusMin) return;
-    c.focusDuration = settings.focusMin; c.pomoMin = settings.focusMin; c.customMinutes = settings.focusMin; c.cdRemMs = settings.focusMin * 60_000;
+    c.focusDuration = settings.focusMin; c.countdownMin = settings.focusMin; c.customMinutes = settings.focusMin; c.cdRemMs = settings.focusMin * 60_000;
     api.commit();
   }, [settings.focusMin, api]);
 

@@ -18,6 +18,7 @@ import {
 } from '@project/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { zoomModifier } from '../../platform/zoom';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { formatUnitNumber } from '../../lib/fancyDigits';
@@ -1131,7 +1132,7 @@ export default function UnitDetailView({
           {hasModules ? (
             moduleGroups.map((group, gIdx) => {
               if (group.name.startsWith('__ungrouped__')) return reorderMode ? (
-                <DndContext key={group.name} sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <DndContext key={group.name} sensors={dndSensors} collisionDetection={closestCenter} modifiers={[zoomModifier]} onDragEnd={handleDragEnd}>
                   <SortableContext items={group.directTopics.map(t => t.id)} strategy={verticalListSortingStrategy}>
                     {group.directTopics.map((topic, i) => (
                       <SortableLectureRow id={topic.id} key={topic.id} isDragActive topic={topic} index={i} onCycle={() => cycleStatus(topic)} onToggleImportant={() => onToggleImportant(topic.id)} onOpenDetail={() => onOpenTopicDetail(topic)} globalNumber={globalTopicMap.get(topic.id)} showGlobalNumber={subject.showTopicNumbers} searchQuery={search} isFocused={filtered.indexOf(topic) === focusedTopicIdx} showReorder onMoveUp={() => handleReorderTopic(topic.id, 'up')} onMoveDown={() => handleReorderTopic(topic.id, 'down')} isFirst={i === 0} isLast={i === group.directTopics.length - 1} onDelete={onDeleteTopic ? () => handleDeleteTopic(topic.id) : undefined} onDuplicate={() => handleDuplicateTopic(topic.id)} folderNum={hierarchicalNumMap.get(topic.id)} onCycleDifficulty={() => cycleDifficulty(topic)} />
@@ -1280,7 +1281,7 @@ export default function UnitDetailView({
                                     <div className="overflow-hidden animate-fade-in">
                                       <div className="ml-4 pl-3 border-l border-border/10 space-y-0.5 py-0.5">
                                         {reorderMode ? (
-                                        <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                        <DndContext sensors={dndSensors} collisionDetection={closestCenter} modifiers={[zoomModifier]} onDragEnd={handleDragEnd}>
                                           <SortableContext items={sm.topics.map(t => t.id)} strategy={verticalListSortingStrategy}>
                                             {sm.topics.map((topic, i) => <SortableLectureRow id={topic.id} key={topic.id} isDragActive topic={topic} index={i} onCycle={() => cycleStatus(topic)} onToggleImportant={() => onToggleImportant(topic.id)} onOpenDetail={() => onOpenTopicDetail(topic)} globalNumber={globalTopicMap.get(topic.id)} showGlobalNumber={subject.showTopicNumbers} searchQuery={search} isFocused={filtered.indexOf(topic) === focusedTopicIdx} showReorder onMoveUp={() => handleReorderTopic(topic.id, 'up')} onMoveDown={() => handleReorderTopic(topic.id, 'down')} isFirst={i === 0} isLast={i === sm.topics.length - 1} onDelete={onDeleteTopic ? () => handleDeleteTopic(topic.id) : undefined} onDuplicate={() => handleDuplicateTopic(topic.id)} folderNum={hierarchicalNumMap.get(topic.id)} onCycleDifficulty={() => cycleDifficulty(topic)} />)}
                                           </SortableContext>
@@ -1294,7 +1295,7 @@ export default function UnitDetailView({
                             );
                           })}
                           {reorderMode ? (
-                          <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                          <DndContext sensors={dndSensors} collisionDetection={closestCenter} modifiers={[zoomModifier]} onDragEnd={handleDragEnd}>
                             <SortableContext items={group.directTopics.map(t => t.id)} strategy={verticalListSortingStrategy}>
                               {group.directTopics.map((topic, i) => <SortableLectureRow id={topic.id} key={topic.id} isDragActive topic={topic} index={i} onCycle={() => cycleStatus(topic)} onToggleImportant={() => onToggleImportant(topic.id)} onOpenDetail={() => onOpenTopicDetail(topic)} globalNumber={globalTopicMap.get(topic.id)} showGlobalNumber={subject.showTopicNumbers} searchQuery={search} isFocused={filtered.indexOf(topic) === focusedTopicIdx} showReorder onMoveUp={() => handleReorderTopic(topic.id, 'up')} onMoveDown={() => handleReorderTopic(topic.id, 'down')} isFirst={i === 0} isLast={i === group.directTopics.length - 1} onDelete={onDeleteTopic ? () => handleDeleteTopic(topic.id) : undefined} onDuplicate={() => handleDuplicateTopic(topic.id)} folderNum={hierarchicalNumMap.get(topic.id)} onCycleDifficulty={() => cycleDifficulty(topic)} />)}
                             </SortableContext>
@@ -1308,7 +1309,7 @@ export default function UnitDetailView({
               );
             })
           ) : reorderMode ? (
-            <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext sensors={dndSensors} collisionDetection={closestCenter} modifiers={[zoomModifier]} onDragEnd={handleDragEnd}>
               <SortableContext items={filtered.map(t => t.id)} strategy={verticalListSortingStrategy}>
                 {filtered.map((topic, i) => <SortableLectureRow id={topic.id} key={topic.id} isDragActive topic={topic} index={i} onCycle={() => cycleStatus(topic)} onToggleImportant={() => onToggleImportant(topic.id)} onOpenDetail={() => onOpenTopicDetail(topic)} globalNumber={globalTopicMap.get(topic.id)} showGlobalNumber={subject.showTopicNumbers} searchQuery={search} isFocused={i === focusedTopicIdx} showReorder onMoveUp={() => handleReorderTopic(topic.id, 'up')} onMoveDown={() => handleReorderTopic(topic.id, 'down')} isFirst={i === 0} isLast={i === filtered.length - 1} onDelete={onDeleteTopic ? () => handleDeleteTopic(topic.id) : undefined} onDuplicate={() => handleDuplicateTopic(topic.id)} folderNum={hierarchicalNumMap.get(topic.id)} onCycleDifficulty={() => cycleDifficulty(topic)} />)}
               </SortableContext>

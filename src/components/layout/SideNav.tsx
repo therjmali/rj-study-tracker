@@ -20,8 +20,12 @@ interface Props {
 
 function SideNavInner({ activeTab, onTabChange, onOpenProfile, srsDueCount = 0 }: Props) {
   return (
-    <aside className="hidden lg:flex flex-col w-52 shrink-0 border-r border-border/10 material-thin h-[calc(100vh-56px)] sticky top-14 overflow-y-auto">
-      <nav className="p-3 space-y-1 flex-1">
+    // The outer column stretches the full height of the page (so the divider and tint reach the bottom);
+    // the inner panel sticks under the header and is sized by its content — so "Profile & Settings" is always
+    // visible right under the tabs, whatever the screen height, orientation, banner or zoom level.
+    <div className="hidden lg:block w-52 shrink-0 border-r border-border/10 material-thin">
+    <aside className="sticky top-14 flex flex-col max-h-[calc(100vh-3.5rem)] overflow-y-auto">
+      <nav className="p-3 space-y-1">
         {MAIN_TABS.map(tab => {
           const isActive = activeTab === tab.id;
           return (
@@ -46,7 +50,7 @@ function SideNavInner({ activeTab, onTabChange, onOpenProfile, srsDueCount = 0 }
           );
         })}
       </nav>
-      <div className="p-3 border-t border-border/8 space-y-0.5">
+      <div className="mx-3 mt-1 mb-3 pt-3 border-t border-border/10 space-y-0.5">
         <button onClick={onOpenProfile}
           className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-card/40 transition-all duration-200 active:scale-[0.98]">
           <UserIcon className="w-4 h-4" />
@@ -54,6 +58,7 @@ function SideNavInner({ activeTab, onTabChange, onOpenProfile, srsDueCount = 0 }
         </button>
       </div>
     </aside>
+    </div>
   );
 }
 

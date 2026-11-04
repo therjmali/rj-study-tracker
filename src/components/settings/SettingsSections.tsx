@@ -239,9 +239,9 @@ export function PomodoroSettingsPanel({ settings, onUpdate }: Props) {
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border border-border/15 bg-card/20 p-4 space-y-5">
-        <SliderField label="Focus session" icon={<span>🎯</span>} value={pomo.focusMin} min={15} max={60} step={5} unit="min" onChange={v => update({ focusMin: v })} />
-        <SliderField label="Short break" icon={<span>☕</span>} value={pomo.shortBreakMin} min={3} max={15} step={1} unit="min" onChange={v => update({ shortBreakMin: v })} />
-        <SliderField label="Long break" icon={<span>🌿</span>} value={pomo.longBreakMin} min={10} max={30} step={5} unit="min" onChange={v => update({ longBreakMin: v })} />
+        <SliderField label="Default Countdown length" icon={<span>🎯</span>} value={pomo.focusMin} min={15} max={60} step={5} unit="min" onChange={v => update({ focusMin: v })} />
+        <SliderField label="Short break (auto breaks)" icon={<span>☕</span>} value={pomo.shortBreakMin} min={3} max={15} step={1} unit="min" onChange={v => update({ shortBreakMin: v })} />
+        <SliderField label="Long break (auto breaks)" icon={<span>🌿</span>} value={pomo.longBreakMin} min={10} max={30} step={5} unit="min" onChange={v => update({ longBreakMin: v })} />
       </div>
       <div className="space-y-2.5">
         <ToggleRow title="Auto-start breaks" description="Begin the break as soon as focus time ends" icon={<span className="text-base">⏭️</span>}

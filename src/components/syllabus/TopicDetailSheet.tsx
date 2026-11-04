@@ -1242,7 +1242,6 @@ function UnifiedContextShelf({
 
 /* ===== Focus Timer card (flip clock) — the SAME engine, modes and names as the global Focus Timer ===== */
 const FOCUS_MODES = [
-  { id: 'pomodoro', icon: '🍅', label: 'Pomodoro' },
   { id: 'countdown', icon: '⏳', label: 'Countdown' },
   { id: 'stopwatch', icon: '⏱️', label: 'Stopwatch' },
 ] as const;
@@ -1264,7 +1263,7 @@ function PremiumStudyTimer({ timer, actions, topicId, topicName, subjectId, unit
   const isRunningOther = busy && !isThisTopic;
   const isRunningThis = busy && isThisTopic;
   const isStopwatch = timer.appMode === 'stopwatch';
-  const isBreak = timer.appMode === 'pomodoro' && timer.phase !== 'focus';
+  const isBreak = timer.cycle && timer.phase !== 'focus';
 
   const fmt = (sec: number) => {
     const h = Math.floor(sec / 3600);
@@ -1330,7 +1329,7 @@ function PremiumStudyTimer({ timer, actions, topicId, topicName, subjectId, unit
     if (!isThisTopic) actions.linkTopic(subjectId, unitId, topicId, topicName, subjectName);
     actions.toggle();
   };
-  const elapsedSec = isStopwatch ? swTime : Math.max(0, (timer.appMode === 'countdown' || timer.phase === 'focus' ? timer.focusDuration * 60 : 0) - timeLeft);
+  const elapsedSec = isStopwatch ? swTime : Math.max(0, (!timer.cycle || timer.phase === 'focus' ? timer.focusDuration * 60 : 0) - timeLeft);
   const canSave = isThisTopic && busy && !isBreak && elapsedSec >= 30;
   const display = fmt(isStopwatch ? swTime : timeLeft);
   const primary = timer.active ? 'Pause' : timer.hasProgress ? 'Resume' : 'Start';
@@ -1349,8 +1348,8 @@ function PremiumStudyTimer({ timer, actions, topicId, topicName, subjectId, unit
           )}
         </div>
 
-        {/* Same three modes, same names, same icons as everywhere else */}
-        <div className="grid grid-cols-3 gap-1 rounded-2xl border border-border/20 bg-muted/20 p-0.5">
+        {/* Same two modes, same names, same icons as everywhere else */}
+        <div className="grid grid-cols-2 gap-1 rounded-2xl border border-border/20 bg-muted/20 p-0.5">
           {FOCUS_MODES.map(m => (
             <button key={m.id} onClick={() => actions.setAppMode(m.id)}
               className={`py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
@@ -1372,7 +1371,18 @@ function PremiumStudyTimer({ timer, actions, topicId, topicName, subjectId, unit
           </div>
         )}
 
-        {timer.appMode === 'pomodoro' && (
+        {!isStopwatch && !busy && (
+          <button type="button" role="switch" aria-checked={timer.cycle} onClick={() => actions.setCycle(!timer.cycle)}
+            className={`w-full flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors ${timer.cycle ? 'border-primary/40 bg-primary/8' : 'border-border/15 bg-card/30'}`}>
+            <span className="text-sm">🍅</span>
+            <span className="flex-1 text-[11px] font-bold text-foreground">Auto breaks</span>
+            <span className={`relative w-8 h-[18px] rounded-full shrink-0 transition-colors ${timer.cycle ? 'bg-primary' : 'bg-muted-foreground/30'}`}>
+              <span className={`absolute top-[2px] left-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-transform ${timer.cycle ? 'translate-x-[14px]' : ''}`} />
+            </span>
+          </button>
+        )}
+
+        {timer.cycle && (
           <p className="text-center text-[10px] font-bold text-muted-foreground">
             {timer.phase === 'focus' ? '🍅 Focus' : timer.phase === 'short' ? '☕ Short break' : '🌿 Long break'}
             {timer.sessions > 0 ? ` · ${timer.sessions} done today` : ''}

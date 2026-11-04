@@ -13,7 +13,7 @@ import { isNative } from './native';
 /** Everything the native notification needs; times are epoch milliseconds. */
 export interface TimerNotifyPayload {
   v: 2;
-  mode: 'pomodoro' | 'countdown' | 'stopwatch';
+  mode: 'countdown' | 'stopwatch';
   running: boolean;
   /** Chronometer direction. */
   countDown: boolean;

@@ -1,5 +1,16 @@
 # Changelog
 
+## 16.0.0 — Tablet layout, Zoom, one timer, one data panel
+
+- **Tablets fill the screen.** The Android app was locked to portrait, so on a tablet held sideways Android shrank it into a narrow strip with empty space on both sides. Tablets and foldables now rotate freely (respecting your rotation lock) and use the full-width layout with the side navigation; phones stay in portrait. **Profile & Settings** in the side menu now sits right under the tabs, always visible, and the sync banners no longer slide over the menu.
+- **Zoom (Settings → Appearance & Display).** Zoom the whole app — text, buttons, dialogs, sheets and previews — from 70 % to 150 %. Move the slider (or use − / + or a preset) to see a **live preview**, then **Apply**; an **Undo** appears for a few seconds. Saved per device (phone and tablet can differ), included in backups, never uploaded.
+- **Two timers, not three.** Pomodoro is now part of **Countdown**: switch on **Auto breaks** for focus → short/long break cycles. The Focus Timer, the topic window, the floating mini-timer and the notification all show just **Countdown** and **Stopwatch**. A timer that was running in Pomodoro mode upgrades automatically; older saved sessions are untouched. Break lengths live in *Countdown & Break Preferences*.
+- **Backup, Data & Trash is one panel** with three tabs — **Download**, **Restore**, **Trash** (with a count badge). Searching “trash” or “restore” opens the right tab.
+- **Removed Export & Documentation** (the documentation / source-manifest downloads). Backups, verification and restore are unchanged.
+- **Settings search sits under the AI Tutor card**, with its suggestion chips, and stays in reach below the title bar while you scroll.
+- **Premium status card.** One verdict (*All systems healthy* / *Almost there* / *Needs attention*) over four equal tiles — Cloud, Backup, Storage, App — with no sideways scrolling; each tile jumps to its setting.
+- Drag-to-reorder and swipe gestures keep working at every zoom level.
+
 ## 15.1.0 — Profile editor, Data Center, exact backups, full-settings sync
 
 - **One profile section:** a single profile card with **Edit profile** and **Log out**. The editor sheet covers name, photo (upload or emoji), cover colour, password change, log out and delete account, with validation and an unsaved-changes guard. Guests get a tailored version.
