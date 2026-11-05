@@ -1058,7 +1058,7 @@ export default function UnitDetailView({
                 )}
                 {catFilter !== 'all' && (
                   <button onClick={() => setCatFilter('all')}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-accent/8 border border-accent/20 text-accent-foreground hover:bg-accent/15 transition-colors">
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-accent/8 border border-accent/20 text-accent-ink hover:bg-accent/15 transition-colors">
                     📂 {catFilter === '__none__' ? 'No category' : catFilter}
                     <X className="w-2.5 h-2.5 text-muted-foreground" />
                   </button>
@@ -1557,8 +1557,8 @@ function FancyUnitBadge({ unitIndex, isComplete, unitName, subTopics }: {
       title={copyStep === 1 ? '① Tap to copy unit name' : '② Tap to copy full syllabus'}
     >
       {/* Sparkles (CSS-only, compositor friendly) */}
-      <span className="absolute left-1.5 top-1 text-[8px] text-accent-foreground/30 pointer-events-none select-none animate-soft-pulse">✦</span>
-      <span className="absolute right-1.5 bottom-1 text-[8px] text-accent-foreground/30 pointer-events-none select-none animate-soft-pulse" style={{ animationDelay: '0.5s' }}>✦</span>
+      <span className="absolute left-1.5 top-1 text-[8px] text-accent-ink/30 pointer-events-none select-none animate-soft-pulse">✦</span>
+      <span className="absolute right-1.5 bottom-1 text-[8px] text-accent-ink/30 pointer-events-none select-none animate-soft-pulse" style={{ animationDelay: '0.5s' }}>✦</span>
       {/* Copied icon overlay */}
       <AnimatePresence>
         {showIcon && (
@@ -1576,7 +1576,7 @@ function FancyUnitBadge({ unitIndex, isComplete, unitName, subTopics }: {
           </motion.div>
         )}
       </AnimatePresence>
-      <span className="text-[8px] font-black tracking-[0.2em] uppercase text-accent-foreground/50 relative z-10">UNIT</span>
+      <span className="text-[8px] font-black tracking-[0.2em] uppercase text-accent-ink/50 relative z-10">UNIT</span>
       <div className="flex gap-0.5 relative z-10">
         {padded.split('').map((char, i) => (
           <motion.span key={`${unitIndex}-${i}`} initial={{ opacity: 0, scale: 0, y: 10, rotate: -20 }}
@@ -1780,9 +1780,9 @@ function LectureRow({ topic, index, onCycle, onToggleImportant, onOpenDetail, gl
           <span className="text-[9px] px-1 py-0.5 rounded bg-chart-4/10 text-chart-4 font-bold">{'★'.repeat(Number(topic.rank) || 0)}</span>
         )}
         {topic.category && (
-          <span className="text-[9px] px-1 py-0.5 rounded bg-accent/10 text-accent-foreground font-bold">{String(topic.category || '')}</span>
+          <span className="text-[9px] px-1 py-0.5 rounded bg-accent/10 text-accent-ink font-bold">{String(topic.category || '')}</span>
         )}
-        {topic.tags?.map((tag, i) => <span key={String(tag || '') + i} className="text-[9px] px-1 py-0.5 rounded bg-accent/10 text-accent-foreground font-bold">{String(tag || '')}</span>)}
+        {topic.tags?.map((tag, i) => <span key={String(tag || '') + i} className="text-[9px] px-1 py-0.5 rounded bg-accent/10 text-accent-ink font-bold">{String(tag || '')}</span>)}
 
         {/* Right-side actions */}
         <div className="ml-auto flex items-center gap-1 shrink-0">

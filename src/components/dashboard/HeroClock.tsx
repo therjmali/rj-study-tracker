@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useClock } from '../../hooks/useClock';
+import FlipCard from '../shared/FlipCard';
 
 function FlipDigit({ value, color = 'text-foreground' }: { value: string; color?: string }) {
   return (
@@ -258,25 +259,52 @@ function DigitalClock({ now }: { now: Date }) {
   );
 }
 
+/* ─── Flip Clock Face (split-flap cards: HH · MM · SS) ─── */
+function FlipClock({ now }: { now: Date }) {
+  const h = now.getHours();
+  const h12 = h % 12 || 12;
+  const dayFull = now.toLocaleDateString('en-US', { weekday: 'long' });
+  const dateStr = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dot = <span className="flex flex-col gap-2 self-center pb-5" aria-hidden><i className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" /><i className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" /></span>;
+  return (
+    <div className="relative z-10 flex flex-col items-center py-5 sm:py-6 px-3">
+      <span className="text-[9px] sm:text-[10px] font-bold tracking-[0.35em] uppercase text-primary mb-3">{dayFull}</span>
+      <div className="flex items-start justify-center gap-1.5 sm:gap-2.5">
+        <FlipCard value={pad(h12)} label="Hours" size={58} tone="dark" />
+        {dot}
+        <FlipCard value={pad(now.getMinutes())} label="Minutes" size={58} tone="dark" />
+        {dot}
+        <FlipCard value={pad(now.getSeconds())} label="Seconds" size={58} tone="dark" />
+        <span className="self-center text-[11px] font-black tracking-widest text-muted-foreground ml-1 pb-5">{h >= 12 ? 'PM' : 'AM'}</span>
+      </div>
+      <span className="text-[10px] sm:text-[11px] font-semibold text-muted-foreground tracking-wide mt-2.5">{dateStr}</span>
+    </div>
+  );
+}
+
+type ClockStyle = 'digital' | 'flip' | 'analog';
+const CLOCK_ORDER: ClockStyle[] = ['digital', 'flip', 'analog'];
+const CLOCK_LABEL: Record<ClockStyle, string> = { digital: '🔢 digital', flip: '🎞️ flip', analog: '⌚ analog' };
 const CLOCK_MODE_KEY = 'nursetrack-clock-mode';
 
 export default function HeroClock() {
   const now = useClock();
-  const [isAnalog, setIsAnalog] = useState(() => {
-    try { return localStorage.getItem(CLOCK_MODE_KEY) === 'analog'; } catch { return false; }
+  const [style, setStyle] = useState<ClockStyle>(() => {
+    try { const v = localStorage.getItem(CLOCK_MODE_KEY); return v === 'analog' || v === 'flip' ? v : 'digital'; } catch { return 'digital'; }
   });
   const [isFlipping, setIsFlipping] = useState(false);
 
 
   useEffect(() => {
-    try { localStorage.setItem(CLOCK_MODE_KEY, isAnalog ? 'analog' : 'digital'); } catch {}
-  }, [isAnalog]);
+    try { localStorage.setItem(CLOCK_MODE_KEY, style); } catch {}
+  }, [style]);
 
   const handleFlip = () => {
     if (isFlipping) return;
     setIsFlipping(true);
     setTimeout(() => {
-      setIsAnalog(p => !p);
+      setStyle(p => CLOCK_ORDER[(CLOCK_ORDER.indexOf(p) + 1) % CLOCK_ORDER.length]);
       setTimeout(() => setIsFlipping(false), 400);
     }, 300);
   };
@@ -306,22 +334,16 @@ export default function HeroClock() {
         style={{ transformStyle: 'preserve-3d' }}
       >
         <AnimatePresence mode="wait">
-          {isAnalog ? (
-            <motion.div key="analog" initial={{ rotateY: -90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} exit={{ rotateY: 90, opacity: 0 }} transition={{ duration: 0.3, ease: [0.45, 0, 0.55, 1] }}>
-              <AnalogWatch now={now} />
-            </motion.div>
-          ) : (
-            <motion.div key="digital" initial={{ rotateY: -90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} exit={{ rotateY: 90, opacity: 0 }} transition={{ duration: 0.3, ease: [0.45, 0, 0.55, 1] }}>
-              <DigitalClock now={now} />
-            </motion.div>
-          )}
+          <motion.div key={style} initial={{ rotateY: -90, opacity: 0 }} animate={{ rotateY: 0, opacity: 1 }} exit={{ rotateY: 90, opacity: 0 }} transition={{ duration: 0.3, ease: [0.45, 0, 0.55, 1] }}>
+            {style === 'analog' ? <AnalogWatch now={now} /> : style === 'flip' ? <FlipClock now={now} /> : <DigitalClock now={now} />}
+          </motion.div>
         </AnimatePresence>
       </motion.div>
 
       {/* Mode indicator */}
       <div className="absolute bottom-2 right-3 z-20">
         <span className="text-[8px] font-bold text-muted-foreground/40 uppercase tracking-widest">
-          {isAnalog ? '⌚ analog' : '🔢 digital'} · tap to flip
+          {CLOCK_LABEL[style]} · tap to change
         </span>
       </div>
     </motion.div>

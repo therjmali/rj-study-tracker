@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import TodoList from '../calendar/TodoList';
 import AddStudyTimeForm from '../calendar/AddStudyTimeForm';
 import type { Subject, SubTopic, DailyLog, DbStudySession } from '../../types';
-import { formatDate, formatStudyTime, getEffectiveDayMinutes, getLocalDateStr } from '../../lib/utils';
+import { formatDate, formatStudyTime, getEffectiveDayMinutes, getLocalDateStr, readableInk } from '../../lib/utils';
 import type { TodoItem } from '../../hooks/useTodos';
 import BottomSheet from '../shared/BottomSheet';
 import {
@@ -513,7 +513,7 @@ export default function DayDetailPanel({
                       <div>
                         <div className="flex items-center gap-2 mb-1.5 px-1">
                           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: g.color }} />
-                          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: g.color }}>{g.name}</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: readableInk(g.color) }}>{g.name}</span>
                         </div>
                         {g.topics.map((t, idx) => (
                           <motion.button key={idx} onClick={() => handleEditTopic(t)}

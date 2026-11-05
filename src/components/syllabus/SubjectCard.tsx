@@ -18,7 +18,7 @@ import SubjectOverview from './SubjectOverview';
 import SubjectActionsSheet from './SubjectActionsSheet';
 import type { Subject, SubTopic, Unit, RevisionKey, TopicNavRef } from '../../types';
 import type { SyllabusFilters } from './SyllabusHeader';
-import { formatDate, getCleanName } from '../../lib/utils';
+import { formatDate, getCleanName, readableInk } from '../../lib/utils';
 import { computeGlobalTopicNumbers } from '../../lib/computeGlobalTopicNumbers';
 import { topicMatchesFilter, topicMatchesSearch, type SyllabusFilterState } from '../../lib/syllabusFilter';
 import { toast } from 'sonner';
@@ -340,7 +340,7 @@ const SubjectCard = memo(function SubjectCard({
           <div className="flex-1 text-left min-w-0">
             {!subject.image && (
               <div className="flex items-center gap-2">
-                <span className="text-xs font-black px-2.5 py-1 rounded-lg border" style={{ backgroundColor: subject.color + '15', color: subject.color, borderColor: subject.color + '25' }}>{subject.shortName}</span>
+                <span className="text-xs font-black px-2.5 py-1 rounded-lg border" style={{ backgroundColor: subject.color + '15', color: readableInk(subject.color), borderColor: subject.color + '25' }}>{subject.shortName}</span>
                 <span className="text-base font-bold text-foreground break-words">{subject.name}</span>
               </div>
             )}
@@ -526,7 +526,7 @@ const SubjectCard = memo(function SubjectCard({
       </div>
 
       {expanded && (
-        <div className="px-4 pb-4 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+        <div className="px-2 pb-3 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
           {/* Per-Subject Search Bar */}
           <div className="flex items-center gap-1.5">
             <div className="relative flex-1">

@@ -137,7 +137,7 @@ const Row = memo(function Row({ topic, index, total, isSelected, isMoveTarget, m
                 <Pencil className="w-3 h-3" />
               </button>
               {topic.module && <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold truncate max-w-[84px]">📁 {topic.module}</span>}
-              {topic.subModule && <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent/10 text-accent-foreground font-bold truncate max-w-[72px]">📂 {topic.subModule}</span>}
+              {topic.subModule && <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent/10 text-accent-ink font-bold truncate max-w-[72px]">📂 {topic.subModule}</span>}
             </div>
           </div>
 

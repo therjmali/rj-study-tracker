@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { readableInk } from '../../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Subject, StudyGoals } from '../../types';
@@ -127,7 +128,7 @@ export default function ExamReadiness({ subjects, studyGoals, onNavigate }: Prop
                 onClick={() => onNavigate?.('syllabus', { subjectId: r.id })}
                 className="w-full flex items-center gap-2 p-1.5 -mx-1.5 rounded-lg hover:bg-card/50 transition-all active:scale-[0.98] group"
               >
-                <span className="text-[10px] font-bold w-10 truncate text-left" style={{ color: r.color }}>{r.shortName}</span>
+                <span className="text-[10px] font-bold w-10 truncate text-left" style={{ color: readableInk(r.color) }}>{r.shortName}</span>
                 <div className="flex-1 h-2.5 rounded-full bg-muted/30 overflow-hidden">
                   <motion.div
                     className="h-full rounded-full"

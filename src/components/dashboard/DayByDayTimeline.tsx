@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarDays, ChevronDown, Clock, BookOpen, ExternalLink, Moon, ArrowUpDown, X, ClipboardList } from 'lucide-react';
 import type { Subject, SubTopic, DailyLog, DbStudySession } from '../../types';
-import { getLocalDateStr, formatStudyHours, formatStudyTime, getEffectiveDayMinutes, normalizeSubjectId } from '../../lib/utils';
+import { getLocalDateStr, formatStudyHours, formatStudyTime, getEffectiveDayMinutes, normalizeSubjectId, readableInk } from '../../lib/utils';
 import { useToday } from '../../hooks/useToday';
 interface Props {
   subjects: Subject[];
@@ -153,7 +153,7 @@ function LoggedSessionsList({ sessions }: { sessions: LoggedSessionEntry[] }) {
               <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
               <span className="text-[10px] font-semibold text-foreground flex-1 truncate">{actLabel || s.description}</span>
               <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full shrink-0 border"
-                style={{ color: s.color, borderColor: s.color + '30', backgroundColor: s.color + '10' }}>{s.subjectName}</span>
+                style={{ color: readableInk(s.color), borderColor: s.color + '30', backgroundColor: s.color + '10' }}>{s.subjectName}</span>
               {actType && (
                 <span className={`text-[7px] font-bold px-1.5 py-0.5 rounded-full shrink-0 border ${actColor}`}>{actType}</span>
               )}
@@ -270,7 +270,7 @@ function DayRow({ day, onOpenTopicDetail, isBest, isSubjectFiltered, pendingTodo
                         )}
                         <span className="text-[10px] font-semibold text-foreground flex-1 truncate group-hover:text-primary transition-colors">{td.topic.name}</span>
                         <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full shrink-0 border"
-                          style={{ color: td.color, borderColor: td.color + '30', backgroundColor: td.color + '10' }}>{td.shortName}</span>
+                          style={{ color: readableInk(td.color), borderColor: td.color + '30', backgroundColor: td.color + '10' }}>{td.shortName}</span>
                         <span className={`text-[7px] font-bold px-1 py-0.5 rounded shrink-0 ${DIFF_COLORS[td.difficulty] || DIFF_COLORS.Medium}`}>{td.difficulty[0]}</span>
                         {td.timeSpent > 0 && <span className="text-[8px] font-mono text-muted-foreground shrink-0">{fmtMins(td.timeSpent)}</span>}
                         <ExternalLink className="w-2.5 h-2.5 text-muted-foreground/30 group-hover:text-primary shrink-0 transition-colors" />

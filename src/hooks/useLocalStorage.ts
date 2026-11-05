@@ -26,6 +26,23 @@ function cancelWrite(id: ReturnType<typeof setTimeout>) {
   clearTimeout(id);
 }
 
+const isPlain = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/**
+ * Fill in anything a saved object is missing from the current defaults (new settings added by an update,
+ * an old backup, a partial import …), so a missing field can never crash the app. Saved values always win;
+ * arrays are taken as saved.
+ */
+export function withDefaults<T>(defaults: T, saved: unknown): T {
+  if (!isPlain(defaults) || !isPlain(saved)) return saved as T;
+  const out: Record<string, unknown> = { ...saved };
+  for (const [k, d] of Object.entries(defaults)) {
+    if (out[k] === undefined || out[k] === null) { if (d !== undefined) out[k] = d; }
+    else if (isPlain(d) && Object.keys(d).length > 0 && isPlain(out[k])) out[k] = withDefaults(d, out[k]);
+  }
+  return out as T;
+}
+
 /**
  * useState that persists to localStorage.
  *
@@ -39,7 +56,7 @@ export function useLocalStorage<T>(key: string, defaultValue: T): [T, (v: T | ((
   const [value, setValue] = useState<T>(() => {
     try {
       const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : defaultValue;
+      return stored ? withDefaults(defaultValue, JSON.parse(stored)) : defaultValue;
     } catch {
       return defaultValue;
     }

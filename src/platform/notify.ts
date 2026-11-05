@@ -8,20 +8,25 @@
 import { useSyncExternalStore } from 'react';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { isNative } from './native';
+import { buildReport, fmtMinutes, loadStoredInput } from '../lib/progressReport';
 
 export interface ReminderTime { id: string; time: string; label: string; enabled: boolean }
-export interface NotifySettings { timerAlerts: boolean; reminders: ReminderTime[] }
+export interface NightlySettings { enabled: boolean; time: string }
+export interface NotifySettings { timerAlerts: boolean; reminders: ReminderTime[]; nightly: NightlySettings }
 export type Permission = 'granted' | 'denied' | 'prompt';
 
 const KEY = 'rj-notify-v1';
 const EVENT = 'rj:notify-settings';
 const REMINDER_BASE = 7000;
 export const BACKUP_REMINDER_BASE = 8000;
-const CH = { reminders: 'rj_reminders', general: 'rj_general', backup: 'rj_backup' };
+const NIGHTLY_BASE = 6900;
+const NIGHTLY_DAYS = 14;
+export const NIGHTLY_DEFAULT_TIME = '23:00';
+const CH = { reminders: 'rj_reminders', general: 'rj_general', backup: 'rj_backup', progress: 'rj_progress' };
 
 /* ───────────────────────────── settings ───────────────────────────── */
 
-const DEFAULTS: NotifySettings = { timerAlerts: true, reminders: [] };
+const DEFAULTS: NotifySettings = { timerAlerts: true, reminders: [], nightly: { enabled: true, time: NIGHTLY_DEFAULT_TIME } };
 let cached: NotifySettings | null = null;
 let raw: string | null = null;
 
@@ -37,8 +42,12 @@ export function getNotifySettings(): NotifySettings {
       reminders: Array.isArray(p?.reminders)
         ? p.reminders.filter((r: any) => r && /^\d{2}:\d{2}$/.test(r.time)).map((r: any) => ({ id: String(r.id), time: r.time, label: String(r.label ?? ''), enabled: r.enabled !== false }))
         : [],
+      nightly: {
+        enabled: p?.nightly?.enabled !== false, // on by default
+        time: typeof p?.nightly?.time === 'string' && /^\d{2}:\d{2}$/.test(p.nightly.time) ? p.nightly.time : NIGHTLY_DEFAULT_TIME,
+      },
     };
-  } catch { cached = { ...DEFAULTS }; }
+  } catch { cached = { ...DEFAULTS, nightly: { ...DEFAULTS.nightly } }; }
   return cached!;
 }
 
@@ -170,6 +179,72 @@ export async function syncReminders(): Promise<void> {
   } catch { /* best-effort */ }
 }
 
+/* ───────────────────────────── nightly progress card ───────────────────────────── */
+
+const bar = (pct: number, n = 10) => { const f = Math.round((Math.max(0, Math.min(100, pct)) / 100) * n); return '█'.repeat(f) + '░'.repeat(n - f); };
+
+/** Today's numbers as notification text (computed from what is stored on this device). */
+export function nightlyContent(): { title: string; body: string; large: string } {
+  const input = loadStoredInput();
+  if (!input) return { title: '🌙 How did today go?', body: 'Tap to see your progress card.', large: 'Tap to see your progress card.' };
+  const r = buildReport(input, 'today');
+  if (!r.hasData) {
+    return {
+      title: '🌙 Today at a glance',
+      body: 'Nothing logged today — a quick topic keeps your streak alive.',
+      large: `Nothing logged today yet.\n${r.streak > 0 ? `🔥 ${r.streak}-day streak to protect.\n` : ''}Tap to open your progress card.`,
+    };
+  }
+  const top = r.subjects[0];
+  const lines = [
+    `⏱  ${fmtMinutes(r.minutes)} studied   ·   ✅ ${r.topics} topic${r.topics === 1 ? '' : 's'}`,
+    `🎯  ${bar(r.score)}  ${r.score}% of today's goal`,
+    top ? `📚  Most time: ${top.name} (${fmtMinutes(top.minutes)})` : '',
+    r.streak > 0 ? `🔥  ${r.streak}-day streak` : '',
+    r.prev && r.prev.minutes > 0 ? `📈  ${r.minutes >= r.prev.minutes ? 'Up' : 'Down'} ${Math.abs(Math.round(((r.minutes - r.prev.minutes) / r.prev.minutes) * 100))}% vs yesterday` : '',
+  ].filter(Boolean);
+  return { title: `🌙 Today's progress · ${r.score}%`, body: `${fmtMinutes(r.minutes)} studied · ${r.topics} topic${r.topics === 1 ? '' : 's'}${r.streak > 0 ? ` · 🔥 ${r.streak}d` : ''}`, large: lines.join('\n') };
+}
+
+let lastNightlySig = '';
+
+/**
+ * (Re)schedule the nightly card. Tonight's notification carries today's real numbers (refreshed whenever the
+ * app is used); the following nights are scheduled too, with a generic line, so it still arrives if the app
+ * is not opened for a while.
+ */
+export async function syncNightly(force = false): Promise<void> {
+  const s = getNotifySettings().nightly;
+  if (!isNative) return;
+  const content = nightlyContent();
+  const sig = `${s.enabled}|${s.time}|${content.title}|${content.large}|${new Date().toDateString()}`;
+  if (!force && sig === lastNightlySig) return;
+  lastNightlySig = sig;
+  await cancelRange(NIGHTLY_BASE, 40);
+  if (!s.enabled || (await getPermission()) !== 'granted') return;
+  const [hour, minute] = s.time.split(':').map(Number);
+  const first = new Date(); first.setHours(hour, minute, 0, 0);
+  if (first.getTime() <= Date.now() + 30_000) first.setDate(first.getDate() + 1);
+  try {
+    await LocalNotifications.schedule({
+      notifications: Array.from({ length: NIGHTLY_DAYS }, (_, i) => {
+        const at = new Date(first); at.setDate(first.getDate() + i);
+        const tonight = i === 0;
+        return {
+          id: NIGHTLY_BASE + i,
+          title: tonight ? content.title : '🌙 How did today go?',
+          body: tonight ? content.body : 'Tap to see today’s progress card.',
+          largeBody: tonight ? content.large : 'Open RJ Tracker to see how today went — hours, topics and your streak.',
+          summaryText: 'RJ Tracker · Daily progress',
+          channelId: CH.progress,
+          actionTypeId: 'NIGHTLY',
+          schedule: { at, allowWhileIdle: true },
+        };
+      }),
+    });
+  } catch { /* best-effort */ }
+}
+
 /** Daily "your backup is due" prompts at the auto-backup times (used by autoBackup.ts). */
 export async function syncBackupReminders(times: string[], enabled: boolean): Promise<void> {
   if (!isNative) return;
@@ -211,10 +286,12 @@ export async function initNotifications(): Promise<void> {
       await LocalNotifications.createChannel({ id: CH.reminders, name: 'Study reminders', description: 'Daily study reminders', importance: 4, vibration: true });
       await LocalNotifications.createChannel({ id: CH.general, name: 'General', description: 'Backups and app notices', importance: 3 });
       await LocalNotifications.createChannel({ id: CH.backup, name: 'Backups', description: 'Scheduled backup prompts and results', importance: 3 });
+      await LocalNotifications.createChannel({ id: CH.progress, name: 'Nightly progress', description: 'A nightly card with how your study day went', importance: 3, vibration: false });
       await LocalNotifications.registerActionTypes({
         types: [
           { id: 'REMINDER', actions: [{ id: 'focus', title: 'Start focus' }, { id: 'snooze', title: 'Snooze 10 min' }] },
           { id: 'BACKUP', actions: [{ id: 'backup-now', title: 'Back up now' }] },
+          { id: 'NIGHTLY', actions: [{ id: 'open-progress', title: 'View card' }] },
         ],
       });
       await LocalNotifications.addListener('localNotificationActionPerformed', async (e) => {
@@ -223,9 +300,11 @@ export async function initNotifications(): Promise<void> {
         } else if (e.actionId === 'focus') emit('start-focus');
         else if (e.actionId === 'backup-now') emit('backup-now');
         else if (e.notification?.actionTypeId === 'BACKUP') emit('backup-now');
+        else if (e.actionId === 'open-progress' || e.notification?.actionTypeId === 'NIGHTLY') emit('open-progress');
       });
     } catch { /* plugin unavailable */ }
     await syncReminders();
+    await syncNightly(true);
   } else {
     startWebReminderLoop();
   }
@@ -236,8 +315,14 @@ export async function initNotifications(): Promise<void> {
   w.__rjPending = [];
   queued.forEach(id => window.dispatchEvent(new CustomEvent('rj:native-action', { detail: { id, replay: true } })));
 
-  window.addEventListener('rj:notify-settings', () => { void syncReminders(); });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void syncReminders(); });
+  window.addEventListener('rj:notify-settings', () => { void syncReminders(); void syncNightly(true); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void syncReminders();
+    // leaving the app: lock in tonight's numbers; returning: refresh them
+    void syncNightly(document.visibilityState === 'hidden');
+  });
+  // while the app is open keep tonight's numbers fresh (cheap: only reschedules when the text changed)
+  if (isNative) window.setInterval(() => { void syncNightly(); }, 5 * 60 * 1000);
 }
 
 async function postDelayed(title: string, body: string, ms: number) {
@@ -262,6 +347,13 @@ function startWebReminderLoop() {
         fired.add(k);
         void webShow('📚 Time to study', reminderBody(r.label), `rj-reminder-${r.id}`);
       }
+    }
+    const n = getNotifySettings().nightly;
+    const nk = `${day}|nightly|${n.time}`;
+    if (n.enabled && n.time === hhmm && !fired.has(nk)) {
+      fired.add(nk);
+      const c = nightlyContent();
+      void webShow(c.title, c.body, 'rj-nightly');
     }
   }, 20_000);
 

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Subject, DailyLog, DbStudySession } from '../../types';
 import { getStats } from '../../lib/gamification';
-import { formatStudyTime, getUnifiedTotalMinutes } from '../../lib/utils';
+import { formatStudyTime, getUnifiedTotalMinutes, readableInk } from '../../lib/utils';
 import GlowCard from '../shared/GlowCard';
 
 export default function OverviewTab({ subjects, dailyLogs, stats, dbSessions }: { subjects: Subject[]; dailyLogs: DailyLog[]; stats: ReturnType<typeof getStats>; dbSessions?: DbStudySession[] }) {
@@ -79,7 +79,7 @@ export default function OverviewTab({ subjects, dailyLogs, stats, dbSessions }: 
                   <div className="flex-1 h-1.5 rounded-full bg-muted/30 overflow-hidden">
                     <div className="h-full rounded-full transition-all" style={{ width: `${spct}%`, backgroundColor: s.color }} />
                   </div>
-                  <span className="text-[9px] font-mono font-bold" style={{ color: s.color }}>{spct}%</span>
+                  <span className="text-[9px] font-mono font-bold" style={{ color: readableInk(s.color) }}>{spct}%</span>
                 </div>
               </div>
             );

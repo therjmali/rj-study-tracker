@@ -35,7 +35,7 @@ const fmtShort = (d: string) =>
 const SHIFT_STYLE: Record<DayPeriod, { bar: string; text: string }> = {
   morning: { bar: 'hsl(var(--chart-4))', text: 'text-chart-4' },
   afternoon: { bar: 'hsl(var(--primary))', text: 'text-primary' },
-  evening: { bar: 'hsl(var(--accent))', text: 'text-accent-foreground' },
+  evening: { bar: 'hsl(var(--accent))', text: 'text-accent-ink' },
   night: { bar: 'hsl(var(--secondary))', text: 'text-secondary' },
 };
 

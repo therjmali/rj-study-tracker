@@ -1524,7 +1524,7 @@ function MetadataSection({ draft, setField, availableSubjects, selectedSubjectId
                 {draft.category && (
                   <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-xl border border-accent/25 bg-accent/8">
                     <span className="text-xs">📌</span>
-                    <span className="text-[12px] font-bold text-accent-foreground flex-1">{draft.category}</span>
+                    <span className="text-[12px] font-bold text-accent-ink flex-1">{draft.category}</span>
                     <button onClick={() => setField('category', undefined)}
                       className="text-[9px] text-destructive/50 hover:text-destructive font-bold px-2 py-0.5 rounded-lg hover:bg-destructive/8 transition-colors">
                       <X className="w-3 h-3" />
@@ -1589,7 +1589,7 @@ function MetadataSection({ draft, setField, availableSubjects, selectedSubjectId
                             isActive
                               ? isImportant
                                 ? 'bg-amber-500/15 border-amber-500/30 text-amber-600 ring-1 ring-amber-500/20 shadow-sm'
-                                : 'bg-accent/15 border-accent/30 text-accent-foreground ring-1 ring-accent/20 shadow-sm'
+                                : 'bg-accent/15 border-accent/30 text-accent-ink ring-1 ring-accent/20 shadow-sm'
                               : 'bg-card/40 border-border/15 text-foreground/60 hover:bg-card/60 hover:text-foreground'
                           }`}>
                           {isImportant && '🔥 '}{cat}

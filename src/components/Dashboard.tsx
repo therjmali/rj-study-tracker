@@ -23,6 +23,7 @@ import SubjectIntelligence from './dashboard/SubjectIntelligence';
 import ExamShelf from './dashboard/ExamShelf';
 import DayByDayTimeline from './dashboard/DayByDayTimeline';
 import TodayProgressRing from './dashboard/TodayProgressRing';
+import ProgressCard from './progress/ProgressCard';
 
 type TimeFilter = 'all' | 'today' | 'weekly' | 'monthly' | 'custom';
 
@@ -215,7 +216,10 @@ export default function Dashboard({
       {/* ═══ 2. HEADER (greeting + quote merged shelf) ═══ */}
       <DashboardHeader subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} />
 
-      {/* ═══ 3. TODAY'S PROGRESS RING ═══ */}
+      {/* ═══ 3. PROGRESS CARD (today · yesterday · 1 week · 30 days · custom · complete) ═══ */}
+      <ProgressCard subjects={subjects} dailyLogs={dailyLogs} studyGoals={studyGoals} dbSessions={dbSessions} />
+
+      {/* ═══ 3a. TODAY'S GOALS RING ═══ */}
       <TodayProgressRing subjects={subjects} dailyLogs={dailyLogs} studyGoals={studyGoals} dbSessions={dbSessions} />
 
       {/* ═══ 3b. TODAY'S LOGGED SESSIONS ═══ */}

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { readableInk } from '../../lib/utils';
 import { Star } from 'lucide-react';
 import type { Subject } from '../../types';
 
@@ -73,7 +74,7 @@ export default function SubjectDetailCard({ subject, onStarClick }: Props) {
 
       {/* Progress bar with shortname */}
       <div className="flex items-center gap-2.5">
-        <span className="text-xs font-black font-mono px-1.5 py-0.5 rounded" style={{ color: subject.color, backgroundColor: `${subject.color}15` }}>
+        <span className="text-xs font-black font-mono px-1.5 py-0.5 rounded" style={{ color: readableInk(subject.color), backgroundColor: `${subject.color}15` }}>
           {subject.shortName}
         </span>
         <div className="flex-1 h-2.5 rounded-full bg-muted/30 overflow-hidden">

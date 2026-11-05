@@ -116,7 +116,7 @@ export default function BulkSelectBar({ count, totalVisible, onMarkComplete, onM
               </Button>
             )}
             {onMoveTopics && (
-              <Button size="sm" variant="outline" onClick={onMoveTopics} className="text-sm gap-1.5 h-9 shrink-0 font-bold text-accent-foreground border-accent/30">
+              <Button size="sm" variant="outline" onClick={onMoveTopics} className="text-sm gap-1.5 h-9 shrink-0 font-bold text-accent-ink border-accent/30">
                 <ArrowRightLeft className="w-4 h-4" /> Move
               </Button>
             )}

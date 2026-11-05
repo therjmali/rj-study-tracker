@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import type { ThemeId, ThemeMode } from '../types';
+import { useEffect, useState } from 'react';
+import type { GlassTone, ThemeId, ThemeMode } from '../types';
 
 /* ── Neutral vars controlled by MODE (parchment / ink) ── */
 interface ModeVars {
@@ -33,7 +33,7 @@ export const MODES: ModePreset[] = [
       '--popover': '38 28% 98%',
       '--popover-foreground': '20 25% 13%',
       '--muted': '35 22% 90%',
-      '--muted-foreground': '20 12% 45%',
+      '--muted-foreground': '20 12% 36%',
       '--border': '35 20% 85%',
       '--input': '35 20% 85%',
     },
@@ -63,12 +63,69 @@ export const MODES: ModePreset[] = [
       '--popover': '36 32% 96%',
       '--popover-foreground': '22 30% 16%',
       '--muted': '34 24% 86%',
-      '--muted-foreground': '26 16% 44%',
+      '--muted-foreground': '26 16% 34%',
       '--border': '32 22% 80%',
       '--input': '32 22% 80%',
     },
   },
+  {
+    // Liquid Glass — light tone (the dark tone is GLASS_DARK_VARS). Cards are translucent glass over an aurora; see index.css.
+    id: 'glass', name: 'Liquid Glass', emoji: '🫧',
+    vars: {
+      '--background': '216 45% 94%',
+      '--foreground': '224 36% 13%',
+      '--card': '0 0% 100%',
+      '--card-foreground': '224 36% 13%',
+      '--popover': '216 40% 97%',
+      '--popover-foreground': '224 36% 13%',
+      '--muted': '216 32% 89%',
+      '--muted-foreground': '222 14% 36%',
+      '--border': '216 30% 78%',
+      '--input': '216 30% 82%',
+    },
+  },
 ];
+
+const GLASS_DARK_VARS: ModeVars = {
+  '--background': '226 42% 7%',
+  '--foreground': '214 32% 94%',
+  '--card': '226 30% 16%',
+  '--card-foreground': '214 32% 94%',
+  '--popover': '226 34% 12%',
+  '--popover-foreground': '214 32% 94%',
+  '--muted': '226 26% 18%',
+  '--muted-foreground': '218 16% 70%',
+  '--border': '226 22% 28%',
+  '--input': '226 22% 24%',
+};
+
+/** Does this mode (and glass tone) give a dark canvas? */
+export function isDarkCanvas(mode: ThemeMode, glassTone: GlassTone = 'auto'): boolean {
+  if (mode === 'amoled') return true;
+  if (mode !== 'glass') return false;
+  if (glassTone === 'dark') return true;
+  if (glassTone === 'light') return false;
+  try { return window.matchMedia('(prefers-color-scheme: dark)').matches; } catch { return false; }
+}
+
+/** Raise an "H S% L%" colour's lightness to at least `min` (keeps hue and saturation). */
+function liftLightness(value: string, min: number): { value: string; lifted: boolean } {
+  const m = value.match(/(-?\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)%\s+(\d+(?:\.\d+)?)%/);
+  if (!m) return { value, lifted: false };
+  const l = Number(m[3]);
+  if (l >= min) return { value, lifted: false };
+  return { value: `${m[1]} ${Math.min(Number(m[2]) + 8, 85)}% ${min}%`, lifted: true };
+}
+
+/** Readable accent-coloured TEXT for the current canvas (accent hue, forced to a safe lightness). */
+function accentInk(accent: string, dark: boolean): string {
+  const m = accent.match(/(-?\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)%\s+(\d+(?:\.\d+)?)%/);
+  const h = m ? Number(m[1]) : 32;
+  const s = Math.min(m ? Number(m[2]) : 55, 80);
+  if (dark) return `${h} ${Math.max(s, 45)}% 74%`;
+  const warm = h >= 25 && h <= 75; // yellows / oranges need to go darker to stay readable
+  return `${h} ${s}% ${warm ? 27 : 34}%`;
+}
 
 /* ── Color / accent vars controlled by THEME ── */
 interface AccentVars {
@@ -232,14 +289,43 @@ export const THEMES: ThemePreset[] = [
   },
 ];
 
-export function useTheme(themeId: ThemeId, mode: ThemeMode = 'light') {
+export function useTheme(themeId: ThemeId, mode: ThemeMode = 'light', glassTone: GlassTone = 'auto') {
+  const [systemDark, setSystemDark] = useState(() => isDarkCanvas('glass', 'auto'));
   useEffect(() => {
+    if (mode !== 'glass' || glassTone !== 'auto') return;
+    let mq: MediaQueryList;
+    try { mq = window.matchMedia('(prefers-color-scheme: dark)'); } catch { return; }
+    const on = () => setSystemDark(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, [mode, glassTone]);
+
+  useEffect(() => {
+    const glassDark = mode === 'glass' && (glassTone === 'dark' || (glassTone === 'auto' && systemDark));
+    const dark = mode === 'amoled' || glassDark;
     const modePreset = MODES.find(m => m.id === mode) ?? MODES[0];
     const accentPreset = THEMES.find(t => t.id === themeId) ?? THEMES[0];
     const root = document.documentElement;
 
-    Object.entries(modePreset.vars).forEach(([k, v]) => root.style.setProperty(k, v));
-    Object.entries(accentPreset.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+    const modeVars = glassDark ? GLASS_DARK_VARS : modePreset.vars;
+    Object.entries(modeVars).forEach(([k, v]) => root.style.setProperty(k, v));
+    const accentVars: Record<string, string> = { ...accentPreset.vars };
+    if (dark) {
+      // Accent colours are tuned for light parchment; on a dark canvas they must be lifted or every
+      // `text-primary` label / tab / badge becomes unreadable (measured: 1.2:1 on black).
+      const lift = (key: string, fgKey: string | null, min: number) => {
+        const r = liftLightness(accentVars[key], min);
+        if (r.lifted) { accentVars[key] = r.value; if (fgKey) accentVars[fgKey] = '0 0% 7%'; }
+      };
+      lift('--primary', '--primary-foreground', 68);
+      lift('--secondary', '--secondary-foreground', 64);
+      lift('--accent', '--accent-foreground', 62);
+      lift('--destructive', '--destructive-foreground', 64);
+      ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5'].forEach(k => lift(k, null, 62));
+    }
+    Object.entries(accentVars).forEach(([k, v]) => root.style.setProperty(k, v));
+    root.style.setProperty('--accent-ink', accentInk(accentPreset.vars['--accent'], dark));
 
     if (mode === 'light') {
       root.style.setProperty('--sidebar-background', '285 28% 16%');
@@ -255,14 +341,18 @@ export function useTheme(themeId: ThemeId, mode: ThemeMode = 'light') {
       root.style.setProperty('--sidebar-accent-foreground', '0 0% 100%');
       root.style.setProperty('--sidebar-ring', '42 72% 42%');
     } else {
-      root.style.setProperty('--sidebar-background', modePreset.vars['--background']);
-      root.style.setProperty('--sidebar-foreground', modePreset.vars['--foreground']);
-      root.style.setProperty('--sidebar-border', modePreset.vars['--border']);
+      root.style.setProperty('--sidebar-background', modeVars['--background']);
+      root.style.setProperty('--sidebar-foreground', modeVars['--foreground']);
+      root.style.setProperty('--sidebar-border', modeVars['--border']);
     }
 
     root.classList.toggle('light-mode', mode === 'light');
     root.classList.toggle('amoled-mode', mode === 'amoled');
     root.classList.toggle('ancient-mode', mode === 'ancient');
+    root.classList.toggle('glass-mode', mode === 'glass');
+    root.classList.toggle('glass-dark', glassDark);
+    root.classList.toggle('glass-light', mode === 'glass' && !glassDark);
+    root.style.colorScheme = dark ? 'dark' : 'light';
 
     // Only add transition class on subsequent theme changes (not initial mount)
     // This prevents the initial render from being slowed by transitions on every element
@@ -274,5 +364,5 @@ export function useTheme(themeId: ThemeId, mode: ThemeMode = 'light') {
       const timer = setTimeout(() => root.classList.remove('theme-transitioning'), 350);
       return () => clearTimeout(timer);
     }
-  }, [themeId, mode]);
+  }, [themeId, mode, glassTone, systemDark]);
 }

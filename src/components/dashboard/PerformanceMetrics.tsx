@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Activity, Timer, TrendingUp, Target } from 'lucide-react';
 import type { Subject, DailyLog } from '../../types';
-import { formatStudyTime } from '../../lib/utils';
+import { formatStudyTime, readableInk } from '../../lib/utils';
 import GlowCard from '../shared/GlowCard';
 
 interface Props {
@@ -148,7 +148,7 @@ export default function PerformanceMetrics({ subjects, dailyLogs }: Props) {
         <div className="space-y-2">
           {predictions.map(p => (
             <div key={p.name} className="flex items-center gap-2.5">
-              <span className="text-[10px] font-bold w-10 truncate" style={{ color: p.color }}>{p.name}</span>
+              <span className="text-[10px] font-bold w-10 truncate" style={{ color: readableInk(p.color) }}>{p.name}</span>
               <div className="flex-1 h-1.5 rounded-full bg-muted/30 overflow-hidden">
                 <div className="h-full rounded-full transition-all" style={{
                   width: `${p.total > 0 ? (p.done / p.total) * 100 : 0}%`,
@@ -176,7 +176,7 @@ export default function PerformanceMetrics({ subjects, dailyLogs }: Props) {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {subjectEfficiency.filter(s => s.hoursInvested > 0).map(s => (
               <div key={s.name} className="rounded-lg border border-border/15 bg-card/30 p-2.5 text-center">
-                <span className="text-[10px] font-bold" style={{ color: s.color }}>{s.name}</span>
+                <span className="text-[10px] font-bold" style={{ color: readableInk(s.color) }}>{s.name}</span>
                 <p className="text-lg font-black font-mono text-foreground">{s.efficiency}</p>
                 <p className="text-[8px] text-muted-foreground">{s.pct}% in {formatStudyTime(Math.round(s.hoursInvested * 60))}</p>
               </div>

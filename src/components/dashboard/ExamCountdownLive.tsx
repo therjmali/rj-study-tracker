@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, Settings, TrendingUp } from 'lucide-react';
 import type { Subject, ExamConfig } from '../../types';
-import { formatDate } from '../../lib/utils';
+import { formatDate, readableInk } from '../../lib/utils';
 
 interface Props {
   exams: ExamConfig[];
@@ -136,7 +136,7 @@ export default function ExamCountdownLive({ exams, subjects, onNavigate, onManag
                                   strokeDasharray={`${2 * Math.PI * 10.5}`} strokeDashoffset={`${2 * Math.PI * 10.5 * (1 - s.pct / 100)}`}
                                   style={{ filter: `drop-shadow(0 0 2px ${s.color}40)` }} />
                               </svg>
-                              <span className="absolute inset-0 flex items-center justify-center text-[7px] font-black font-mono" style={{ color: s.color }}>{s.pct}</span>
+                              <span className="absolute inset-0 flex items-center justify-center text-[7px] font-black font-mono" style={{ color: readableInk(s.color) }}>{s.pct}</span>
                             </div>
                             <span className="text-[7px] font-bold text-muted-foreground truncate max-w-[40px]">{s.name}</span>
                           </div>

@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, TrendingUp, Settings, ChevronRight } from 'lucide-react';
+import { Calendar, CalendarPlus, Clock, TrendingUp, Settings, ChevronDown, Share2, Gauge } from 'lucide-react';
+import { toast } from 'sonner';
+import FlipCard from './FlipCard';
+import { isNative, saveAndShare } from '../../platform/native';
 import type { Subject, ExamConfig } from '../../types';
 
 /* ── Brightness detection ── */
@@ -52,6 +55,10 @@ export interface ExamPosterData {
   total: number;
   done: number;
   pct: number;
+  /** average minutes spent per completed linked topic (0 = no data yet) */
+  avgTopicMin: number;
+  /** topics completed per day over the last 14 days (linked subjects) */
+  recentPace: number;
   linkedSubs: { id: string; name: string; color: string; pct: number }[];
 }
 
@@ -75,7 +82,107 @@ export function computeExamPosterData(exam: ExamConfig, subjects: Subject[], now
     const sd = s.units.reduce((a, u) => a + u.subTopics.filter(x => x.completed).length, 0);
     return { id: s.id, name: s.shortName, color: s.color, pct: st > 0 ? Math.round((sd / st) * 100) : 0 };
   });
-  return { exam, days, hours, minutes, seconds, isPast, total, done, pct, linkedSubs };
+  // pace & effort estimates for the plan panel
+  let doneMinutes = 0, doneCount = 0, recent = 0;
+  const cutoff = new Date(nowMs); cutoff.setDate(cutoff.getDate() - 14);
+  const cutoffStr = cutoff.toLocaleDateString('en-CA');
+  linked.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
+    if (!t.completed) return;
+    if ((t.timeSpent || 0) > 0) { doneMinutes += t.timeSpent; doneCount++; }
+    if (t.completedDate && t.completedDate >= cutoffStr) recent++;
+  })));
+  const avgTopicMin = doneCount > 0 ? Math.round(doneMinutes / doneCount) : 0;
+  return { exam, days, hours, minutes, seconds, isPast, total, done, pct, avgTopicMin, recentPace: recent / 14, linkedSubs };
+}
+
+/* ── helpers for the plan panel ── */
+const MILESTONES = [100, 60, 30, 14, 7, 3, 1];
+const fmtH = (m: number) => (m < 60 ? `${Math.round(m)}m` : `${(m / 60).toFixed(m >= 600 ? 0 : 1)}h`);
+
+function icsFor(exam: ExamConfig): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const t = (exam.time || '09:00').split(':').map(Number);
+  const [y, mo, d] = exam.date.split('-').map(Number);
+  const start = new Date(y, mo - 1, d, t[0] || 0, t[1] || 0);
+  const end = new Date(start.getTime() + 3 * 3600_000);
+  const f = (x: Date) => `${x.getFullYear()}${pad(x.getMonth() + 1)}${pad(x.getDate())}T${pad(x.getHours())}${pad(x.getMinutes())}00`;
+  const alarm = (min: number, text: string) => `BEGIN:VALARM\r\nTRIGGER:-PT${min}M\r\nACTION:DISPLAY\r\nDESCRIPTION:${text}\r\nEND:VALARM`;
+  return [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//RJ Tracker//Exam//EN', 'BEGIN:VEVENT',
+    `UID:${exam.id}@rj-tracker`, `DTSTAMP:${f(new Date())}`, `DTSTART:${f(start)}`, `DTEND:${f(end)}`,
+    `SUMMARY:${(exam.emoji || '📝')} ${exam.label.replace(/[,;\n]/g, ' ')}`,
+    alarm(60 * 24 * 7, 'Exam in 1 week'), alarm(60 * 24, 'Exam tomorrow'), alarm(120, 'Exam in 2 hours'),
+    'END:VEVENT', 'END:VCALENDAR',
+  ].join('\r\n');
+}
+
+async function saveIcs(exam: ExamConfig) {
+  const blob = new Blob([icsFor(exam)], { type: 'text/calendar' });
+  const name = `${exam.label.replace(/[^\w-]+/g, '_') || 'exam'}.ics`;
+  try {
+    if (isNative) { await saveAndShare(name, blob); return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast.success('Calendar file downloaded');
+  } catch { toast.error('Could not create the calendar file'); }
+}
+
+function shareText(d: ExamPosterData): string {
+  return `${d.exam.emoji} ${d.exam.label}: ${d.days}d ${d.hours}h ${d.minutes}m to go · ${d.done}/${d.total} topics (${d.pct}% ready)`;
+}
+
+/** Plan & milestones — pace needed, effort estimate, checkpoints, calendar + share. */
+function ExamPlan({ data, tp, ts, tm, panel }: { data: ExamPosterData; tp: string; ts: string; tm: string; panel: string }) {
+  const { days, total, done, pct, avgTopicMin, recentPace, exam } = data;
+  const remaining = Math.max(0, total - done);
+  const needed = days > 0 ? remaining / days : remaining;
+  const avg = avgTopicMin || 30;
+  const hoursPerDay = days > 0 ? (remaining * avg) / 60 / days : 0;
+  const ratio = needed > 0 ? recentPace / needed : 1;
+  const status = remaining === 0 ? { t: 'All topics done — revise & relax', c: 'text-emerald-600' }
+    : recentPace === 0 ? { t: 'No recent pace yet — start today', c: 'text-chart-4' }
+    : ratio >= 1 ? { t: `Ahead of pace (${recentPace.toFixed(1)}/day vs ${needed.toFixed(1)} needed)`, c: 'text-emerald-600' }
+    : ratio >= 0.7 ? { t: `Slightly behind (${recentPace.toFixed(1)}/day vs ${needed.toFixed(1)} needed)`, c: 'text-chart-4' }
+    : { t: `Behind pace — need ${needed.toFixed(1)}/day, doing ${recentPace.toFixed(1)}`, c: 'text-destructive' };
+  const next = MILESTONES.find(m => m < days) ?? null;
+  return (
+    <div className={`rounded-xl p-3 space-y-3 ${panel}`}>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div><p className={`text-base font-black font-mono ${tp}`}>{remaining}</p><p className={`text-[9px] font-bold uppercase tracking-wider ${tm}`}>Topics left</p></div>
+        <div><p className={`text-base font-black font-mono ${tp}`}>{needed.toFixed(1)}</p><p className={`text-[9px] font-bold uppercase tracking-wider ${tm}`}>Topics / day</p></div>
+        <div><p className={`text-base font-black font-mono ${tp}`}>{fmtH(hoursPerDay * 60)}</p><p className={`text-[9px] font-bold uppercase tracking-wider ${tm}`}>Study / day</p></div>
+      </div>
+      <p className={`text-[11px] font-bold text-center ${status.c}`}><Gauge className="inline w-3 h-3 mr-1 -mt-0.5" />{status.t}</p>
+      <p className={`text-[10px] text-center ${tm}`}>Estimate uses {avgTopicMin ? `your average of ${avgTopicMin} min per topic` : 'a default of 30 min per topic'}.</p>
+      <div>
+        <p className={`text-[9px] font-bold uppercase tracking-wider mb-1.5 ${tm}`}>Milestones{next ? ` · next: ${next}-day mark in ${days - next}d` : ''}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {MILESTONES.map(m => {
+            const passed = days <= m;
+            const isNext = m === next;
+            return (
+              <span key={m} className={`px-2 py-1 rounded-lg text-[10px] font-bold border ${passed ? 'bg-primary/15 border-primary/30 text-primary' : isNext ? 'border-primary/40 text-foreground bg-card/40' : `border-border/20 ${ts}`}`}>
+                {passed ? '✓ ' : ''}{m}d
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={() => void saveIcs(exam)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-border/25 bg-card/40 text-[11px] font-bold text-foreground active:scale-[0.97] transition-transform">
+          <CalendarPlus className="w-3.5 h-3.5" /> Add to calendar
+        </button>
+        <button onClick={async () => {
+          const text = shareText(data);
+          try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); toast.success('Copied to clipboard'); } } catch { /* cancelled */ }
+        }} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-border/25 bg-card/40 text-[11px] font-bold text-foreground active:scale-[0.97] transition-transform">
+          <Share2 className="w-3.5 h-3.5" /> Share
+        </button>
+      </div>
+      <span className="hidden">{pct}</span>
+    </div>
+  );
 }
 
 interface Props {
@@ -90,6 +197,9 @@ interface Props {
 
 export default function ExamPosterCard({ data, onManage, onSubjectClick, compact }: Props) {
   const { exam, days, hours, minutes, seconds, isPast, total, done, pct, linkedSubs } = data;
+  const [flipStyle, setFlipStyle] = useState<boolean>(() => { try { return localStorage.getItem('rj-exam-cd-style') !== 'classic'; } catch { return true; } });
+  const [planOpen, setPlanOpen] = useState(false);
+  const toggleStyle = () => setFlipStyle(v => { const n = !v; try { localStorage.setItem('rj-exam-cd-style', n ? 'flip' : 'classic'); } catch { /* ignore */ } return n; });
   const hasCustomBg = !!exam.backgroundImage;
   const bgBrightness = useImageBrightness(exam.backgroundImage);
   const isDarkBg = bgBrightness === 'dark';
@@ -199,7 +309,15 @@ export default function ExamPosterCard({ data, onManage, onSubjectClick, compact
 
         {/* ═══ MIDDLE: Countdown ═══ */}
         <div className={`rounded-xl ${compact ? 'p-2.5' : 'p-3'} ${glassPanel}`} >
-          <p className={`text-[9px] text-center font-bold tracking-widest mb-2 ${tm}`}>⏳ COUNTDOWN</p>
+          <button type="button" onClick={toggleStyle} className={`block w-full text-[9px] text-center font-bold tracking-widest mb-2 ${tm}`} aria-label="Switch countdown style">⏳ COUNTDOWN · {flipStyle ? 'FLIP' : 'CLASSIC'}</button>
+          {flipStyle ? (
+            <div className="flex items-start justify-center gap-1.5 sm:gap-2">
+              <FlipCard value={dd} label="Days" size={compact ? 38 : 56} tone="dark" />
+              <FlipCard value={hh} label="Hours" size={compact ? 38 : 56} tone="dark" />
+              <FlipCard value={mm} label="Minutes" size={compact ? 38 : 56} tone="dark" />
+              <FlipCard value={ss} label="Seconds" size={compact ? 38 : 56} tone="dark" />
+            </div>
+          ) : (
           <div className="flex items-center justify-center gap-1.5">
             <CDUnit value={dd} label="DAYS" sz={compact ? 'sm' : 'lg'} tp={tp} tm={tm} shadow={shadow} />
             <Colon tp={tp} shadow={shadow} />
@@ -209,6 +327,7 @@ export default function ExamPosterCard({ data, onManage, onSubjectClick, compact
             <Colon tp={tp} shadow={shadow} />
             <CDUnit value={ss} label="SEC" sz="sm" tp={tp} tm={tm} shadow={shadow} />
           </div>
+          )}
         </div>
 
         {/* ═══ BOTTOM: Stats ═══ */}
@@ -242,6 +361,18 @@ export default function ExamPosterCard({ data, onManage, onSubjectClick, compact
               )}
             </div>
           </div>
+        )}
+
+        {/* Plan & milestones */}
+        {!compact && (
+          <>
+            <button onClick={() => setPlanOpen(o => !o)} aria-expanded={planOpen}
+              className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold border ${glassPanel} ${tp} active:scale-[0.98] transition-transform`}>
+              🗺️ Plan &amp; milestones
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${planOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {planOpen && <ExamPlan data={data} tp={tp} ts={ts} tm={tm} panel={glassPanel} />}
+          </>
         )}
 
         {/* Urgency status */}

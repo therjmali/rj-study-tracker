@@ -13,12 +13,13 @@ type Props = { settings: UserSettings; onUpdate: (s: UserSettings) => void };
 
 /* ═════════════ Appearance ═════════════ */
 
-const MODE_DESC: Record<string, string> = { light: 'Warm parchment', amoled: 'Deep ink', ancient: 'Dark sepia' };
+const MODE_DESC: Record<string, string> = { light: 'Warm parchment', amoled: 'Deep ink', ancient: 'Dark sepia', glass: 'Frosted & fluid' };
 
 export function DisplayModeSettings({ settings, onUpdate }: Props) {
   const current = settings.themeMode ?? 'light';
   return (
-    <div className="grid grid-cols-3 gap-2.5">
+    <div className="space-y-3">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
       {MODES.map(mode => {
         const active = current === mode.id;
         return (
@@ -37,6 +38,26 @@ export function DisplayModeSettings({ settings, onUpdate }: Props) {
           </button>
         );
       })}
+    </div>
+    {current === 'glass' && (
+      <div className="rounded-2xl border border-border/20 bg-card/30 p-3 space-y-2.5">
+        <div>
+          <p className="text-xs font-bold text-foreground">Glass tone</p>
+          <p className="text-[10px] text-muted-foreground">Auto follows your phone’s light / dark setting. The moon button in the top bar flips it too.</p>
+        </div>
+        <div role="radiogroup" aria-label="Glass tone" className="grid grid-cols-3 gap-1.5 rounded-xl bg-muted/40 p-1">
+          {([['auto', '🌗', 'Auto'], ['light', '☀️', 'Light'], ['dark', '🌙', 'Dark']] as const).map(([id, emoji, label]) => {
+            const on = (settings.glassTone ?? 'auto') === id;
+            return (
+              <button key={id} role="radio" aria-checked={on} onClick={() => onUpdate({ ...settings, glassTone: id })}
+                className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-[12px] font-bold transition-all active:scale-95 ${on ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                <span>{emoji}</span>{label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    )}
     </div>
   );
 }

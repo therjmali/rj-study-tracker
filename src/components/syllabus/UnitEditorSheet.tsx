@@ -6,7 +6,7 @@ import { Input } from '@project/components/ui/input';
 import { Progress } from '@project/components/ui/progress';
 import BottomSheet from '../shared/BottomSheet';
 import type { Unit, SubTopic, TopicStatus } from '../../types';
-import { formatDate, formatStudyTime } from '../../lib/utils';
+import { formatDate, formatStudyTime, readableInk } from '../../lib/utils';
 import { matchesFields } from '../../lib/searchUtils';
 
 type UnitFilter = 'all' | 'pending' | 'done' | 'important' | 'hard';
@@ -109,7 +109,7 @@ export default function UnitEditorSheet({
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">📖 Unit Editor</h3>
           <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-            <span className="font-semibold" style={{ color: subjectColor }}>{subjectName}</span> · {unit.name}
+            <span className="font-semibold" style={{ color: readableInk(subjectColor) }}>{subjectName}</span> · {unit.name}
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -130,7 +130,7 @@ export default function UnitEditorSheet({
       <div className="glass-subtle p-3 rounded-xl mb-3 space-y-2.5">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-foreground">{done}/{total} completed</span>
-          <span className="text-xs font-black font-mono" style={{ color: subjectColor }}>{pct}%</span>
+          <span className="text-xs font-black font-mono" style={{ color: readableInk(subjectColor) }}>{pct}%</span>
         </div>
         <Progress value={pct} className="h-2" />
         <div className="flex gap-2.5 text-[10px] text-muted-foreground flex-wrap">

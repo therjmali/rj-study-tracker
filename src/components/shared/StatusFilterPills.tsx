@@ -193,7 +193,7 @@ export default function StatusFilterPills({
             }`}
             title="Filter by category"
           >
-            <Tag className={`w-4 h-4 ${activeCategory ? 'text-accent-foreground' : 'text-muted-foreground'}`} />
+            <Tag className={`w-4 h-4 ${activeCategory ? 'text-accent-ink' : 'text-muted-foreground'}`} />
           </motion.button>
         )}
       </div>
@@ -208,7 +208,7 @@ export default function StatusFilterPills({
           className="overflow-hidden"
         >
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-accent/8 border border-accent/15">
-            <span className="text-[10px] font-bold text-accent-foreground/80 flex-1">
+            <span className="text-[10px] font-bold text-accent-ink/80 flex-1">
               🔍 Filtered view
               {value !== 'all' && ` · ${STATUS_OPTIONS.find(o => o.id === value)?.emoji} ${STATUS_OPTIONS.find(o => o.id === value)?.label}`}
               {diffValue && diffValue !== 'all' && ` · ${DIFF_OPTIONS.find(o => o.id === diffValue)?.emoji} ${diffValue}`}
@@ -246,7 +246,7 @@ export default function StatusFilterPills({
                 key={cat}
                 onClick={() => onCategoryChange?.(activeCategory === cat ? '' : cat)}
                 className={`text-[10px] px-2 py-1 rounded-lg font-bold border whitespace-nowrap transition-all shrink-0 ${
-                  activeCategory === cat ? 'bg-accent/20 text-accent-foreground border-accent/30' : 'bg-card/20 text-foreground/60 border-border/10 hover:bg-card/40'
+                  activeCategory === cat ? 'bg-accent/20 text-accent-ink border-accent/30' : 'bg-card/20 text-foreground/60 border-border/10 hover:bg-card/40'
                 }`}
               >
                 {cat}

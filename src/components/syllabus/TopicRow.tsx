@@ -102,154 +102,97 @@ const TopicRow = memo(function TopicRow({
     toast('📋 Copied!', { description: cleanName.length > 50 ? cleanName.slice(0, 50) + '…' : cleanName, duration: 1500 });
   };
 
-  // Clean border — subtle green for complete, orange for in-progress, neutral for not started
-  const borderColor = isInProgress
-    ? 'hsl(var(--state-progress-border) / 0.5)'
-    : 'hsl(var(--border) / 0.6)';
+  // Status colour drives the rail, the tick and the status pill (kept on theme tokens so every theme stays readable)
+  const rail = isComplete ? 'hsl(var(--state-complete-border))' : isInProgress ? 'hsl(var(--state-progress-border))' : 'transparent';
 
   return (
     <div
       onClick={onOpenDetail}
-      className="relative w-full cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.985]"
+      className="group/topic relative w-full cursor-pointer overflow-hidden transition-[transform,box-shadow] duration-200 hover:shadow-md active:scale-[0.985]"
       style={{
-        borderRadius: '18px',
+        borderRadius: '16px',
         background: 'hsl(var(--card))',
-        border: `1.5px solid ${borderColor}`,
-        padding: 'var(--density-pad-y, 14px) var(--density-pad-x, 16px) calc(var(--density-pad-y, 14px) + 4px)',
+        border: `1px solid ${isInProgress ? 'hsl(var(--state-progress-border) / 0.55)' : 'hsl(var(--border) / 0.55)'}`,
+        padding: 'calc(var(--density-pad-y, 12px) - 1px) var(--density-pad-x, 12px)',
       }}
     >
-      {/* Left Accent Strip */}
-      {subjectColor && (
-        <div className="absolute top-0 left-0 w-[4px] h-full rounded-l-[18px]" style={{ backgroundColor: subjectColor }} />
-      )}
+      {/* Status rail (a thin coloured edge only when the topic has a state) */}
+      <span aria-hidden className="absolute left-0 top-2.5 bottom-2.5 w-[3px] rounded-r-full transition-colors" style={{ background: rail }} />
 
-      {/* Row 1: Status icon + number + title + difficulty */}
       <div className="flex items-start gap-2.5">
-        {/* Status icon — tap to cycle */}
+        {/* Status control — tap to cycle */}
         {selectMode ? (
-          <button onClick={(e) => { e.stopPropagation(); onSelect(); }} className="shrink-0 mt-0.5">
-            <div className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all ${
-              selected ? 'bg-primary border-primary' : 'border-muted-foreground/25 bg-muted/10'
-            }`}>
+          <button onClick={(e) => { e.stopPropagation(); onSelect(); }} className="shrink-0 mt-px" aria-label={selected ? 'Deselect topic' : 'Select topic'}>
+            <div className={`w-[26px] h-[26px] rounded-lg border-2 flex items-center justify-center transition-all ${selected ? 'bg-primary border-primary' : 'border-muted-foreground/30 bg-muted/10'}`}>
               {selected && <Check className="w-3.5 h-3.5 text-primary-foreground" />}
             </div>
           </button>
         ) : (
-          <button
-            onClick={handleStatusCycle}
-            className={`shrink-0 mt-0.5 transition-all active:scale-[0.75] ${pulseComplete ? 'animate-ping-once' : ''}`}
-            title={isComplete ? 'Completed — tap to change' : isInProgress ? 'In Progress — tap to change' : 'Tap to start'}
-          >
+          <button onClick={handleStatusCycle} aria-label={isComplete ? 'Completed — tap to change' : isInProgress ? 'In progress — tap to change' : 'Not started — tap to start'}
+            className={`shrink-0 mt-px transition-transform active:scale-[0.75] ${pulseComplete ? 'animate-ping-once' : ''}`}>
             {isComplete ? (
-              <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'hsl(var(--state-complete-border))' }}>
-                <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+              <div className="w-[26px] h-[26px] rounded-full flex items-center justify-center" style={{ background: 'hsl(var(--state-complete-border))' }}>
+                <Check className="w-3.5 h-3.5 text-white" strokeWidth={3.2} />
               </div>
             ) : isInProgress ? (
-              <div className="w-6 h-6 rounded-md border-2 flex items-center justify-center" style={{ borderColor: 'hsl(var(--state-progress-border))', background: 'hsl(var(--state-progress-bg))' }}>
+              <div className="w-[26px] h-[26px] rounded-full border-2 flex items-center justify-center" style={{ borderColor: 'hsl(var(--state-progress-border))', background: 'hsl(var(--state-progress-bg))' }}>
                 <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'hsl(var(--state-progress-border))' }} />
               </div>
             ) : (
-              <div className="w-6 h-6 rounded-md border-[1.5px] flex items-center justify-center" style={{ borderColor: 'hsl(var(--border))', background: 'transparent' }} />
+              <div className="w-[26px] h-[26px] rounded-full border-[1.75px]" style={{ borderColor: 'hsl(var(--muted-foreground) / 0.45)' }} />
             )}
           </button>
         )}
 
-        {/* Number badge — small beside status */}
-        {!selectMode && showTopicNumbers && displayNumber && (
-          <button
-            onClick={handleCopySR}
-            className="shrink-0 mt-0.5 active:scale-[0.85] transition-all"
-          >
-            <span
-              className="inline-flex items-center justify-center min-w-[22px] h-[22px] rounded-md font-mono text-[10px] font-bold"
-              style={{
-                backgroundColor: 'hsl(var(--muted) / 0.5)',
-                color: 'hsl(var(--muted-foreground))',
-              }}
-            >
-              {displayNumber}
-            </span>
-          </button>
-        )}
-
-        {/* Title */}
+        {/* Title + meta */}
         <div className="flex-1 min-w-0">
-          <h3
-            className="font-semibold leading-snug break-words"
+          <h3 className="font-semibold break-words"
             style={{
-              fontSize: getSubjectFontSize('topic', subjectTopicFontSize) || 'var(--text-size-topic, 16px)',
-              lineHeight: '1.4',
-              letterSpacing: '-0.15px',
-              color: isNotStarted && !hasTime && !hasDate ? 'hsl(var(--foreground) / 0.8)' : 'hsl(var(--foreground))',
-            }}
-          >
-            {isInProgress && (
-              <span className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle animate-pulse" style={{ background: 'hsl(var(--state-progress-border))' }} />
+              fontSize: getSubjectFontSize('topic', subjectTopicFontSize) || 'var(--text-size-topic, 15px)',
+              lineHeight: 1.35, letterSpacing: '-0.1px',
+              color: 'hsl(var(--foreground))',
+              opacity: isComplete ? 0.82 : 1,
+            }}>
+            {!selectMode && showTopicNumbers && displayNumber && (
+              <button onClick={handleCopySR} aria-label="Copy topic name"
+                className="inline-flex items-center justify-center min-w-[22px] h-[18px] px-1 rounded-md mr-1.5 align-[1px] font-mono text-[10px] font-bold bg-muted/60 text-muted-foreground active:scale-90 transition-transform">
+                {displayNumber}
+              </button>
             )}
             <HighlightText text={getDisplayTopicName(topic.name, hideHashSuffix)} query={searchQuery || ''} />
           </h3>
+
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[11.5px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1 font-medium">
+              <Clock className="w-3 h-3 opacity-60" />{hasTime ? formatStudyTime(topic.timeSpent) : '0m'}
+            </span>
+            <span className="inline-flex items-center gap-1 font-medium">
+              <Calendar className="w-3 h-3 opacity-60" />{hasDate ? formatDate(topic.completedDate!) : '—'}
+            </span>
+            {isComplete && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-full text-[10px] font-bold" style={{ background: 'hsl(var(--state-complete-border) / 0.14)', color: 'hsl(var(--state-complete-accent))' }}>✓ Completed</span>
+            )}
+            {isInProgress && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-full text-[10px] font-bold" style={{ background: 'hsl(var(--state-progress-border) / 0.16)', color: 'hsl(var(--state-progress-accent))' }}>⟳ In progress</span>
+            )}
+          </div>
         </div>
 
-        {/* Difficulty emoji */}
+        {/* Right column: star + difficulty */}
         {!selectMode && (
-          <button
-            onClick={handleDifficultyCycle}
-            className="shrink-0 mt-0.5 text-sm leading-none select-none active:scale-[0.7] transition-transform"
-            title={`${topic.difficulty} — tap to change`}
-          >
-            {diffEmoji}
-          </button>
+          <div className="shrink-0 flex flex-col items-center gap-1.5">
+            <button onClick={(e) => { e.stopPropagation(); navigator.vibrate?.(15); onToggleImportant(); }}
+              aria-label={topic.important ? 'Remove from important' : 'Mark important'}
+              className="p-0.5 transition-transform active:scale-[1.3]">
+              <Star className={`w-[17px] h-[17px] ${topic.important ? 'fill-current' : ''}`}
+                style={{ color: topic.important ? 'hsl(var(--star-gold))' : 'hsl(var(--muted-foreground) / 0.35)', filter: topic.important ? 'drop-shadow(0 1px 3px hsl(var(--star-gold) / 0.4))' : undefined }} />
+            </button>
+            <button onClick={handleDifficultyCycle} className="text-[13px] leading-none select-none active:scale-[0.7] transition-transform" title={`${topic.difficulty} — tap to change`}>
+              {diffEmoji}
+            </button>
+          </div>
         )}
       </div>
-
-      {/* Row 2: Bottom metadata row — single horizontal line */}
-      <div className="flex items-center gap-3 text-[12px]" style={{ marginTop: 'var(--density-gap, 10px)', color: 'hsl(var(--muted-foreground))' }}>
-        <span className="inline-flex items-center gap-1 font-medium">
-          <Clock className="w-3 h-3" style={{ opacity: 0.5 }} />
-          {hasTime ? formatStudyTime(topic.timeSpent) : '0m'}
-        </span>
-
-        <span className="inline-flex items-center gap-1 font-medium">
-          <Calendar className="w-3 h-3" style={{ opacity: 0.5 }} />
-          {hasDate ? formatDate(topic.completedDate!) : '—/—/—'}
-        </span>
-
-        {/* Completed label */}
-        {isComplete && (
-          <span className="font-semibold" style={{ color: 'hsl(var(--state-complete-accent))' }}>
-            ✓ COMPLETED
-          </span>
-        )}
-        {isInProgress && (
-          <span className="font-semibold" style={{ color: 'hsl(var(--state-progress-accent))' }}>
-            ⟳ In Progress
-          </span>
-        )}
-
-        {/* Star — pushed to right */}
-        <button
-          onClick={(e) => { e.stopPropagation(); navigator.vibrate?.(15); onToggleImportant(); }}
-          className="inline-flex items-center justify-center transition-all active:scale-[1.3] ml-auto shrink-0"
-        >
-          <Star
-            className={`w-4 h-4 transition-all ${topic.important ? 'fill-current' : ''}`}
-            style={{
-              color: topic.important ? 'hsl(var(--star-gold))' : 'hsl(var(--muted-foreground) / 0.25)',
-              filter: topic.important ? 'drop-shadow(0 1px 3px hsl(var(--star-gold) / 0.4))' : undefined,
-            }}
-          />
-        </button>
-      </div>
-
-      {/* Status Line — 4px bar at bottom */}
-      <div
-        className="absolute bottom-0 left-3 right-3 h-[4px] rounded-full transition-all duration-500"
-        style={{
-          backgroundColor: isInProgress
-            ? 'hsl(var(--state-progress-border))'
-            : 'hsl(var(--border) / 0.3)',
-        }}
-      />
 
       {/* Uncomplete Confirmation Dialog */}
       <ConfirmDialog

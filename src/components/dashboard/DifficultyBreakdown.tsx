@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import BottomSheet from '../shared/BottomSheet';
 import type { Subject, SubTopic } from '../../types';
 import type { DifficultyFilter } from '../../lib/studySuggestion';
-import { formatDate } from '../../lib/utils';
+import { formatDate, readableInk } from '../../lib/utils';
 
 type FilterMode = 'Easy' | 'Medium' | 'Hard' | 'Important' | null;
 
@@ -135,7 +135,7 @@ export default function DifficultyBreakdown({ subjects, onNavigate, onToggleTopi
               <div key={subjectId}>
                 <div className="flex items-center gap-2 mb-1.5 sticky top-0 bg-card/90 backdrop-blur-sm py-1 z-10">
                   <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: subject.color }} />
-                  <span className="text-[10px] font-bold" style={{ color: subject.color }}>{subject.shortName}</span>
+                  <span className="text-[10px] font-bold" style={{ color: readableInk(subject.color) }}>{subject.shortName}</span>
                   <span className="text-[10px] text-muted-foreground">{subject.name}</span>
                   <span className="text-[9px] text-muted-foreground/60 ml-auto">{items.filter(i => i.topic.completed).length}/{items.length}</span>
                 </div>

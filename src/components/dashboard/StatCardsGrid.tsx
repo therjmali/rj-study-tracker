@@ -7,7 +7,7 @@ import type { DailyLog } from '../../types';
 import type { DifficultyFilter } from '../../lib/studySuggestion';
 import CircularProgress from '../shared/CircularProgress';
 import AnimatedStreakNumber from '../shared/AnimatedStreakNumber';
-import { getLocalDateStr, formatStudyTime, formatStudyHours, getEffectiveDayMinutes, getUnifiedTotalMinutes, getMergedAllSessionMinutesBySubject, getMergedOverlappingSessionMinutesBySubject, normalizeSubjectId } from '../../lib/utils';
+import { getLocalDateStr, formatStudyTime, formatStudyHours, getEffectiveDayMinutes, getUnifiedTotalMinutes, getMergedAllSessionMinutesBySubject, getMergedOverlappingSessionMinutesBySubject, normalizeSubjectId, readableInk } from '../../lib/utils';
 import { useToday } from '../../hooks/useToday';
 import { useStreak } from '../../hooks/useStreak';
 import { getExamCountdown } from '../../lib/examUtils';
@@ -488,7 +488,7 @@ function SubjectBreakdown({ type, subjectStats, onNavigate }: { type: string; su
                 </span>
               )}
               {type === 'time' && (
-                <span className="text-[10px] font-mono font-bold w-14 text-right shrink-0" style={{ color: s.color }}>
+                <span className="text-[10px] font-mono font-bold w-14 text-right shrink-0" style={{ color: readableInk(s.color) }}>
                   {fmtMins(s.timeSpent)}
                 </span>
               )}
@@ -498,7 +498,7 @@ function SubjectBreakdown({ type, subjectStats, onNavigate }: { type: string; su
                 </span>
               )}
               {type === 'streak' && (
-                <span className="text-[10px] font-mono w-14 text-right shrink-0" style={{ color: s.color }}>
+                <span className="text-[10px] font-mono w-14 text-right shrink-0" style={{ color: readableInk(s.color) }}>
                   {s.recentDates.length}d active
                 </span>
               )}
@@ -526,7 +526,7 @@ function SubjectBreakdown({ type, subjectStats, onNavigate }: { type: string; su
                     </div>
                     <div className="border-t border-border/20 pt-1.5 flex items-center justify-between">
                       <span className="text-[10px] font-bold text-foreground">Total</span>
-                      <span className="text-[10px] font-mono font-black" style={{ color: s.color }}>{fmtMins(s.timeSpent)}</span>
+                      <span className="text-[10px] font-mono font-black" style={{ color: readableInk(s.color) }}>{fmtMins(s.timeSpent)}</span>
                     </div>
                   </div>
                 </motion.div>

@@ -229,9 +229,9 @@ export default function SubjectRevisionCard({ subject, activeRound, onRoundChang
       {/* Active round filter indicator — visible even when the card is collapsed */}
       {activeRound && (
         <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border bg-accent/10 border-accent/20 animate-in fade-in duration-150">
-          <Filter className="w-3.5 h-3.5 shrink-0 text-accent-foreground" />
+          <Filter className="w-3.5 h-3.5 shrink-0 text-accent-ink" />
           <div className="flex-1 min-w-0">
-            <span className="text-xs font-bold text-accent-foreground">
+            <span className="text-xs font-bold text-accent-ink">
               🔁 Showing completed topics missing {activeRound}
             </span>
             <p className="text-[10px] text-muted-foreground/70 font-medium mt-0.5">
@@ -240,7 +240,7 @@ export default function SubjectRevisionCard({ subject, activeRound, onRoundChang
           </div>
           <button type="button" onClick={() => onRoundChange(null)} aria-label="Clear revision filter"
             className="p-1.5 rounded-lg active:scale-90 transition-all hover:bg-accent/20">
-            <X className="w-3.5 h-3.5 text-accent-foreground" />
+            <X className="w-3.5 h-3.5 text-accent-ink" />
           </button>
         </div>
       )}
@@ -498,7 +498,7 @@ function RoundCard({ round: r, completedTopics, isFiltered, onToggleFilter, onOp
         {/* Filter the topic list */}
         <button type="button" disabled={filterDisabled} onClick={onToggleFilter}
           className={`mt-auto w-full h-9 rounded-xl text-[11px] font-bold border flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all disabled:opacity-60 disabled:active:scale-100 ${
-            isFiltered ? 'bg-accent/15 border-accent/30 text-accent-foreground' : style.badge
+            isFiltered ? 'bg-accent/15 border-accent/30 text-accent-ink' : style.badge
           }`}>
           {filterDisabled
             ? <><Check className="w-3.5 h-3.5" /> {r.key} complete for all topics</>

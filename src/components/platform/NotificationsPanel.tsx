@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Bell, BellRing, Plus, Send, Trash2, Timer } from 'lucide-react';
+import { Bell, BellRing, Moon, Plus, Send, Trash2, Timer } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
 import {
-  getNotifySettings, getPermission, postNotice, requestPermission, saveNotifySettings, useNotifySettings,
+  getNotifySettings, getPermission, nightlyContent, NIGHTLY_DEFAULT_TIME, postNotice, requestPermission, saveNotifySettings, useNotifySettings,
   type Permission, type ReminderTime,
 } from '@/platform/notify';
 import { isNative } from '@/platform/native';
@@ -82,6 +82,39 @@ export default function NotificationsPanel() {
           </p>
         </div>
         <Toggle on={settings.timerAlerts} onChange={v => update({ timerAlerts: v })} label="Timer notifications" />
+      </div>
+
+      {/* ── Nightly progress card ── */}
+      <div className="rounded-2xl border border-border/20 bg-card/30 p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center shrink-0"><Moon className="w-[18px] h-[18px] text-primary" /></span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-bold text-foreground">Nightly progress card</p>
+            <p className="text-[11px] text-muted-foreground leading-snug">One notification every night with today’s study time, topics, goal and streak. Tap it to open the full card.</p>
+          </div>
+          <Toggle on={settings.nightly.enabled} onChange={v => { update({ nightly: { ...settings.nightly, enabled: v } }); if (v && perm !== 'granted') void enable(); }} label="Nightly progress notification" />
+        </div>
+        {settings.nightly.enabled && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[12px] font-semibold text-foreground">Send at</span>
+              <Input type="time" value={settings.nightly.time} onChange={e => e.target.value && update({ nightly: { ...settings.nightly, time: e.target.value } })}
+                className="w-[116px] h-10 rounded-xl bg-card/50 border-border/30 font-mono" aria-label="Nightly notification time" />
+              {settings.nightly.time !== NIGHTLY_DEFAULT_TIME && (
+                <button onClick={() => update({ nightly: { ...settings.nightly, time: NIGHTLY_DEFAULT_TIME } })} className="text-[11px] font-bold text-primary px-2 py-1 rounded-lg hover:bg-primary/10">Reset to 11:00 PM</button>
+              )}
+            </div>
+            <div className="rounded-xl border border-border/20 bg-background/60 p-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground/70 mb-1.5">Preview of tonight</p>
+              <p className="text-[12px] font-bold text-foreground">{nightlyContent().title}</p>
+              <p className="text-[11px] text-muted-foreground whitespace-pre-line leading-relaxed mt-0.5">{nightlyContent().large}</p>
+            </div>
+            <Button variant="outline" size="sm" className="rounded-xl font-bold gap-1.5" onClick={async () => {
+              if (perm !== 'granted') { await enable(); return; }
+              const c = nightlyContent(); await postNotice(c.title, c.large, { channel: 'general' }); toast.success('Preview sent');
+            }}><Send className="w-3.5 h-3.5" /> Send a preview now</Button>
+          </div>
+        )}
       </div>
 
       <div className="space-y-2.5">

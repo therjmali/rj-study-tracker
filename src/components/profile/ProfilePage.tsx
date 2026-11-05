@@ -52,7 +52,6 @@ const RANK_CONFIG = [
 export default function ProfilePage(props: Props) {
   const { user, onUpdateUser, subjects, dailyLogs, appState, settings, onUpdateSettings, onImport, onReset, onClearHistory, history, exams, onUpdateExams, onPomodoroComplete, trash, onRestoreTrash, onDeleteTrash, onEmptyTrash, onClose, onLogout, onOpenAi, reminders, onUpdateReminders, onOpenHelp, dbSessions, initialSection } = props;
   const [editorOpen, setEditorOpen] = useState(false);
-  const [confirmLogout, setConfirmLogout] = useState(false);
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -99,9 +98,14 @@ export default function ProfilePage(props: Props) {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 pt-4 pb-8">
-        {/* ── Profile card: identity, edit and log out in one place ── */}
-        <section className="rounded-3xl border border-border/20 bg-card/30 overflow-hidden mb-3">
+        {/* ── Profile card: identity; edit (and log out) via the ✏️ ── */}
+        <section className="relative rounded-3xl border border-border/20 bg-card/30 overflow-hidden mb-3">
           <div className={`h-16 bg-gradient-to-br ${COVER_GRADIENTS[gradientIdx]}`} />
+          {/* Small ✏️ in the corner: Edit profile (and, inside it, Log out) — nothing destructive sits on the main screen */}
+          <button onClick={() => setEditorOpen(true)} aria-label="Edit profile"
+            className="absolute top-2.5 right-2.5 w-9 h-9 rounded-full bg-background/80 backdrop-blur border border-border/30 shadow-sm flex items-center justify-center text-[15px] leading-none active:scale-90 hover:bg-background transition-all">
+            <span aria-hidden>✏️</span>
+          </button>
           <div className="px-4 pb-4 -mt-9">
             <div className="flex items-end gap-3.5">
               <button onClick={() => (isPhotoUrl ? setPhotoViewerOpen(true) : setEditorOpen(true))} aria-label={isPhotoUrl ? 'View photo' : 'Edit profile'}
@@ -117,10 +121,6 @@ export default function ProfilePage(props: Props) {
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border border-border/30 bg-card/50 ${rank.color}`}>{rank.icon} {rank.title.toUpperCase()}</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-destructive/15 text-destructive border border-destructive/20 font-bold">🔥 {stats.streak}d streak</span>
               <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground font-mono font-bold border border-border/20 self-center">RJ TRACKER Pro {APP_VERSION}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-3.5">
-              <Button onClick={() => setEditorOpen(true)} className="h-10"><PencilLine className="w-4 h-4" /> Edit profile</Button>
-              <Button variant="outline" onClick={() => setConfirmLogout(true)} className="h-10 text-destructive border-destructive/25 hover:bg-destructive/10"><LogOut className="w-4 h-4" /> Log out</Button>
             </div>
           </div>
         </section>
@@ -167,19 +167,6 @@ export default function ProfilePage(props: Props) {
       </div>
 
       <ProfileEditorSheet open={editorOpen} user={user} onClose={() => setEditorOpen(false)} onSave={onUpdateUser} onLogout={onLogout} />
-
-      <AlertDialog open={confirmLogout} onOpenChange={setConfirmLogout}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Log out of RJ Tracker?</AlertDialogTitle>
-            <AlertDialogDescription>Your data stays safe in your account and on this device. Sign in again any time to continue.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Stay signed in</AlertDialogCancel>
-            <Button variant="destructive" onClick={() => { setConfirmLogout(false); onLogout(); }}>Log out</Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Full-screen photo viewer */}
       <AnimatePresence>

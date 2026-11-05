@@ -10,7 +10,7 @@ import DayByDayTimeline from '../dashboard/DayByDayTimeline';
 import DayDetailPanel from './DayDetailPanel';
 import type { CalendarTopicInfo } from './DayDetailPanel';
 import type { Subject, SubTopic, DailyLog, DbStudySession, ExamConfig } from '../../types';
-import { formatDate, formatStudyTime, getEffectiveDayMinutes, getLocalDateStr } from '../../lib/utils';
+import { formatDate, formatStudyTime, getEffectiveDayMinutes, getLocalDateStr, readableInk } from '../../lib/utils';
 import { useStreak } from '../../hooks/useStreak';
 import { useExcludedSubjects } from '../../hooks/useExcludedSubjects';
 import type { TodoItem } from '../../hooks/useTodos';
@@ -498,7 +498,7 @@ export default function ProgressCalendar({ subjects, dailyLogs, onUpdateMood, on
         {/* ── WEEKDAY HEADERS ── */}
         <div className="grid grid-cols-7 gap-0.5 px-3 mb-1">
           {weekDays.map((d, i) => (
-            <div key={i} className={`text-[9px] text-center font-black uppercase tracking-wider ${i >= 5 ? 'text-primary/45' : 'text-muted-foreground/45'}`}>{d}</div>
+            <div key={i} className={`text-[9px] text-center font-black uppercase tracking-wider ${i >= 5 ? 'text-primary/75' : 'text-muted-foreground/70'}`}>{d}</div>
           ))}
         </div>
 
@@ -843,7 +843,7 @@ function SubjectSettings({ subjects, excludedSubjects, toggleExclude, setExclude
             <button key={s.id} onClick={() => toggleExclude(s.id)}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all ${isExcluded ? 'opacity-35' : 'hover:bg-card/40'}`}>
               <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isExcluded ? 'opacity-30' : 'shadow-[0_0_4px_currentColor]'}`}
-                style={{ backgroundColor: s.color, color: s.color }} />
+                style={{ backgroundColor: s.color, color: readableInk(s.color) }} />
               <span className={`text-[11px] font-semibold flex-1 text-left truncate ${isExcluded ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{s.shortName}</span>
               <span className="text-[8px] font-mono text-muted-foreground/50">{done}/{allT.length}</span>
             </button>

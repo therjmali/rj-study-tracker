@@ -13,7 +13,7 @@ import BottomSheet from '../shared/BottomSheet';
 import { Label } from '@project/components/ui/label';
 import TopicRow from './TopicRow';
 import type { Unit, SubTopic, UserSettings } from '../../types';
-import { formatStudyTime, formatDate, getLocalDateStr, getSubjectFontSize } from '../../lib/utils';
+import { formatStudyTime, formatDate, getLocalDateStr, getSubjectFontSize, readableInk } from '../../lib/utils';
 import { getUnitProgress, unitStatusEmoji } from '../../lib/unitProgress';
 import type { SyllabusFilters } from './SyllabusHeader';
 import { topicMatchesSearch } from '../../lib/syllabusFilter';
@@ -264,6 +264,7 @@ const UnitSection = memo(function UnitSection({
   const done = unit.subTopics.filter(t => t.completed).length;
   const allDone = unit.subTopics.length > 0 && done === unit.subTopics.length;
   const pct = filteredTotal > 0 ? Math.round((filteredDone / filteredTotal) * 100) : 0;
+  const allDoneForRing = filteredTotal > 0 && filteredDone === filteredTotal;
 
   // Three-state: count in_process topics
   const inProcessCount = unit.subTopics.filter(t => t.status === 'in_process').length;
@@ -564,19 +565,16 @@ const UnitSection = memo(function UnitSection({
     <div
       className="relative w-full"
       style={{
-        borderRadius: '22px',
+        borderRadius: '20px',
         background: 'hsl(var(--card))',
-        border: `1.5px solid hsl(var(--border) / 0.6)`,
-        boxShadow: '0 1px 4px hsl(var(--foreground) / 0.03)',
+        border: `1px solid hsl(var(--border) / 0.55)`,
+        boxShadow: `0 1px 3px hsl(var(--foreground) / 0.04), 0 8px 24px -14px ${subjectColor}55`,
         overflow: 'hidden',
         position: 'relative' as const,
       }}
     >
-      {/* Left Accent Strip */}
-      <div className="absolute top-0 left-0 w-[5px] h-full rounded-l-[22px]" style={{ backgroundColor: subjectColor }} />
-
       {/* Unit Header */}
-      <div className="relative z-[1]" style={{ padding: '20px 20px 16px 24px' }}>
+      <div className="relative z-[1]" style={{ padding: '12px 12px 12px 12px' }}>
         {editing ? (
           <div className="flex items-center gap-1.5">
             <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-8 text-sm flex-1"
@@ -599,17 +597,17 @@ const UnitSection = memo(function UnitSection({
                 </button>
               )}
 
-              <button onClick={onToggle} className="shrink-0 transition-transform duration-200" style={{ transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
-                <ChevronRight className="w-4 h-4 text-muted-foreground/60" />
-              </button>
-
-              {/* Unit Number Badge */}
-              <UnitCopyBadge
-                unitIndex={unitIndex}
-                unitName={unit.name}
-                subjectColor={subjectColor}
-                subTopics={unit.subTopics}
-              />
+              {/* Unit number inside a live progress ring */}
+              <div className="relative shrink-0 w-[46px] h-[46px]">
+                <svg viewBox="0 0 46 46" className="absolute inset-0 -rotate-90" aria-hidden>
+                  <circle cx="23" cy="23" r="20" fill="none" stroke="hsl(var(--border) / 0.55)" strokeWidth="3.5" />
+                  <circle cx="23" cy="23" r="20" fill="none" stroke={allDoneForRing ? 'hsl(var(--state-complete-border))' : (subjectColor || 'hsl(var(--primary))')} strokeWidth="3.5" strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 20} strokeDashoffset={2 * Math.PI * 20 * (1 - pct / 100)} style={{ transition: 'stroke-dashoffset .6s ease' }} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <UnitCopyBadge unitIndex={unitIndex} unitName={unit.name} subjectColor={subjectColor} subTopics={unit.subTopics} />
+                </div>
+              </div>
 
               {/* Title */}
               <button onClick={onOpenUnitEditor}
@@ -617,7 +615,7 @@ const UnitSection = memo(function UnitSection({
                 title="Click to open unit details">
                 <h3
                   className="font-extrabold break-words leading-tight group-hover/unit:opacity-80 transition-opacity"
-                  style={{ fontSize: getSubjectFontSize('unit', subjectUnitFontSize) || 'var(--text-size-unit, 24px)', fontWeight: 700, letterSpacing: '-0.3px', color: 'hsl(var(--foreground))' }}
+                  style={{ fontSize: getSubjectFontSize('unit', subjectUnitFontSize) || 'clamp(15px, var(--text-size-unit, 17px), 20px)', fontWeight: 700, letterSpacing: '-0.2px', color: 'hsl(var(--foreground))' }}
                 >
                   {unit.name}
                 </h3>
@@ -654,32 +652,39 @@ const UnitSection = memo(function UnitSection({
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Expand / collapse — a proper 40px touch target */}
+              <button onClick={onToggle} aria-label={expanded ? 'Collapse unit' : 'Expand unit'} aria-expanded={expanded}
+                className="shrink-0 w-10 h-10 -mr-1 rounded-full flex items-center justify-center hover:bg-muted/40 active:bg-muted/60 transition-colors">
+                <ChevronRight className="w-[18px] h-[18px] text-muted-foreground transition-transform duration-200" style={{ transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)' }} />
+              </button>
             </div>
 
-            {/* Bottom status row — time / done / date on left, percentage on right */}
-            <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-4 text-[13px] font-semibold" style={{ color: 'hsl(var(--muted-foreground))' }}>
-                <span className="inline-flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" style={{ opacity: 0.5 }} />
-                  {totalUnitTimeMin > 0 ? formatStudyTime(totalUnitTimeMin) : '0m'}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  {unitStatusEmoji(getUnitProgress(filteredDone, filteredTotal).status)} {filteredDone}/{filteredTotal}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5" style={{ opacity: 0.5 }} />
-                  {lastStudyDate ? formatDate(lastStudyDate) : '—'}
-                </span>
-              </div>
-              <span className="text-[16px] font-bold font-mono shrink-0"
-                style={{ color: 'hsl(var(--foreground))' }}>
-                {pct}%
+            {/* Stat chips + percentage */}
+            <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+              <span className="inline-flex items-center gap-1 px-2 py-[3px] rounded-full bg-muted/40 text-[11.5px] font-semibold text-muted-foreground">
+                <Clock className="w-3 h-3 opacity-70" />{totalUnitTimeMin > 0 ? formatStudyTime(totalUnitTimeMin) : '0m'}
               </span>
+              <span className="inline-flex items-center gap-1 px-2 py-[3px] rounded-full bg-muted/40 text-[11.5px] font-semibold text-muted-foreground">
+                {unitStatusEmoji(getUnitProgress(filteredDone, filteredTotal).status)} {filteredDone}/{filteredTotal}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-[3px] rounded-full bg-muted/40 text-[11.5px] font-semibold text-muted-foreground">
+                <Calendar className="w-3 h-3 opacity-70" />{lastStudyDate ? formatDate(lastStudyDate) : '—'}
+              </span>
+              <span className="ml-auto text-[15px] font-black font-mono tabular-nums text-foreground">{pct}%</span>
             </div>
 
-            {/* Progress bar */}
-            <div className="mt-3 h-[5px] rounded-full overflow-hidden" style={{ background: 'hsl(var(--border) / 0.4)' }}>
-              <div className="h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${pct}%`, backgroundColor: subjectColor || 'hsl(var(--foreground) / 0.3)' }} />
+            {/* One segment per topic: done · in progress · to do */}
+            <div className="mt-2.5 flex gap-[2px] h-[6px]" role="img" aria-label={`${filteredDone} of ${filteredTotal} topics done`}>
+              {unit.subTopics.length > 0 && unit.subTopics.length <= 60 ? unit.subTopics.map(t => {
+                const st = t.status || (t.completed ? 'complete' : 'incomplete');
+                return <span key={t.id} className="flex-1 rounded-full transition-colors duration-300"
+                  style={{ background: st === 'complete' ? (subjectColor || 'hsl(var(--primary))') : st === 'in_process' ? 'hsl(var(--state-progress-border))' : 'hsl(var(--border) / 0.6)' }} />;
+              }) : (
+                <div className="flex-1 rounded-full overflow-hidden" style={{ background: 'hsl(var(--border) / 0.5)' }}>
+                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: subjectColor || 'hsl(var(--primary))' }} />
+                </div>
+              )}
             </div>
           </>
         )}
@@ -687,7 +692,7 @@ const UnitSection = memo(function UnitSection({
 
       {/* Expanded Content */}
       <Collapse open={expanded} duration={200}>
-            <div className="px-4 sm:px-4 pb-4 sm:pb-4 relative z-[1]" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--density-gap, 8px)' }}>
+            <div className="px-2.5 pb-3 relative z-[1]" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--density-gap, 8px)' }}>
               {/* Unit Stats Pills removed — info already in header */}
               {hasModules || hasSubModules ? (
                 <>
@@ -695,7 +700,7 @@ const UnitSection = memo(function UnitSection({
                   {/* Add Sub-Module inline input */}
                   {addSubModuleFor && (
                     <div className="flex items-center gap-1.5 px-1 py-1 ml-[9px] pl-3 border-l border-primary/15">
-                      <FolderOpen className="w-3 h-3 text-accent-foreground/50 shrink-0" />
+                      <FolderOpen className="w-3 h-3 text-accent-ink/50 shrink-0" />
                       <Input value={newSubModuleName} onChange={e => setNewSubModuleName(e.target.value)} className="h-6 text-[10px] flex-1"
                         placeholder={`New sub-module in ${addSubModuleFor}...`}
                         onKeyDown={e => { if (e.key === 'Enter') handleAddSubModule(addSubModuleFor!); if (e.key === 'Escape') setAddSubModuleFor(null); }} autoFocus />
@@ -930,7 +935,7 @@ function UnitCopyBadge({ unitIndex, unitName, subjectColor, subTopics }: {
         ) : (
           <span
             className="text-[22px] leading-none select-none font-black"
-            style={{ fontFamily: 'Inter, system-ui, sans-serif', color: subjectColor, letterSpacing: '-0.5px' }}
+            style={{ fontFamily: 'Inter, system-ui, sans-serif', color: readableInk(subjectColor), letterSpacing: '-0.5px' }}
           >
             {unitIndex + 1}
           </span>

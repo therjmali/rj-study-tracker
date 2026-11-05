@@ -666,7 +666,7 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
                   ))}
                   <button onClick={() => { setUseCustomSubject(true); setSubjectId(''); setSelectedTopic(null); }}
                     className={`text-[9px] px-2.5 py-1 rounded-lg border font-semibold transition-all flex items-center gap-1 ${
-                      useCustomSubject ? 'bg-accent/15 border-accent/25 text-accent-foreground ring-1 ring-accent/20' : 'bg-card/30 border-border/15 text-muted-foreground'
+                      useCustomSubject ? 'bg-accent/15 border-accent/25 text-accent-ink ring-1 ring-accent/20' : 'bg-card/30 border-border/15 text-muted-foreground'
                     }`}>
                     ✏️ Custom
                   </button>

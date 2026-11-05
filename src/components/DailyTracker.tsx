@@ -6,7 +6,7 @@ import { Button } from '@project/components/ui/button';
 import { toast } from 'sonner';
 import type { DailyLog, Subject, StudyGoals, TrackingMode, StudySession, DbStudySession } from '../types';
 import type { TodoItem } from '../hooks/useTodos';
-import { getLocalDateStr, formatStudyTime } from '../lib/utils';
+import { getLocalDateStr, formatStudyTime, readableInk } from '../lib/utils';
 import { useToday } from '../hooks/useToday';
 import { useStreak } from '../hooks/useStreak';
 import GlowCard from './shared/GlowCard';
@@ -290,7 +290,7 @@ export default function DailyTracker({ dailyLogs, subjects, onUpdate, onDateChan
               <div className="flex items-center justify-between mb-1">
                 <SubjectLink shortName={s.name} color={s.color} subjectId={s.id} onNavigate={onNavigate} variant="text" />
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold" style={{ color: s.color }}>{s.pct}%</span>
+                  <span className="text-[10px] font-bold" style={{ color: readableInk(s.color) }}>{s.pct}%</span>
                   <span className="text-[9px] text-muted-foreground">{s.done}/{s.total}</span>
                 </div>
               </div>

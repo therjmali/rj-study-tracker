@@ -91,6 +91,16 @@ public class MainActivity extends BridgeActivity {
 
     applyBars(DEFAULT_BG, true);
 
+    // Smoothness & stability of the WebView: no stretchy overscroll glow, and keep the renderer process
+    // at foreground priority so Android is less likely to reclaim it while the app is in use.
+    try {
+      android.webkit.WebView wv = getBridge().getWebView();
+      wv.setOverScrollMode(View.OVER_SCROLL_NEVER);
+      if (android.os.Build.VERSION.SDK_INT >= 26) {
+        wv.setRendererPriorityPolicy(android.webkit.WebView.RENDERER_PRIORITY_IMPORTANT, false);
+      }
+    } catch (Throwable ignored) { /* best effort */ }
+
     folderPicker = registerForActivityResult(new ActivityResultContracts.OpenDocumentTree(), uri -> {
       if (uri == null) {
         js("window.dispatchEvent(new CustomEvent('rj:folder-picked',{detail:{cancelled:true}}))");

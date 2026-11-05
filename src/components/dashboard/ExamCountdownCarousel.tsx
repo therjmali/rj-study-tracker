@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { readableInk } from '../../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useClock } from '../../hooks/useClock';
@@ -155,7 +156,7 @@ function ExamSlide({ exam, subjects, now }: { exam: ExamConfig; subjects: Subjec
                     strokeDasharray={`${2 * Math.PI * 14}`} strokeDashoffset={`${2 * Math.PI * 14 * (1 - s.pct / 100)}`}
                     style={{ transition: 'stroke-dashoffset 0.6s ease-out', filter: s.pct >= 100 ? `drop-shadow(0 0 4px ${s.color})` : `drop-shadow(0 0 2px ${s.color}40)` }} />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black font-mono" style={{ color: s.color }}>{s.pct}</span>
+                <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black font-mono" style={{ color: readableInk(s.color) }}>{s.pct}</span>
               </div>
               <span className="text-[8px] font-bold text-muted-foreground truncate max-w-[50px]">{s.name}</span>
             </div>

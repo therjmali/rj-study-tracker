@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { readableInk } from '../../lib/utils';
 import { motion } from 'framer-motion';
 import type { Subject } from '../../types';
 import type { DifficultyFilter } from '../../lib/studySuggestion';
@@ -50,7 +51,7 @@ export default function SubjectProgressStrip({ subjects, difficultyFilter, onNav
               color={s.color}
             />
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border truncate max-w-[68px]"
-              style={{ color: s.color, backgroundColor: s.color + '12', borderColor: s.color + '25' }}>
+              style={{ color: readableInk(s.color), backgroundColor: s.color + '12', borderColor: s.color + '25' }}>
               {s.shortName}
             </span>
             <span className="text-[8px] text-muted-foreground font-mono">{s.pct}%</span>

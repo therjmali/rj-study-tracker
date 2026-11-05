@@ -332,7 +332,7 @@ function CompareTab({ compareView, setCompareView, active, todayS, yesterdayS, t
                   <p className="text-muted-foreground">{fmtShort(customCurFrom)} → {fmtShort(customCurTo)}</p>
                 </div>
                 <div className="p-1.5 rounded-lg bg-accent/5 border border-accent/10">
-                  <p className="font-bold text-accent-foreground">Period B</p>
+                  <p className="font-bold text-accent-ink">Period B</p>
                   <p className="text-muted-foreground">{fmtShort(customPrevFrom)} → {fmtShort(customPrevTo)}</p>
                 </div>
               </div>
@@ -350,7 +350,7 @@ function CompareTab({ compareView, setCompareView, active, todayS, yesterdayS, t
           <div className="flex-1 min-w-0">
             <span className="font-bold text-primary">{fmtShort(customCurFrom)} – {fmtShort(customCurTo)}</span>
             <span className="text-muted-foreground mx-1.5">vs</span>
-            <span className="font-bold text-accent-foreground">{fmtShort(customPrevFrom)} – {fmtShort(customPrevTo)}</span>
+            <span className="font-bold text-accent-ink">{fmtShort(customPrevFrom)} – {fmtShort(customPrevTo)}</span>
           </div>
           <button onClick={() => { setCalendarStep('cur_from'); setCalendarOpen(true); }}
             className="text-[9px] font-bold text-primary hover:underline shrink-0">Edit</button>

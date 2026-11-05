@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { REVISION_KEYS } from '../types';
 import type { Subject, SubTopic, RevisionKey, TopicNavRef } from '../types';
 import { isDueToday, getNextDueDate, getDueCountdown } from '../lib/srs';
-import { formatStudyTime, getLocalDateStr } from '../lib/utils';
+import { formatStudyTime, getLocalDateStr, readableInk } from '../lib/utils';
 import { computeSubjectRevisionStats } from '../lib/revisionStats';
 import {
   SORT_OPTIONS, PRESETS, STATUS_LABEL, ROUND_FILTER_OPTIONS, TIME_FILTER_OPTIONS,
@@ -501,7 +501,7 @@ export default function RevisionPanel({ subjects, onUpdate, initialFilter, onOpe
                       <button onClick={() => setCategoryFilter('all')} className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-colors ${categoryFilter === 'all' ? 'bg-primary/15 border-primary/30 text-primary' : 'bg-card/30 border-border/15 text-foreground/60 hover:bg-card/60'}`}>All</button>
                       {allCategories.map(cat => (
                         <button key={cat} onClick={() => setCategoryFilter(categoryFilter === cat ? 'all' : cat)}
-                          className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-colors ${categoryFilter === cat ? 'bg-accent/15 border-accent/30 text-accent-foreground' : 'bg-card/30 border-border/15 text-foreground/60 hover:bg-card/60'}`}>{cat}</button>
+                          className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-colors ${categoryFilter === cat ? 'bg-accent/15 border-accent/30 text-accent-ink' : 'bg-card/30 border-border/15 text-foreground/60 hover:bg-card/60'}`}>{cat}</button>
                       ))}
                     </div>
                   </FilterSection>
@@ -593,7 +593,7 @@ export default function RevisionPanel({ subjects, onUpdate, initialFilter, onOpe
 const ROUND_STYLE: Record<RevisionKey, { bar: string; text: string; soft: string }> = {
   R1: { bar: 'bg-primary', text: 'text-primary', soft: 'bg-primary/12 border-primary/30 text-primary' },
   R2: { bar: 'bg-chart-4', text: 'text-chart-4', soft: 'bg-chart-4/12 border-chart-4/30 text-chart-4' },
-  R3: { bar: 'bg-accent', text: 'text-accent-foreground', soft: 'bg-accent/15 border-accent/35 text-accent-foreground' },
+  R3: { bar: 'bg-accent', text: 'text-accent-ink', soft: 'bg-accent/15 border-accent/35 text-accent-ink' },
   R4: { bar: 'bg-secondary', text: 'text-secondary', soft: 'bg-secondary/12 border-secondary/30 text-secondary' },
 };
 
@@ -701,7 +701,7 @@ function SubjectProgressView({ subjects, today, sort, onSort, onRevise, onOpenTo
                       {empty ? 'No completed topics yet — finish topics to unlock revision' : `${st.completedTopics}/${st.totalTopics} topics completed · ${st.roundsDone}/${st.roundsTotal} rounds`}
                     </p>
                   </div>
-                  {!empty && <span className="text-2xl font-black font-mono shrink-0" style={{ color: subject.color }}>{st.overallPct}<span className="text-xs">%</span></span>}
+                  {!empty && <span className="text-2xl font-black font-mono shrink-0" style={{ color: readableInk(subject.color) }}>{st.overallPct}<span className="text-xs">%</span></span>}
                   <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
                 </div>
 

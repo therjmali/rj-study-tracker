@@ -40,6 +40,8 @@ const tailwindConfig: Config = {
         accent: {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
+          /* readable accent-coloured TEXT on tinted/neutral surfaces (never use `foreground` there) */
+          ink: 'hsl(var(--accent-ink))',
         },
         popover: {
           DEFAULT: 'hsl(var(--popover))',

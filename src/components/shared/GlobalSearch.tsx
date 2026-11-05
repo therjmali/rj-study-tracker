@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import DeepSearchToggle from './DeepSearchToggle';
 import TopicStatusBadge from './TopicStatusBadge';
 import type { Subject, SubTopic, TopicNavRef } from '../../types';
-import { formatDate, formatStudyTime } from '../../lib/utils';
+import { formatDate, formatStudyTime, readableInk } from '../../lib/utils';
 import { normalizeText, tokenizeQuery, scoreTitle, fuzzyIncludesAll, splitForHighlight } from '../../lib/searchUtils';
 
 /** Persisted search state — lives outside the component so it survives unmount/remount */
@@ -348,7 +348,7 @@ export default function GlobalSearch({ open, onClose, subjects, onToggleTopic, o
           )}
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             {showSubject && (
-              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-md shrink-0" style={{ backgroundColor: subject.color + '18', color: subject.color }}>
+              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-md shrink-0" style={{ backgroundColor: subject.color + '18', color: readableInk(subject.color) }}>
                 {item.reasons.includes('subject') ? highlightMatch(subject.shortName, query) : subject.shortName}
               </span>
             )}
@@ -356,7 +356,7 @@ export default function GlobalSearch({ open, onClose, subjects, onToggleTopic, o
             <span
               onClick={(e) => { e.stopPropagation(); handleNavigateToUnit(item.subject.id, item.unitId, item.unitName); }}
               className="text-[8px] font-bold px-1.5 py-0.5 rounded-md border transition-all hover:scale-105 hover:shadow-sm active:scale-95 cursor-pointer inline-flex items-center gap-0.5"
-              style={{ backgroundColor: subject.color + '12', color: subject.color, borderColor: subject.color + '25' }}
+              style={{ backgroundColor: subject.color + '12', color: readableInk(subject.color), borderColor: subject.color + '25' }}
               title={`Open ${item.unitName}`}
               role="button"
               tabIndex={0}
@@ -529,7 +529,7 @@ export default function GlobalSearch({ open, onClose, subjects, onToggleTopic, o
                             >
                               {isCollapsed ? <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" /> : <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />}
                               <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: subject.color }} />
-                              <span className="text-[10px] font-bold" style={{ color: subject.color }}>{subject.shortName}</span>
+                              <span className="text-[10px] font-bold" style={{ color: readableInk(subject.color) }}>{subject.shortName}</span>
                               <span className="text-[10px] text-muted-foreground truncate">{subject.name}</span>
                             </button>
                             <span className="text-[9px] text-muted-foreground/60 shrink-0 flex items-center gap-1.5">

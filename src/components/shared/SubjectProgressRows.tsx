@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { readableInk } from '../../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight, ChevronUp, Star, Target, Clock } from 'lucide-react';
 import SubjectLink from './SubjectLink';
@@ -94,7 +95,7 @@ export function SubjectProgressRows({ subjectStats, expandedId, setExpandedId, o
               <p className="text-[8px] text-muted-foreground/60">Sessions not mapped to any subject</p>
             </div>
             {showTime && (
-              <span className="text-[9px] font-mono font-bold w-14 text-right" style={{ color: r.color }}>
+              <span className="text-[9px] font-mono font-bold w-14 text-right" style={{ color: readableInk(r.color) }}>
                 {formatTimeMins(r.mins)}
               </span>
             )}
@@ -153,7 +154,7 @@ function SubjectRow({ subject: s, idx, isExpanded, onToggle, onNavigate, onMoveS
 
           {/* Percentage circle */}
           <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center shrink-0 text-[9px] font-black font-mono"
-            style={{ borderColor: s.color, color: s.pct >= 70 ? s.color : undefined }}>
+            style={{ borderColor: s.color, color: s.pct >= 70 ? readableInk(s.color) : undefined }}>
             {s.pct}%
           </div>
 
@@ -177,7 +178,7 @@ function SubjectRow({ subject: s, idx, isExpanded, onToggle, onNavigate, onMoveS
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-[9px] font-mono text-muted-foreground w-10 text-right">{s.done}/{s.total}</span>
             {showTime && (
-              <span className="text-[9px] font-mono font-bold w-14 text-right" style={{ color: (s.studyTimeMins ?? 0) > 0 ? s.color : undefined }}>
+              <span className="text-[9px] font-mono font-bold w-14 text-right" style={{ color: (s.studyTimeMins ?? 0) > 0 ? readableInk(s.color) : undefined }}>
                 {(s.studyTimeMins ?? 0) > 0 ? formatTimeMins(s.studyTimeMins!) : '0m'}
               </span>
             )}

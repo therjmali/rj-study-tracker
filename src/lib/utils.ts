@@ -572,3 +572,14 @@ export function getEffectiveStudyMinutes(
 
   return total;
 }
+
+
+/**
+ * Text colour for a user/subject colour on a card or tint: the colour mixed toward the theme's text colour,
+ * so it stays readable on light AND dark themes (a plain bright green/yellow is under 3:1 on parchment).
+ * Use for TEXT only — bars, dots and rings keep the pure colour.
+ */
+export function readableInk(color: string | undefined | null): string {
+  if (!color) return 'hsl(var(--foreground))';
+  return `color-mix(in srgb, ${color} 62%, hsl(var(--foreground)))`;
+}

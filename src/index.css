@@ -55,6 +55,7 @@
     /* Warm Ochre — accent */
     --accent: 32 55% 45%;
     --accent-foreground: 24 20% 9%;
+    --accent-ink: 32 55% 28%;
 
     /* Blood Red — destructive */
     --destructive: 0 65% 45%;
@@ -1358,3 +1359,185 @@ main > * {
 }
 .flat-card > div:first-child > label:first-child,
 .flat-card > div:first-child > div:first-child > label:first-child { display: none; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════════
+   LIQUID GLASS  (Settings → Appearance → Display mode → Liquid Glass)
+   Translucent, softly lit surfaces floating over a colourful aurora. Light and dark tones.
+   Blur is limited to the few large surfaces (header, nav, sheets, dialogs, hero cards) so scrolling
+   stays smooth on phones; every other card is a cheap translucent fill.
+   ═══════════════════════════════════════════════════════════════════════════════════ */
+html.glass-mode {
+  --glass-fill: 255 255 255;
+  --glass-fill-a: 0.46;
+  --glass-fill-a2: 0.26;
+  --glass-edge: 255 255 255;
+  --glass-edge-a: 0.7;
+  --glass-shadow: 36 52 110;
+  --glass-shadow-a: 0.13;
+  --glass-spec: 255 255 255;
+  --glass-spec-a: 0.9;
+}
+html.glass-mode.glass-dark {
+  --glass-fill: 255 255 255;
+  --glass-fill-a: 0.10;
+  --glass-fill-a2: 0.05;
+  --glass-edge: 255 255 255;
+  --glass-edge-a: 0.20;
+  --glass-shadow: 0 0 0;
+  --glass-shadow-a: 0.45;
+  --glass-spec: 255 255 255;
+  --glass-spec-a: 0.28;
+}
+
+html.glass-mode body {
+  background-color: hsl(var(--background));
+  background-image:
+    radial-gradient(60vmax 50vmax at 8% -6%, rgba(70, 130, 255, 0.78), transparent 64%),
+    radial-gradient(55vmax 48vmax at 100% 4%, rgba(180, 100, 255, 0.62), transparent 62%),
+    radial-gradient(60vmax 52vmax at 92% 102%, rgba(255, 140, 110, 0.62), transparent 64%),
+    radial-gradient(52vmax 46vmax at -4% 98%, rgba(50, 210, 185, 0.62), transparent 62%);
+  background-attachment: fixed;
+}
+html.glass-mode.glass-dark body {
+  background-image:
+    radial-gradient(60vmax 50vmax at 8% -6%, rgba(54, 96, 230, 0.55), transparent 62%),
+    radial-gradient(55vmax 48vmax at 100% 4%, rgba(130, 70, 220, 0.45), transparent 60%),
+    radial-gradient(60vmax 52vmax at 92% 102%, rgba(220, 80, 100, 0.32), transparent 62%),
+    radial-gradient(52vmax 46vmax at -4% 98%, rgba(20, 160, 150, 0.34), transparent 60%);
+}
+html.glass-mode body::before { opacity: 0 !important; }
+
+/* Every card-like surface: frosted fill + bright rim + soft lift */
+html.glass-mode .glass-card,
+html.glass-mode .glass-subtle,
+html.glass-mode .material-ultra-thin,
+html.glass-mode .material-thin,
+html.glass-mode .material-regular,
+html.glass-mode .material-thick,
+html.glass-mode [class*="bg-card"] {
+  background-color: transparent !important;
+  background-image: linear-gradient(145deg, rgb(var(--glass-fill) / var(--glass-fill-a)), rgb(var(--glass-fill) / var(--glass-fill-a2))) !important;
+  border-color: rgb(var(--glass-edge) / var(--glass-edge-a)) !important;
+  box-shadow:
+    0 8px 30px rgb(var(--glass-shadow) / var(--glass-shadow-a)),
+    inset 0 1px 0 rgb(var(--glass-spec) / var(--glass-spec-a)),
+    inset 0 -1px 0 rgb(var(--glass-edge) / 0.18) !important;
+}
+/* small chips / rows inside cards stay flatter so the hierarchy reads */
+html.glass-mode [class*="bg-card/1"],
+html.glass-mode [class*="bg-card/2"],
+html.glass-mode [class*="bg-card/3"] {
+  background-image: linear-gradient(145deg, rgb(var(--glass-fill) / calc(var(--glass-fill-a) * .55)), rgb(var(--glass-fill) / calc(var(--glass-fill-a2) * .55))) !important;
+  box-shadow: inset 0 1px 0 rgb(var(--glass-spec) / calc(var(--glass-spec-a) * .7)) !important;
+}
+
+/* The big surfaces get the real glass blur */
+html.glass-mode .glass-card,
+html.glass-mode .glass-header,
+html.glass-mode .glass-nav,
+html.glass-mode .material-thin,
+html.glass-mode .material-regular,
+html.glass-mode .material-thick,
+html.glass-mode [role="dialog"],
+html.glass-mode [data-radix-popper-content-wrapper] > *,
+html.glass-mode [data-vaul-drawer],
+html.glass-mode [data-sonner-toast] {
+  -webkit-backdrop-filter: blur(22px) saturate(1.8);
+  backdrop-filter: blur(22px) saturate(1.8);
+}
+html.glass-mode .glass-header,
+html.glass-mode .glass-nav {
+  background-color: rgb(var(--glass-fill) / calc(var(--glass-fill-a) * .9)) !important;
+  background-image: none !important;
+  border-color: rgb(var(--glass-edge) / var(--glass-edge-a)) !important;
+}
+html.glass-mode [role="dialog"],
+html.glass-mode [data-radix-popper-content-wrapper] > *,
+html.glass-mode [data-sonner-toast] {
+  background-color: hsl(var(--popover) / 0.72) !important;
+}
+
+/* Primary buttons / selected states catch a glossy highlight */
+html.glass-mode .bg-primary:not([class*="bg-primary/"]) {
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0) 55%);
+  box-shadow: 0 6px 18px hsl(var(--primary) / 0.35), inset 0 1px 0 rgba(255,255,255,0.45);
+}
+html.glass-mode ::selection { background: hsl(var(--primary) / 0.28); }
+/* The sidebar on tablets floats too */
+html.glass-mode.glass-dark .material-thin { color: hsl(var(--foreground)); }
+
+@media (prefers-reduced-transparency: reduce) {
+  html.glass-mode .glass-card, html.glass-mode .glass-header, html.glass-mode .glass-nav,
+  html.glass-mode .material-thin, html.glass-mode .material-regular, html.glass-mode .material-thick,
+  html.glass-mode [role="dialog"], html.glass-mode [data-radix-popper-content-wrapper] > * {
+    -webkit-backdrop-filter: none; backdrop-filter: none;
+    background-image: none !important;
+    background-color: hsl(var(--card)) !important;
+  }
+}
+
+/* ═════════════ Flip card (flip clock + flip countdown) ═════════════ */
+.flip-card {
+  --flip-bg: #ffffff; --flip-fg: #2a2c30; --flip-line: rgba(0,0,0,.16); --flip-shadow: rgba(20,24,40,.18);
+  position: relative; width: var(--fw); height: var(--fh); perspective: calc(var(--fh) * 3);
+  border-radius: calc(var(--fw) * .16); contain: layout paint style;
+  box-shadow: 0 6px 16px var(--flip-shadow), 0 1px 0 rgba(255,255,255,.7) inset;
+  font-variant-numeric: tabular-nums;
+}
+.flip-card[data-tone="dark"] { --flip-bg: #202124; --flip-fg: #f1f1f2; --flip-line: rgba(0,0,0,.65); --flip-shadow: rgba(0,0,0,.4); }
+.flip-card[data-tone="auto"] { --flip-bg: hsl(var(--card)); --flip-fg: hsl(var(--foreground)); --flip-line: hsl(var(--foreground) / .22); --flip-shadow: hsl(var(--foreground) / .16); }
+html.amoled-mode .flip-card[data-tone="auto"], html.glass-dark .flip-card[data-tone="auto"] { --flip-bg: #232428; --flip-fg: #f1f1f2; --flip-line: rgba(0,0,0,.7); --flip-shadow: rgba(0,0,0,.5); }
+.flip-half { position: absolute; left: 0; right: 0; height: 50%; overflow: hidden; background: var(--flip-bg); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.flip-half > span { position: absolute; left: 0; right: 0; height: 200%; display: flex; align-items: center; justify-content: center; color: var(--flip-fg); font-size: var(--ffs); line-height: 1; font-weight: 800; letter-spacing: -.02em; font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+.flip-top { top: 0; border-radius: calc(var(--fw) * .16) calc(var(--fw) * .16) 0 0; transform-origin: 50% 100%; background-image: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0)); }
+.flip-top > span { top: 0; }
+.flip-bottom { bottom: 0; border-radius: 0 0 calc(var(--fw) * .16) calc(var(--fw) * .16); transform-origin: 50% 0; background-image: linear-gradient(0deg, rgba(0,0,0,.08), rgba(0,0,0,0)); }
+.flip-bottom > span { bottom: 0; }
+.flip-hinge { position: absolute; left: 0; right: 0; top: calc(50% - 1px); height: 2px; background: var(--flip-line); z-index: 6; pointer-events: none; }
+.flip-flap-top { z-index: 4; animation: flipTop .3s cubic-bezier(.4,0,.8,.6) forwards; }
+.flip-flap-bottom { z-index: 3; transform: rotateX(90deg); animation: flipBottom .3s cubic-bezier(.2,.7,.3,1) .3s forwards; }
+@keyframes flipTop { from { transform: rotateX(0deg); } to { transform: rotateX(-90deg); } }
+@keyframes flipBottom { from { transform: rotateX(90deg); } to { transform: rotateX(0deg); } }
+@media (prefers-reduced-motion: reduce) { .flip-flap-top, .flip-flap-bottom { animation-duration: .01s; animation-delay: 0s; } }
+
+/* ═════════ Readable text guard (found by the pixel-level contrast audit) ═════════
+   Semantic colours (green, yellow, orange…) and faint "muted/40" labels are fine as fills but too pale as TEXT on
+   light surfaces. On light canvases the text utilities are mixed toward the theme's ink so they pass ≥ 4.5:1;
+   dark canvases already use light variants of these colours. */
+html:not(.amoled-mode):not(.glass-dark) .text-chart-1,
+html:not(.amoled-mode):not(.glass-dark) .text-chart-3,
+html:not(.amoled-mode):not(.glass-dark) .text-chart-5 { color: color-mix(in srgb, hsl(var(--chart-1)) 62%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-chart-2 { color: color-mix(in srgb, hsl(var(--chart-2)) 66%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-chart-4 { color: color-mix(in srgb, hsl(var(--chart-4)) 60%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-accent { color: color-mix(in srgb, hsl(var(--accent)) 52%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-secondary { color: color-mix(in srgb, hsl(var(--secondary)) 70%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-diff-easy { color: color-mix(in srgb, hsl(var(--diff-easy)) 58%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-diff-medium { color: color-mix(in srgb, hsl(var(--diff-medium)) 50%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-diff-hard { color: color-mix(in srgb, hsl(var(--diff-hard)) 66%, hsl(var(--foreground))); }
+.text-muted-foreground\/30:not(.animate-colon-blink), .text-muted-foreground\/40:not(.animate-colon-blink),
+.text-muted-foreground\/50:not(.animate-colon-blink), .text-muted-foreground\/60:not(.animate-colon-blink) { color: hsl(var(--muted-foreground) / 0.86); }
+.text-muted-foreground\/70, .text-muted-foreground\/80 { color: hsl(var(--muted-foreground) / 0.94); }
+
+/* Liquid Glass (dark tone): status colours tuned for a dark canvas, same as AMOLED */
+html.glass-dark {
+  --state-complete-bg: 150 20% 16%;
+  --state-complete-border: 152 45% 48%;
+  --state-complete-accent: 152 50% 62%;
+  --state-complete-text: 152 40% 70%;
+  --state-progress-bg: 33 40% 16%;
+  --state-progress-border: 33 85% 58%;
+  --state-progress-accent: 33 90% 64%;
+  --state-neutral-border: 0 0% 30%;
+  --state-neutral-accent: 0 0% 60%;
+  --star-gold: 45 90% 60%;
+}
+html:not(.amoled-mode):not(.glass-dark) .text-destructive { color: color-mix(in srgb, hsl(var(--destructive)) 82%, hsl(var(--foreground))); }
+/* faint "calendar number" text (foreground at 10–40 %) — raise to a readable floor */
+.text-foreground\/10, .text-foreground\/15, .text-foreground\/20, .text-foreground\/25, .text-foreground\/30, .text-foreground\/35, .text-foreground\/40 { color: hsl(var(--foreground) / 0.62); }
+.text-secondary\/80, .text-secondary\/70, .text-secondary\/60 { color: color-mix(in srgb, hsl(var(--secondary)) 70%, hsl(var(--foreground))); }
+
+/* Snappier touch: no 300 ms tap delay / grey flash, and no pull-to-refresh bounce inside the installed app */
+html { -webkit-tap-highlight-color: transparent; }
+button, a, [role="button"], [role="tab"], summary, label, input, select { touch-action: manipulation; }
+html, body { overscroll-behavior-y: none; }

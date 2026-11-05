@@ -51,7 +51,7 @@ export default function SubjectDifficultyCard({
           ))}
           {diffFilter !== 'all' && (
             <button type="button" onClick={() => onFilterChange('all')}
-              className="text-[10px] font-bold text-accent-foreground bg-accent/20 px-1.5 py-0.5 rounded-md ml-1 active:scale-90">
+              className="text-[10px] font-bold text-accent-ink bg-accent/20 px-1.5 py-0.5 rounded-md ml-1 active:scale-90">
               ALL
             </button>
           )}
@@ -77,7 +77,7 @@ export default function SubjectDifficultyCard({
                   <button key={r.label} type="button" onClick={() => onFilterChange(diffFilter === r.key ? 'all' : r.key)}
                     className={`w-full flex items-center gap-2.5 rounded-lg px-1 py-1 transition-all active:scale-[0.98] ${isActive ? 'bg-accent/10 ring-1 ring-accent/20' : 'hover:bg-card/30'}`}>
                     <div className={`w-3.5 h-3.5 rounded-full shrink-0 ${r.dotColor} ${isActive ? 'ring-2 ' + r.ringColor + ' scale-110' : ''} transition-all`} />
-                    <span className={`text-sm font-bold w-16 shrink-0 text-left ${isActive ? 'text-accent-foreground' : 'text-foreground'}`}>{r.label}</span>
+                    <span className={`text-sm font-bold w-16 shrink-0 text-left ${isActive ? 'text-accent-ink' : 'text-foreground'}`}>{r.label}</span>
                     <div className="flex-1 h-3.5 rounded-full bg-muted/25 overflow-hidden min-w-0">
                       <div className="h-full rounded-full transition-all duration-500" style={{ backgroundColor: r.color, width: `${pct}%` }} />
                     </div>

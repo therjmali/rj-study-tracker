@@ -5,7 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@project/components/ui/alert-dialog';
 import { Button } from '@project/components/ui/button';
 import type { Folder, Subject } from '../../types';
-import { getLocalDateStr } from '../../lib/utils';
+import { getLocalDateStr, readableInk } from '../../lib/utils';
 import { toast } from 'sonner';
 import StatusFilterPills, { type StatusFilter } from '../shared/StatusFilterPills';
 
@@ -274,7 +274,7 @@ export default function FolderCard({ folder, subjects, onOpen, onEdit, onDelete,
                           strokeDasharray={`${2 * Math.PI * 10.5}`} strokeDashoffset={`${2 * Math.PI * 10.5 * (1 - s.pct / 100)}`}
                           style={{ transition: 'stroke-dashoffset 0.5s ease-out', filter: `drop-shadow(0 0 3px ${s.color}40)` }} />
                       </svg>
-                      <span className="absolute inset-0 flex items-center justify-center text-[7px] font-black font-mono" style={{ color: s.color }}>
+                      <span className="absolute inset-0 flex items-center justify-center text-[7px] font-black font-mono" style={{ color: readableInk(s.color) }}>
                         {s.pct}
                       </span>
                     </div>
@@ -405,7 +405,7 @@ export default function FolderCard({ folder, subjects, onOpen, onEdit, onDelete,
                                   style={{ transition: 'stroke-dashoffset 0.6s ease-out' }} />
                               </svg>
                               <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-[9px] font-black font-mono" style={{ color: d.color }}>{pct}%</span>
+                                <span className="text-[9px] font-black font-mono" style={{ color: readableInk(d.color) }}>{pct}%</span>
                               </div>
                             </div>
                             <span className="text-[10px] font-bold text-foreground">{d.label}</span>

@@ -10,7 +10,7 @@ import { startSyncEngine, stopSyncEngine, syncNow, useSyncState } from '@/platfo
 import { syncData, saveTopic, saveDailyLog, saveSettings, deleteRecords, saveSubjects, createSession, updateSession, deleteSession as deleteSessionEndpoint, migrateSessions } from '@/platform/api';
 import { useDebouncedCallback } from 'use-debounce';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { useTheme } from './hooks/useTheme';
+import { useTheme, isDarkCanvas } from './hooks/useTheme';
 import { useGlobalTimer } from './hooks/useGlobalTimer';
 import { useTimerNotifications } from './hooks/useTimerNotifications';
 import { registerBackupContext } from './platform/autoBackup';
@@ -546,7 +546,7 @@ function AppInner() {
   const [undoLen, setUndoLen] = useState(0);
   const [redoLen, setRedoLen] = useState(0);
 
-  useTheme(settings.theme, settings.themeMode ?? 'light');
+  useTheme(settings.theme, settings.themeMode ?? 'light', settings.glassTone ?? 'auto');
 
   // Apply text size CSS variables
   useEffect(() => {
@@ -1339,6 +1339,10 @@ function AppInner() {
         openRunningTopic(d);
       } else if (id === 'timer-open') {
         setPomodoroOpen(true);
+      } else if (id === 'open-progress') {
+        setProfileOpen(false); setPomodoroOpen(false);
+        startTransition(() => setActiveTab('dashboard'));
+        setTimeout(() => document.getElementById('progress-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 500);
       } else if (id === 'open-report') {
         startTransition(() => setActiveTab('charts'));
       } else if (id === 'open-history') {
@@ -1365,6 +1369,11 @@ function AppInner() {
   const handleBottomNavChange = useCallback((tab: AppTab, dir?: 'left' | 'right') => { setSlideDir(dir ?? null); setRevisionFilter(undefined); startTransition(() => setActiveTab(tab)); }, [setActiveTab]);
   const handleThemeToggle = useCallback(() => setSettings(prev => {
     const cur = prev.themeMode ?? 'light';
+    // Liquid Glass: the quick toggle flips its light / dark tone instead of leaving the theme
+    if (cur === 'glass') {
+      const dark = isDarkCanvas('glass', prev.glassTone ?? 'auto');
+      return { ...prev, glassTone: dark ? 'light' : 'dark' };
+    }
     const next = cur === 'light' ? 'amoled' : cur === 'amoled' ? 'ancient' : 'light';
     return { ...prev, themeMode: next };
   }), [setSettings]);
@@ -1973,7 +1982,7 @@ function AppInner() {
 
       <div className="flex max-w-full bg-background min-h-[calc(100vh-3.5rem)]">
         <SideNav activeTab={activeTab} onTabChange={handleSideNavChange} onOpenProfile={openProfile} srsDueCount={srsDueCount} />
-        <main className="flex-1 px-4 py-4 pb-36 lg:pb-4 max-w-6xl mx-auto w-full">
+        <main className="flex-1 px-3 sm:px-4 py-4 pb-36 lg:pb-4 max-w-6xl mx-auto w-full">
           <div key={activeTab} className="animate-page-enter min-h-[50vh]">
               {renderContent()}
           </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { readableInk } from '../lib/utils';
 import { motion } from 'framer-motion';
 import { Play, Pause, RotateCcw, Coffee, Brain, Zap, BookOpen, Flame, Clock, Save, SkipForward, NotebookPen } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
@@ -157,7 +158,7 @@ export default function FocusTimer({ settings, subjects = [], initialSubjectId, 
           <div className="rounded-xl border bg-card/50 p-3" style={{ borderColor: subjectColor ? subjectColor + '30' : undefined }}>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border" style={{ backgroundColor: (subjectColor || 'hsl(var(--primary))') + '15', borderColor: (subjectColor || 'hsl(var(--primary))') + '25' }}>
-                <BookOpen className="w-4 h-4" style={{ color: subjectColor || 'hsl(var(--primary))' }} />
+                <BookOpen className="w-4 h-4" style={{ color: readableInk(subjectColor) || 'hsl(var(--primary))' }} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Studying</p>

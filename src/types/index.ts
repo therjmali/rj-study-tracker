@@ -257,7 +257,9 @@ export interface HistoryEntry {
 }
 
 export type ThemeId = 'default' | 'ocean' | 'emerald' | 'sunset' | 'rose' | 'purple' | 'ancient';
-export type ThemeMode = 'light' | 'amoled' | 'ancient';
+export type ThemeMode = 'light' | 'amoled' | 'ancient' | 'glass';
+/** Liquid Glass appearance: follow the phone, or force light / dark. */
+export type GlassTone = 'auto' | 'light' | 'dark';
 
 export interface PomodoroSettings {
   focusMin: number;
@@ -360,6 +362,8 @@ export interface CustomQuote {
 export interface UserSettings {
   theme: ThemeId;
   themeMode: ThemeMode;
+  /** Only used by the Liquid Glass theme. */
+  glassTone?: GlassTone;
   pomodoroSettings: PomodoroSettings;
   studyGoals: StudyGoals;
   trackingMode: TrackingMode;

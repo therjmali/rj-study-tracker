@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { readableInk } from '../../lib/utils';
 import { Star } from 'lucide-react';
 import type { Subject } from '../../types';
 import CircularProgress from '../shared/CircularProgress';
@@ -31,7 +32,7 @@ export default function SubjectCompletion({ subjects }: Props) {
         {items.map(s => (
           <div key={s.id} className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-card/40 transition-colors">
             <CircularProgress value={s.done} max={s.total} size={56} strokeWidth={5} color={s.color} />
-            <span className="text-[10px] font-black" style={{ color: s.color }}>{s.name}</span>
+            <span className="text-[10px] font-black" style={{ color: readableInk(s.color) }}>{s.name}</span>
             <span className="text-[8px] text-muted-foreground font-mono font-semibold">{s.done}/{s.total}</span>
             {s.imp > 0 && (
               <span className="flex items-center gap-0.5 text-[8px] font-bold">

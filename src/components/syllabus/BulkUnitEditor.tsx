@@ -26,7 +26,7 @@ import { CSS } from '@dnd-kit/utilities';
 import FullPageSheet from '../shared/FullPageSheet';
 import ReorderPanel from './ReorderPanel';
 import type { Unit, SubTopic, TopicStatus } from '../../types';
-import { formatStudyTime } from '../../lib/utils';
+import { formatStudyTime, readableInk } from '../../lib/utils';
 import { matchesFields } from '../../lib/searchUtils';
 
 interface Props {
@@ -293,12 +293,12 @@ export default function BulkUnitEditor({
           style={{ background: `linear-gradient(135deg, ${subjectColor}22 0%, hsl(var(--card) / 0.55) 75%)` }}>
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: subjectColor + '25' }}>
-              <Pencil className="w-4 h-4" style={{ color: subjectColor }} />
+              <Pencil className="w-4 h-4" style={{ color: readableInk(subjectColor) }} />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-black text-foreground leading-tight">Edit Unit</h3>
               <p className="text-[10px] text-muted-foreground font-semibold truncate">
-                <span style={{ color: subjectColor }}>{subjectName}</span> · Unit {unitIndex + 1} · {stats.total} topics
+                <span style={{ color: readableInk(subjectColor) }}>{subjectName}</span> · Unit {unitIndex + 1} · {stats.total} topics
               </p>
             </div>
             {reorderUndoStack.length > 0 && activeTab === 'reorder' && (
@@ -526,7 +526,7 @@ function TopicsTab({
         <StatPill emoji="🔄" label={`${stats.inProcess}`} sublabel="WIP" color="text-chart-4" />
         <StatPill emoji="⭐" label={`${stats.important}`} sublabel="imp" color="text-chart-4" />
         <motion.button whileTap={{ scale: 0.9 }} onClick={() => setAddTopicOpen(p => !p)}
-          className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${addTopicOpen ? 'bg-primary/15 border-primary/30 text-primary' : 'bg-accent/10 border-accent/20 text-accent-foreground hover:bg-accent/20'}`}>
+          className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all ${addTopicOpen ? 'bg-primary/15 border-primary/30 text-primary' : 'bg-accent/10 border-accent/20 text-accent-ink hover:bg-accent/20'}`}>
           <Plus className="w-3 h-3" /> Add Topic
         </motion.button>
       </div>
@@ -575,17 +575,17 @@ function TopicsTab({
                         <div className="flex gap-1 flex-wrap">
                           {subModuleNames.map(m => (
                             <button key={m} onClick={() => setNewTopicSubModule(newTopicSubModule === m ? '' : m)}
-                              className={`text-[9px] px-2 py-1 rounded-lg font-bold border transition-all ${newTopicSubModule === m ? 'bg-accent/15 border-accent/25 text-accent-foreground' : 'bg-card/60 border-border/20 text-foreground/70 hover:bg-card/80'}`}>{m}</button>
+                              className={`text-[9px] px-2 py-1 rounded-lg font-bold border transition-all ${newTopicSubModule === m ? 'bg-accent/15 border-accent/25 text-accent-ink' : 'bg-card/60 border-border/20 text-foreground/70 hover:bg-card/80'}`}>{m}</button>
                           ))}
                         </div>
                       )}
-                      <button onClick={() => setShowNewSubModule(true)} className="text-[9px] font-bold text-accent/70 hover:text-accent-foreground transition-colors">+ New sub-module</button>
+                      <button onClick={() => setShowNewSubModule(true)} className="text-[9px] font-bold text-accent/70 hover:text-accent-ink transition-colors">+ New sub-module</button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-1">
                       <Input value={customNewSubModule} onChange={e => setCustomNewSubModule(e.target.value)} placeholder="New sub-module..." className="h-7 text-[10px] flex-1 bg-card border-border/20 rounded-lg" autoFocus
                         onKeyDown={e => { if (e.key === 'Enter' && customNewSubModule.trim()) { setNewTopicSubModule(customNewSubModule.trim()); setShowNewSubModule(false); setCustomNewSubModule(''); } if (e.key === 'Escape') setShowNewSubModule(false); }} />
-                      <button onClick={() => { if (customNewSubModule.trim()) { setNewTopicSubModule(customNewSubModule.trim()); } setShowNewSubModule(false); setCustomNewSubModule(''); }} className="text-[9px] font-bold text-accent-foreground px-1.5">✓</button>
+                      <button onClick={() => { if (customNewSubModule.trim()) { setNewTopicSubModule(customNewSubModule.trim()); } setShowNewSubModule(false); setCustomNewSubModule(''); }} className="text-[9px] font-bold text-accent-ink px-1.5">✓</button>
                     </div>
                   )}
                 </div>
@@ -604,7 +604,7 @@ function TopicsTab({
               {(newTopicModule || newTopicSubModule) && (
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {newTopicModule && <span className="text-[9px] px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/15 font-bold">📁 {newTopicModule}</span>}
-                  {newTopicSubModule && <span className="text-[9px] px-2 py-0.5 rounded-md bg-accent/10 text-accent-foreground border border-accent/15 font-bold">📂 {newTopicSubModule}</span>}
+                  {newTopicSubModule && <span className="text-[9px] px-2 py-0.5 rounded-md bg-accent/10 text-accent-ink border border-accent/15 font-bold">📂 {newTopicSubModule}</span>}
                 </div>
               )}
               <Button size="sm" onClick={handleAddTopic} disabled={!newTopicName.trim()} className="w-full h-9 text-xs font-bold rounded-xl gap-1.5">
@@ -921,7 +921,7 @@ function EditableTopicRow({
               label="📂"
             />
           ) : topic.subModule ? (
-            <button onClick={() => startEdit('subModule')} className="text-[8px] px-1.5 py-0.5 rounded-md bg-accent/10 text-accent-foreground border border-accent/20 font-bold hover:bg-accent/15 transition-colors truncate max-w-[80px]">📂 {topic.subModule}</button>
+            <button onClick={() => startEdit('subModule')} className="text-[8px] px-1.5 py-0.5 rounded-md bg-accent/10 text-accent-ink border border-accent/20 font-bold hover:bg-accent/15 transition-colors truncate max-w-[80px]">📂 {topic.subModule}</button>
           ) : (
             <button onClick={() => startEdit('subModule')} className="text-[8px] px-1.5 py-0.5 rounded-md bg-muted/15 text-foreground/40 border border-border/12 font-bold hover:bg-muted/25 hover:text-foreground/60 transition-colors">+ Sub</button>
           )}

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Clock, ChevronDown, AlertTriangle, Trophy, Calendar, Zap } from 'lucide-react';
 import CircularProgress from '../shared/CircularProgress';
-import { getLocalDateStr, formatStudyTime } from '../../lib/utils';
+import { getLocalDateStr, formatStudyTime, readableInk } from '../../lib/utils';
 import type { Subject, Folder } from '../../types';
 
 interface Props {
@@ -280,7 +280,7 @@ export default function FolderAnalytics({ folder, subjects, onOpenSubject }: Pro
                       style={{ transition: 'stroke-dashoffset 0.8s ease-out', filter: `drop-shadow(0 0 4px ${r.color}40)` }} />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[12px] font-black font-mono" style={{ color: r.color }}>{pct}%</span>
+                    <span className="text-[12px] font-black font-mono" style={{ color: readableInk(r.color) }}>{pct}%</span>
                   </div>
                 </div>
                 <p className="text-[12px] font-bold text-foreground leading-none">{r.label}</p>

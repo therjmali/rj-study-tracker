@@ -72,7 +72,7 @@ export default function AddTopicInline({ open, onClose, unitId, modules, onAdd }
                   onClick={() => setModule(module === m ? '' : m)}
                   className={`text-[9px] px-2 py-0.5 rounded-full border transition-colors ${
                     module === m
-                      ? 'bg-accent/15 text-accent-foreground border-accent/30'
+                      ? 'bg-accent/15 text-accent-ink border-accent/30'
                       : 'bg-muted/20 text-muted-foreground border-border/30 hover:bg-muted/40'
                   }`}
                 >

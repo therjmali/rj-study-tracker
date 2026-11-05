@@ -1,7 +1,7 @@
 import { isImageAvatar } from '../../lib/avatar';
 import { useState, memo } from 'react';
 import { useAppIcon } from '@/platform/appIcon';
-import { Stethoscope, Sun, Moon, Flame, Search, Cloud, CloudOff, Loader2, Bell, Wheat, GraduationCap, X } from 'lucide-react';
+import { Stethoscope, Sun, Moon, Flame, Search, Cloud, CloudOff, Loader2, Bell, Wheat, GraduationCap, X, Contrast } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import type { User, ThemeMode, StudentMode } from '../../types';
 import { getAppName } from '../../lib/brandConfig';
@@ -37,6 +37,7 @@ function AppIcon({ mode }: { mode?: StudentMode }) {
 function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, level, xpProgress = 0, onOpenSearch, syncStatus = 'idle', dueReminders = 0, onOpenReminders, studentMode, onNavigateHome, onOpenCloudData, streakDays = 0, todayTopicsDone = 0, onLevelClick }: Props) {
   const isLight = themeMode === 'light';
   const isAncient = themeMode === 'ancient';
+  const isGlass = themeMode === 'glass';
   const appName = getAppName(studentMode);
   const [streakBannerDismissed, setStreakBannerDismissed] = useState(false);
 
@@ -126,7 +127,7 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
 
           <Button variant="ghost" size="icon" onClick={onToggleTheme}
             className="w-8 h-8 rounded-xl shrink-0" aria-label="Toggle theme">
-            {isLight ? <Moon className="w-[15px] h-[15px] text-muted-foreground" /> : isAncient ? <Sun className="w-[15px] h-[15px] text-muted-foreground" /> : <Flame className="w-[15px] h-[15px] text-muted-foreground" />}
+            {isGlass ? <Contrast className="w-[15px] h-[15px] text-muted-foreground" /> : isLight ? <Moon className="w-[15px] h-[15px] text-muted-foreground" /> : isAncient ? <Sun className="w-[15px] h-[15px] text-muted-foreground" /> : <Flame className="w-[15px] h-[15px] text-muted-foreground" />}
           </Button>
 
           <button onClick={onOpenProfile}

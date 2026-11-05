@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
+import { readableInk } from '../../lib/utils';
 import { FileText, Upload, Sparkles, TreePine, FileJson, Download, Copy, CheckCheck, FolderTree, AlertTriangle, Merge, RefreshCw } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import { Textarea } from '@project/components/ui/textarea';
@@ -385,7 +386,7 @@ export default function ImportSyllabusSheet({ open, onClose, onImport, onReplace
                   <p className="text-xs font-bold text-foreground/70">Subjects</p>
                 </div>
                 <div className="text-center p-2 rounded-lg bg-accent/10 border border-accent/15">
-                  <p className="text-lg font-black font-mono text-accent-foreground">{parsed.stats.units}</p>
+                  <p className="text-lg font-black font-mono text-accent-ink">{parsed.stats.units}</p>
                   <p className="text-xs font-bold text-foreground/70">Units</p>
                 </div>
                 <div className="text-center p-2 rounded-lg bg-secondary/10 border border-secondary/15">
@@ -416,7 +417,7 @@ export default function ImportSyllabusSheet({ open, onClose, onImport, onReplace
               <div className="max-h-48 overflow-y-auto space-y-2 scrollbar-hide">
                 {parsed.subjects.map(s => (
                   <div key={s.id} className="rounded-lg border border-border/50 p-2.5">
-                    <p className="text-xs font-semibold" style={{ color: s.color }}>{s.name}</p>
+                    <p className="text-xs font-semibold" style={{ color: readableInk(s.color) }}>{s.name}</p>
                     <p className="text-[10px] text-muted-foreground mb-1.5">{s.units.length} units · {s.units.reduce((a, u) => a + u.subTopics.length, 0)} topics</p>
                     <div className="space-y-1">
                       {s.units.map(u => {

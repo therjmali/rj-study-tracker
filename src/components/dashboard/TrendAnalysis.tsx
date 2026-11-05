@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { BookOpen, Clock, Trophy, TrendingUp, ChevronDown, ChevronRight, CheckCircle2, BarChart3 } from 'lucide-react';
 import type { Subject, DailyLog, DbStudySession, SubTopic } from '../../types';
-import { formatStudyHours, formatStudyTime, getEffectiveDayMinutes, getEffectiveStudyMinutes, getUnifiedTotalMinutes, getLocalDateStr, formatDate } from '../../lib/utils';
+import { formatStudyHours, formatStudyTime, getEffectiveDayMinutes, getEffectiveStudyMinutes, getUnifiedTotalMinutes, getLocalDateStr, formatDate, readableInk } from '../../lib/utils';
 
 type TimeFilter = 'all' | 'today' | 'weekly' | 'monthly' | 'custom';
 
@@ -374,7 +374,7 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
                       <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: s.color }} />
                     </div>
                     <span className="text-[9px] font-mono text-muted-foreground shrink-0 w-10 text-right">{topicsDone}/{total}</span>
-                    <span className="text-[8px] font-mono font-bold shrink-0 w-12 text-right" style={{ color: s.color }}>{formatStudyTime(timeMins)}</span>
+                    <span className="text-[8px] font-mono font-bold shrink-0 w-12 text-right" style={{ color: readableInk(s.color) }}>{formatStudyTime(timeMins)}</span>
                     <ChevronDown className={`w-3 h-3 text-muted-foreground/40 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                   </button>
 

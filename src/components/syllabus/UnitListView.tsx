@@ -6,7 +6,7 @@ import { Input } from '@project/components/ui/input';
 import { Button } from '@project/components/ui/button';
 import CircularProgress from '../shared/CircularProgress';
 import type { Subject, SubTopic, TopicStatus, Unit } from '../../types';
-import { formatStudyTime, formatDate, getCleanName, getDisplayTopicName, getSubjectFontSize } from '../../lib/utils';
+import { formatStudyTime, formatDate, getCleanName, getDisplayTopicName, getSubjectFontSize, readableInk } from '../../lib/utils';
 import { toast } from 'sonner';
 import HighlightText from '../shared/HighlightText';
 import { matchesFields } from '../../lib/searchUtils';
@@ -298,7 +298,7 @@ const UnitCard = memo(function UnitCard({
           >
             <span
               className="text-[20px] font-black font-mono leading-none"
-              style={{ color: subject.color, letterSpacing: '-0.5px' }}
+              style={{ color: readableInk(subject.color), letterSpacing: '-0.5px' }}
             >
               {String(unitIndex + 1).padStart(2, '0')}
             </span>

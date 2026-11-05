@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { readableInk } from '../../lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight, Star, BookOpen } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@project/components/ui/tooltip';
@@ -140,7 +141,7 @@ export default function SubjectProgressCard({ subjects, difficultyFilter, onNavi
 
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="text-right">
-                    <p className="text-[10px] font-bold font-mono" style={{ color: s.color }}>{s.pct}%</p>
+                    <p className="text-[10px] font-bold font-mono" style={{ color: readableInk(s.color) }}>{s.pct}%</p>
                     <p className="text-[8px] text-muted-foreground font-mono">{s.done}/{s.total}</p>
                   </div>
                   {s.daysLeft > 0 && s.daysLeft <= 30 && (

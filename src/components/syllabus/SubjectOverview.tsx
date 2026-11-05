@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, ChevronDown, ChevronRight, Clock, CheckCircle2, Circle, Loader2, Eye, Filter, X, BarChart3 } from 'lucide-react';
 import type { Subject, SubTopic, RevisionKey, TopicNavRef } from '../../types';
-import { formatStudyTime } from '../../lib/utils';
+import { formatStudyTime, readableInk } from '../../lib/utils';
 import { getUnitProgress } from '../../lib/unitProgress';
 import StatusFilterPills, { type StatusFilter } from '../shared/StatusFilterPills';
 import SubjectRevisionCard from './SubjectRevisionCard';
@@ -109,7 +109,7 @@ export default function SubjectOverview({ subject, onToggleTopic, onOpenTopicDet
     <div className="space-y-3 px-3 sm:px-4 pb-3">
       {/* ═══ PROGRESS BAR — always visible ═══ */}
       <div className="flex items-center gap-2">
-        <span className="text-[12px] font-black shrink-0 max-w-[60px] truncate" style={{ color: subject.color }}>{subject.shortName}</span>
+        <span className="text-[12px] font-black shrink-0 max-w-[60px] truncate" style={{ color: readableInk(subject.color) }}>{subject.shortName}</span>
         <div className="flex-1 h-3.5 rounded-full bg-muted/30 overflow-hidden min-w-0">
           <div className="h-full rounded-full transition-all duration-700" style={{ backgroundColor: subject.color, width: `${stats.pct}%` }} />
         </div>
@@ -220,7 +220,7 @@ export default function SubjectOverview({ subject, onToggleTopic, onOpenTopicDet
                           return (
                             <button key={cat} onClick={() => setCategoryFilter(isActive ? null : cat)}
                               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all active:scale-95 ${
-                                isActive ? 'bg-accent/15 border-accent/30 text-accent-foreground ring-1 ring-accent/25' : 'bg-card/30 border-border/15 text-foreground/60 hover:bg-card/50'
+                                isActive ? 'bg-accent/15 border-accent/30 text-accent-ink ring-1 ring-accent/25' : 'bg-card/30 border-border/15 text-foreground/60 hover:bg-card/50'
                               }`}>
                               <span>{cat}</span>
                               <span className="font-mono text-[10px] bg-muted/30 px-1 rounded">{count}</span>
@@ -246,9 +246,9 @@ export default function SubjectOverview({ subject, onToggleTopic, onOpenTopicDet
         const diffEmoji = diffFilter === 'Easy' ? '🟢' : diffFilter === 'Medium' ? '🟡' : '🔴';
         return (
           <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border animate-in fade-in duration-150 ${isFromParent ? 'bg-primary/8 border-primary/20' : 'bg-accent/10 border-accent/20'}`}>
-            <Filter className={`w-3.5 h-3.5 shrink-0 ${isFromParent ? 'text-primary' : 'text-accent-foreground'}`} />
+            <Filter className={`w-3.5 h-3.5 shrink-0 ${isFromParent ? 'text-primary' : 'text-accent-ink'}`} />
             <div className="flex-1 min-w-0">
-              <span className={`text-xs font-bold ${isFromParent ? 'text-primary' : 'text-accent-foreground'}`}>
+              <span className={`text-xs font-bold ${isFromParent ? 'text-primary' : 'text-accent-ink'}`}>
                 {diffEmoji} Showing {diffFilter} topics only
               </span>
               <p className="text-[10px] text-muted-foreground/70 font-medium mt-0.5">
@@ -257,7 +257,7 @@ export default function SubjectOverview({ subject, onToggleTopic, onOpenTopicDet
             </div>
             <button onClick={() => setDiffFilter(parentDiffFilter && parentDiffFilter !== 'all' ? parentDiffFilter : 'all')}
               className={`p-1.5 rounded-lg active:scale-90 transition-all ${isFromParent ? 'hover:bg-primary/15' : 'hover:bg-accent/20'}`}>
-              <X className={`w-3.5 h-3.5 ${isFromParent ? 'text-primary' : 'text-accent-foreground'}`} />
+              <X className={`w-3.5 h-3.5 ${isFromParent ? 'text-primary' : 'text-accent-ink'}`} />
             </button>
           </div>
         );
