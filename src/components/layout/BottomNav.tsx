@@ -2,13 +2,15 @@ import { useRef, useCallback, memo } from 'react';
 import { motion } from 'framer-motion';
 import type { AppTab } from '../../types';
 
+import { LayoutDashboard, BookOpen, BarChart2, Brain, User as UserIcon } from 'lucide-react';
+
 type NavId = AppTab | 'profile';
-const TABS: { id: NavId; label: string; icon: string; activeIcon: string }[] = [
-  { id: 'dashboard', label: 'Home', icon: '🏠', activeIcon: '🏡' },
-  { id: 'syllabus', label: 'Syllabus', icon: '📚', activeIcon: '📖' },
-  { id: 'charts', label: 'Stats', icon: '📊', activeIcon: '📈' },
-  { id: 'revision', label: 'Review', icon: '🧠', activeIcon: '🧠' },
-  { id: 'profile', label: 'Profile', icon: '👤', activeIcon: '🧑‍🎓' },
+const TABS: { id: NavId; label: string; icon: typeof LayoutDashboard }[] = [
+  { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
+  { id: 'syllabus', label: 'Syllabus', icon: BookOpen },
+  { id: 'charts', label: 'Stats', icon: BarChart2 },
+  { id: 'revision', label: 'Review', icon: Brain },
+  { id: 'profile', label: 'Profile', icon: UserIcon },
 ];
 
 // Swipe order keeps the AI tutor reachable (it also lives in Profile → AI Tutor).
@@ -76,13 +78,18 @@ function BottomNavInner({ activeTab, onTabChange, srsDueCount = 0, onOpenProfile
                     className="absolute inset-x-1.5 inset-y-1.5 rounded-2xl bg-primary/10 border border-primary/10"
                     transition={{ type: 'spring', stiffness: 500, damping: 38, mass: 0.6 }} />
                 )}
-                <motion.span
-                  animate={isActive ? { scale: 1.15, y: -1 } : { scale: 1, y: 0 }}
-                  transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                  className={`text-[18px] leading-none relative z-10 ${isActive ? '' : 'opacity-35 grayscale'}`}
-                >
-                  {isActive ? tab.activeIcon : tab.icon}
-                </motion.span>
+                {(() => {
+                  const Icon = tab.icon;
+                  return (
+                    <motion.div
+                      animate={isActive ? { scale: 1.15, y: -1 } : { scale: 1, y: 0 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                      className={`relative z-10 transition-colors ${isActive ? 'text-primary' : 'text-foreground/45'}`}
+                    >
+                      <Icon className="w-5 h-5" strokeWidth={isActive ? 2.4 : 1.8} />
+                    </motion.div>
+                  );
+                })()}
                 <span className={`text-[9px] font-bold tracking-wide relative z-10 transition-colors duration-150 ${isActive ? 'text-primary' : 'text-muted-foreground/40'}`}>
                   {tab.label}
                 </span>

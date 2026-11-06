@@ -5,6 +5,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './fonts.css';
 import './index.css';
+import './liquid-glass.css';
 import App from './App';
 import PlatformHost from './components/platform/PlatformHost';
 import { bootStorage } from './platform/storage';

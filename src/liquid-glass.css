@@ -1,0 +1,84 @@
+/*
+ * Liquid Glass Material System — Shared Design Language for RJ Apps.
+ * Provides ambient backdrop refraction, tactile glass cards, and floating chrome.
+ */
+:root {
+  --qmp-glass-edge: rgba(255, 255, 255, 0.11);
+  --qmp-glass-highlight: rgba(255, 255, 255, 0.075);
+  --qmp-glass-shadow: 0 18px 54px rgba(0, 0, 0, 0.22);
+  --qmp-glass-radius: 1.5rem;
+}
+
+html {
+  min-height: 100%;
+  background-color: hsl(var(--background));
+}
+
+body {
+  min-height: 100vh;
+  background-color: hsl(var(--background));
+}
+
+/* Soft ambient lighting creates subtle refraction beneath translucent cards */
+body::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: -18vmax;
+  pointer-events: none;
+  background:
+    radial-gradient(38vmax 30vmax at 12% 8%, hsl(var(--primary) / 0.09), transparent 72%),
+    radial-gradient(34vmax 30vmax at 94% 24%, hsl(var(--accent) / 0.075), transparent 72%),
+    radial-gradient(44vmax 34vmax at 55% 100%, rgba(35, 91, 120, 0.10), transparent 72%);
+  filter: blur(28px);
+  opacity: 0.9;
+}
+
+.theme-mode-light,
+.app-light {
+  --qmp-glass-edge: rgba(255, 255, 255, 0.78);
+  --qmp-glass-highlight: rgba(255, 255, 255, 0.72);
+  --qmp-glass-shadow: 0 18px 48px rgba(42, 49, 74, 0.09);
+}
+
+.theme-mode-amoled,
+.app-amoled {
+  --qmp-glass-edge: rgba(255, 255, 255, 0.075);
+  --qmp-glass-highlight: rgba(255, 255, 255, 0.045);
+  --qmp-glass-shadow: 0 18px 54px rgba(0, 0, 0, 0.52);
+}
+
+/* Tactile liquid-glass cards */
+.glass-card,
+.glass-liquid {
+  border-color: var(--qmp-glass-edge);
+  box-shadow: var(--qmp-glass-shadow), 0 1px 0 var(--qmp-glass-highlight) inset;
+  isolation: isolate;
+}
+
+.glass-card {
+  background-image: linear-gradient(145deg, rgba(255,255,255,0.045), transparent 58%);
+}
+
+.glass-liquid {
+  background-image:
+    radial-gradient(ellipse at 18% 0%, rgba(255,255,255,0.09), transparent 42%),
+    linear-gradient(145deg, rgba(255,255,255,0.045), transparent 62%);
+}
+
+/* Floating bottom navigation */
+.glass-nav {
+  border-color: var(--qmp-glass-edge);
+  background: linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.025)),
+    hsl(var(--background) / 0.82);
+  box-shadow: 0 18px 48px rgba(0,0,0,0.3), 0 1px 0 var(--qmp-glass-highlight) inset;
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  backdrop-filter: blur(32px) saturate(190%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before { filter: blur(12px); }
+  .glass-card,
+  .glass-liquid,
+  .glass-nav { transition-duration: 0.01ms !important; }
+}

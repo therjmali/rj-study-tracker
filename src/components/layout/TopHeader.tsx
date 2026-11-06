@@ -46,98 +46,118 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
 
   return (
     <>
-    <header className="glass-header sticky top-0 z-50">
-      <div className="flex items-center gap-3 px-4 sm:px-6 h-14 max-w-6xl mx-auto">
-        {/* Left: App icon + name */}
-        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <button onClick={onNavigateHome} className="w-8 h-8 rounded-[10px] overflow-hidden bg-primary flex items-center justify-center shadow-sm shrink-0 hover:scale-105 active:scale-95 transition-transform" aria-label="Go to Home">
-            <AppIcon mode={studentMode} />
-          </button>
-          <button onClick={onNavigateHome} className="font-heading text-foreground text-[15px] hidden sm:inline hover:text-primary transition-colors truncate">{appName}</button>
-          <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-primary/8 text-primary font-extrabold leading-none border border-primary/10 shrink-0 tracking-wider">PRO</span>
-        </div>
+    <header className="sticky top-0 z-50 px-3 pt-2 pb-1.5 pointer-events-auto">
+      <div className="relative overflow-hidden rounded-[24px] sm:rounded-[28px] border border-white/10 bg-white/[0.03] dark:bg-black/[0.4] px-3 sm:px-4 py-2 shadow-[0_18px_48px_-26px_rgba(0,0,0,0.8)] backdrop-blur-2xl max-w-6xl mx-auto">
+        <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.12),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(167,139,250,0.10),transparent_30%)]" />
 
-        {/* Center: Sync + Progress */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          {/* Sync indicator — clickable */}
-          <button
-            onClick={onOpenCloudData}
-            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-muted/30 active:scale-90 transition-all"
-            title={syncStatus === 'syncing' ? 'Cloud sync — syncing…' : syncStatus === 'saved' ? 'Cloud sync — everything is saved' : syncStatus === 'error' ? 'Cloud sync — needs attention' : 'Cloud sync & devices'}
-            aria-label="Open cloud sync"
-          >
-            {syncStatus === 'syncing' && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary/60" />}
-            {syncStatus === 'saved' && (
-              <span className="relative flex items-center justify-center">
-                <Cloud className="w-3.5 h-3.5 text-secondary/80" />
-                <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-secondary border border-background" />
-              </span>
-            )}
-            {syncStatus === 'error' && <CloudOff className="w-3.5 h-3.5 text-destructive/80" />}
-            {syncStatus === 'idle' && <Cloud className="w-3.5 h-3.5 text-muted-foreground/50" />}
-          </button>
-          {/* Progress bar */}
-          <div className="hidden sm:flex items-center gap-2">
-            <div className="w-16 h-1.5 rounded-full bg-muted/40 overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-700" style={{ width: `${pct}%` }} />
-            </div>
-            <span className="text-[10px] text-muted-foreground font-mono font-semibold">{pct}%</span>
-          </div>
-        </div>
-
-        {/* Right: Action buttons */}
-        <div className="flex items-center gap-0.5">
-          {onOpenSearch && (
-            <Button variant="ghost" size="icon" onClick={onOpenSearch}
-              className="w-8 h-8 rounded-xl shrink-0" aria-label="Search (Ctrl+K)">
-              <Search className="w-[15px] h-[15px] text-muted-foreground" />
-            </Button>
-          )}
-
-          {level && onLevelClick && (
-            <button onClick={onLevelClick} className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/8 border border-primary/12 shrink-0 hover:bg-primary/15 hover:scale-105 active:scale-95 transition-all cursor-pointer">
-              <span className="text-xs leading-none">{level.icon}</span>
-              <span className="text-[10px] font-bold font-mono text-primary">Lv.{level.level}</span>
-              <div className="w-8 h-1.5 rounded-full bg-muted/40 overflow-hidden">
-                <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${xpProgress}%` }} />
-              </div>
+        <div className="relative flex items-center justify-between gap-2">
+          {/* Left: App icon + name */}
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <button onClick={onNavigateHome} className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center shadow-[0_8px_20px_-10px_hsl(var(--primary))] shrink-0 hover:scale-105 active:scale-95 transition-all border border-primary/20" aria-label="Go to Home">
+              <AppIcon mode={studentMode} />
             </button>
-          )}
-          {level && !onLevelClick && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/8 border border-primary/12 shrink-0">
-              <span className="text-xs leading-none">{level.icon}</span>
-              <span className="text-[10px] font-bold font-mono text-primary">Lv.{level.level}</span>
-              <div className="w-8 h-1.5 rounded-full bg-muted/40 overflow-hidden">
-                <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${xpProgress}%` }} />
+            <button onClick={onNavigateHome} className="font-heading text-foreground text-[15px] sm:text-[16px] font-black tracking-tight hover:text-primary transition-colors truncate">
+              {appName}
+            </button>
+            <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-black leading-none border border-primary/15 shrink-0 tracking-widest uppercase">PRO</span>
+          </div>
+
+          {/* Center: Sync + Progress */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Sync indicator — clickable */}
+            <button
+              onClick={onOpenCloudData}
+              className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] shadow-[0_8px_18px_-12px_rgba(0,0,0,0.7)] transition-all active:scale-95 ${
+                syncStatus === 'syncing'
+                  ? 'border-primary/20 bg-primary/10 text-primary'
+                  : syncStatus === 'saved'
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                    : syncStatus === 'error'
+                      ? 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300'
+                      : 'border-border/60 bg-card/40 text-muted-foreground'
+              }`}
+              title={syncStatus === 'syncing' ? 'Cloud sync — syncing…' : syncStatus === 'saved' ? 'Cloud sync — everything is saved' : syncStatus === 'error' ? 'Cloud sync — needs attention' : 'Cloud sync & devices'}
+              aria-label="Open cloud sync"
+            >
+              {syncStatus === 'syncing' && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
+              {syncStatus === 'saved' && <Cloud className="w-3 h-3 text-emerald-600 dark:text-emerald-300" />}
+              {syncStatus === 'error' && <CloudOff className="w-3 h-3 text-red-600 dark:text-red-300" />}
+              {syncStatus === 'idle' && <Cloud className="w-3 h-3 text-muted-foreground" />}
+              <span className="hidden sm:inline">
+                {syncStatus === 'syncing' ? 'Syncing' : syncStatus === 'saved' ? 'Saved' : syncStatus === 'error' ? 'Error' : 'Local'}
+              </span>
+            </button>
+            {/* Progress bar */}
+            <div className="hidden md:flex items-center gap-2">
+              <div className="w-16 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-700" style={{ width: `${pct}%` }} />
               </div>
+              <span className="text-[10px] text-muted-foreground font-mono font-bold">{pct}%</span>
             </div>
-          )}
+          </div>
 
-          {onOpenReminders && (
-            <Button variant="ghost" size="icon" onClick={onOpenReminders}
-              className="w-8 h-8 rounded-xl shrink-0 relative" aria-label="Reminders">
-              <Bell className="w-[15px] h-[15px] text-muted-foreground" />
-              {dueReminders > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[8px] font-black flex items-center justify-center animate-pulse">
-                  {dueReminders > 9 ? '9+' : dueReminders}
-                </span>
-              )}
-            </Button>
-          )}
-
-          <Button variant="ghost" size="icon" onClick={onToggleTheme}
-            className="w-8 h-8 rounded-xl shrink-0" aria-label="Toggle theme">
-            {isGlass ? <Contrast className="w-[15px] h-[15px] text-muted-foreground" /> : isLight ? <Moon className="w-[15px] h-[15px] text-muted-foreground" /> : isAncient ? <Sun className="w-[15px] h-[15px] text-muted-foreground" /> : <Flame className="w-[15px] h-[15px] text-muted-foreground" />}
-          </Button>
-
-          <button onClick={onOpenProfile}
-            className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0 border border-primary/12 hover:bg-primary/15 hover:scale-105 active:scale-95 transition-all ml-0.5 overflow-hidden ring-2 ring-primary/8 ring-offset-1 ring-offset-background">
-            {isImageAvatar(user.avatar) ? (
-              <img src={user.avatar} alt="" className="w-full h-full object-cover" />
-            ) : (
-              user.avatar
+          {/* Right: Action buttons */}
+          <div className="flex items-center gap-1.5">
+            {onOpenSearch && (
+              <button
+                type="button"
+                onClick={onOpenSearch}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card/60 shadow-sm transition-all hover:border-foreground/20 active:scale-95"
+                aria-label="Search (Ctrl+K)"
+              >
+                <Search className="w-4 h-4 text-foreground/70" />
+              </button>
             )}
-          </button>
+
+            {level && onLevelClick && (
+              <button onClick={onLevelClick} className="hidden xs:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-primary/10 border border-primary/15 shrink-0 hover:bg-primary/20 hover:scale-105 active:scale-95 transition-all cursor-pointer">
+                <span className="text-xs leading-none">{level.icon}</span>
+                <span className="text-[10px] font-black font-mono text-primary">Lv.{level.level}</span>
+                <div className="w-7 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+                  <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${xpProgress}%` }} />
+                </div>
+              </button>
+            )}
+
+            {onOpenReminders && (
+              <button
+                type="button"
+                onClick={onOpenReminders}
+                className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card/60 shadow-sm transition-all hover:border-foreground/20 active:scale-95"
+                aria-label="Reminders"
+              >
+                <Bell className="w-4 h-4 text-foreground/70" />
+                {dueReminders > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[8px] font-black flex items-center justify-center animate-pulse">
+                    {dueReminders > 9 ? '9+' : dueReminders}
+                  </span>
+                )}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onToggleTheme}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card/60 shadow-sm transition-all hover:border-foreground/20 active:scale-95"
+              aria-label="Toggle theme"
+            >
+              {isGlass ? <Contrast className="w-4 h-4 text-foreground/70" /> : isLight ? <Moon className="w-4 h-4 text-foreground/70" /> : isAncient ? <Sun className="w-4 h-4 text-foreground/70" /> : <Flame className="w-4 h-4 text-foreground/70" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="w-9 h-9 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-accent/20 flex items-center justify-center text-xs font-semibold text-primary shrink-0 border border-primary/25 hover:scale-105 active:scale-95 transition-all overflow-hidden shadow-sm"
+              aria-label="Open profile"
+            >
+              {isImageAvatar(user.avatar) ? (
+                <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-base">{user.avatar}</span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </header>

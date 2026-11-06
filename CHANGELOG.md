@@ -1,5 +1,12 @@
 # Changelog
 
+## 17.1.0 — Unified Liquid Glass 2.0, Lucide navigation, floating header & dashboard sync invitation
+
+- **Unified Liquid Glass 2.0 design system.** Integrated the shared `liquid-glass.css` material layer, matching Quiz Master Pro with ambient multi-radial backdrop refraction, luminous edge borders (`--qmp-glass-edge`), and frosted card depth.
+- **Lucide vector navigation.** Upgraded bottom navigation from OS-dependent emojis to crisp Lucide vector icons (`LayoutDashboard`, `BookOpen`, `BarChart2`, `Brain`, `User`), matching active scale animations, dot indicators, and alert badge styling.
+- **Floating liquid-glass header.** Upgraded top header to a floating translucent pill with rounded corners (`rounded-[28px]`), hairline top highlight, responsive sync status badge (Syncing / Saved / Error / Local), level pill, quick theme toggle, and avatar trigger.
+- **Dashboard guest sign-in card.** Added non-intrusive dismissible sign-in invitation card (`SignInCard`) for guest users on the home dashboard to easily access cloud synchronization.
+
 ## 17.0.0 — Liquid Glass, Progress Card, flip clock, readable-everywhere
 
 - **Liquid Glass theme (optional).** Settings → Appearance → Display mode → *Liquid Glass*: frosted, softly lit surfaces floating over a colourful aurora, with a **Light / Dark / Auto** tone (the moon button in the top bar flips the tone). Blur is limited to the big surfaces so scrolling stays smooth.

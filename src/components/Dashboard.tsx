@@ -24,6 +24,7 @@ import ExamShelf from './dashboard/ExamShelf';
 import DayByDayTimeline from './dashboard/DayByDayTimeline';
 import TodayProgressRing from './dashboard/TodayProgressRing';
 import ProgressCard from './progress/ProgressCard';
+import SignInCard from './dashboard/SignInCard';
 
 type TimeFilter = 'all' | 'today' | 'weekly' | 'monthly' | 'custom';
 
@@ -203,6 +204,9 @@ export default function Dashboard({
 
   return (
     <div className="space-y-3 animate-in fade-in duration-300">
+      {/* ═══ 0. GUEST SIGN-IN INVITATION CARD ═══ */}
+      <SignInCard />
+
       {/* ═══ 1. NEWS TICKER (red bar) — TOP ═══ */}
       <TargetsTicker
         studyGoals={studyGoals}
