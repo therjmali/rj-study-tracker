@@ -37,6 +37,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import NotificationContainer from './components/shared/NotificationContainer';
 import HelpModal from './components/shared/HelpModal';
 import FloatingTimer from './components/shared/FloatingTimer';
+import FloatingWidgetHub from './components/shared/FloatingWidgetHub';
 import MilestoneToast from './components/dashboard/MilestoneToast';
 import AchievementPopup from './components/shared/AchievementPopup';
 import BottomSheet, { forceResetScrollLock } from './components/shared/BottomSheet';
@@ -507,11 +508,10 @@ function AppInner() {
 
   const [quickCompleteOpen, setQuickCompleteOpen] = useState(false);
 
-  // Back guards — phone back button closes sheets instead of exiting app
+  // Back guards — phone back button closes sheets and overlays hierarchically
   useBackGuard(!!globalTopicDetail, () => {
     const detail = globalTopicDetail;
     setGlobalTopicDetail(null);
-    // If topic was opened from search, navigate to its parent Unit Details
     if (topicDetailSourceRef.current === 'search' && detail) {
       topicDetailSourceRef.current = 'other';
       try { sessionStorage.setItem('nursetrack-topic-source', 'other'); } catch {}
@@ -522,6 +522,64 @@ function AppInner() {
     }
   });
   useBackGuard(quickCompleteOpen, () => setQuickCompleteOpen(false));
+  useBackGuard(profileOpen, () => {
+    setProfileOpen(false);
+    setActiveTabRaw('dashboard');
+    navigate('/');
+  });
+  useBackGuard(pomodoroOpen, () => setPomodoroOpen(false));
+  useBackGuard(mcqOpen, () => setMcqOpen(false));
+  useBackGuard(flashcardOpen, () => setFlashcardOpen(false));
+  useBackGuard(notifCenterOpen, () => setNotifCenterOpen(false));
+  useBackGuard(cloudDataOpen, () => setCloudDataOpen(false));
+  useBackGuard(searchOpen, () => setSearchOpen(false));
+  useBackGuard(helpOpen, () => setHelpOpen(false));
+
+  // Central back listener: if no guard consumed the back event, shift to Home or confirm exit
+  const lastExitPressRef = useRef(0);
+  useEffect(() => {
+    const handleUnhandledBack = () => {
+      if (profileOpen) {
+        setProfileOpen(false);
+        setActiveTabRaw('dashboard');
+        navigate('/');
+        return;
+      }
+      if (pomodoroOpen) { setPomodoroOpen(false); return; }
+      if (mcqOpen) { setMcqOpen(false); return; }
+      if (flashcardOpen) { setFlashcardOpen(false); return; }
+      if (notifCenterOpen) { setNotifCenterOpen(false); return; }
+      if (cloudDataOpen) { setCloudDataOpen(false); return; }
+      if (searchOpen) { setSearchOpen(false); return; }
+      if (quickCompleteOpen) { setQuickCompleteOpen(false); return; }
+      if (helpOpen) { setHelpOpen(false); return; }
+
+      // If user is on a secondary tab (Syllabus, Stats, Review, AI), shift back to Home
+      if (activeTab !== 'dashboard') {
+        setActiveTabRaw('dashboard');
+        navigate('/');
+        toast('Shifted to Home', { duration: 1500 });
+        return;
+      }
+
+      // Root Home (Dashboard): require 2 back taps within 2.5 seconds to exit
+      const now = Date.now();
+      if (now - lastExitPressRef.current < 2500) {
+        const bridge = (window as any).RJNative;
+        if (bridge && typeof bridge.exitApp === 'function') {
+          bridge.exitApp();
+        } else {
+          window.history.back();
+        }
+      } else {
+        lastExitPressRef.current = now;
+        toast('Press back again to exit', { id: 'exit-confirm', duration: 2500 });
+      }
+    };
+
+    window.addEventListener('rj:back-unhandled', handleUnhandledBack);
+    return () => window.removeEventListener('rj:back-unhandled', handleUnhandledBack);
+  }, [profileOpen, pomodoroOpen, mcqOpen, flashcardOpen, notifCenterOpen, cloudDataOpen, searchOpen, quickCompleteOpen, helpOpen, activeTab, navigate]);
   const [qcSubjectId, setQcSubjectId] = useState('');
   const [qcUnitId, setQcUnitId] = useState('');
   const [qcTopicId, setQcTopicId] = useState('');
@@ -1981,8 +2039,7 @@ function AppInner() {
       )}
 
       <div className="flex max-w-full bg-background min-h-[calc(100vh-3.5rem)]">
-        <SideNav activeTab={activeTab} onTabChange={handleSideNavChange} onOpenProfile={openProfile} srsDueCount={srsDueCount} />
-        <main className="flex-1 px-3 sm:px-4 py-4 pb-36 lg:pb-4 max-w-6xl mx-auto w-full">
+        <main className="flex-1 px-3 sm:px-6 py-4 pb-36 max-w-7xl mx-auto w-full">
           <div key={activeTab} className="animate-page-enter min-h-[50vh]">
               {renderContent()}
           </div>
@@ -1998,9 +2055,17 @@ function AppInner() {
         timerRunning={timerState.active}
       />}
 
-      {/* Floating Mini-Player — hidden on AI tab to avoid overlap */}
-      {activeTab !== 'gamification' && <FloatingTimer timer={timerState} onClick={() => openRunningTopic()}
-        totalSec={(!timerState.cycle || timerState.phase === 'focus' ? timerState.focusDuration : timerState.phase === 'short' ? settings.pomodoroSettings.shortBreakMin : settings.pomodoroSettings.longBreakMin) * 60} />}
+      {/* Floating Interactive Widget Hub (Live Timer + Today Progress) */}
+      {activeTab !== 'gamification' && (
+        <FloatingWidgetHub
+          timer={timerState}
+          subjects={appState.subjects}
+          dailyLogs={appState.dailyLogs}
+          studyGoals={settings.studyGoals}
+          onOpenFocusTimer={openPomodoro}
+          streakDays={stats.streak}
+        />
+      )}
 
       <BottomSheet open={pomodoroOpen} onClose={() => { setPomodoroOpen(false); setPomodoroPreFill(null); }} title="⏱️ Focus Timer">
         <ErrorBoundary fallbackTitle="Focus Timer crashed">

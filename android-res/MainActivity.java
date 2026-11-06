@@ -123,6 +123,14 @@ public class MainActivity extends BridgeActivity {
     if (getBridge() != null && getBridge().getWebView() != null) {
       getBridge().getWebView().addJavascriptInterface(new RJBridge(), "RJNative");
     }
+
+    getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+      @Override
+      public void handleOnBackPressed() {
+        js("window.dispatchEvent(new CustomEvent('rj:hardware-back'))");
+      }
+    });
+
     handleLaunchIntent(getIntent());
   }
 
@@ -255,6 +263,11 @@ public class MainActivity extends BridgeActivity {
   /* ───────────────────────────── JS bridge ───────────────────────────── */
 
   public class RJBridge {
+
+    @JavascriptInterface
+    public void exitApp() {
+      runOnUiThread(MainActivity.this::finish);
+    }
 
     /** window.RJNative.setBars("#ecdfc8", true) */
     @JavascriptInterface

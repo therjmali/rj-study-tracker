@@ -272,7 +272,7 @@ export default function Dashboard({
 
       {/* ═══ 7. ANALYTICS & TRENDS — Collapsible ═══ */}
       {/* cv-auto enables content-visibility for off-screen perf */}
-      <div className="glass-card overflow-hidden">
+      <div className="relative rounded-3xl border border-border/20 bg-card/45 backdrop-blur-md shadow-lg overflow-hidden">
         <button
           onClick={() => setAnalyticsOpen(p => !p)}
           className="w-full flex items-center gap-3 p-4 text-left hover:bg-card/30 transition-colors active:scale-[0.998]"

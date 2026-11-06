@@ -1,5 +1,5 @@
 import { isImageAvatar } from '../../lib/avatar';
-import { useState, memo } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useAppIcon } from '@/platform/appIcon';
 import { Stethoscope, Sun, Moon, Flame, Search, Cloud, CloudOff, Loader2, Bell, Wheat, GraduationCap, X, Contrast } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
@@ -40,6 +40,18 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
   const isGlass = themeMode === 'glass';
   const appName = getAppName(studentMode);
   const [streakBannerDismissed, setStreakBannerDismissed] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const hour = new Date().getHours();
   const showStreakWarning = !streakBannerDismissed && hour >= 18 && todayTopicsDone === 0 && streakDays > 2;
@@ -63,8 +75,23 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
             <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-black leading-none border border-primary/15 shrink-0 tracking-widest uppercase">PRO</span>
           </div>
 
-          {/* Center: Sync + Progress */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Center: Sync + Net + Progress */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Live Online/Offline network status indicator 📶 */}
+            <div
+              className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black border transition-all ${
+                isOnline
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                  : 'border-amber-500/35 bg-amber-500/15 text-amber-600 dark:text-amber-400 animate-pulse'
+              }`}
+              title={isOnline ? 'Online — Connected to Internet' : 'Offline — Changes safely stored locally'}
+            >
+              <span className="text-[11px] leading-none">{isOnline ? '📶' : '📵'}</span>
+              <span className="hidden xs:inline text-[9px] tracking-wide uppercase font-black font-mono">
+                {isOnline ? 'NET' : 'OFF'}
+              </span>
+            </div>
+
             {/* Sync indicator — clickable */}
             <button
               onClick={onOpenCloudData}

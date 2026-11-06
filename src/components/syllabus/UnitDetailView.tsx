@@ -606,7 +606,7 @@ export default function UnitDetailView({
     <div className="min-h-screen bg-background pb-16">
       {/* ===== TOP BAR ===== */}
       <div className="sticky top-0 z-30 bg-background/95 border-b border-border/10">
-        <div className="flex items-center gap-2 px-3 py-2.5 max-w-2xl mx-auto">
+        <div className="flex items-center gap-2 px-3 sm:px-6 py-2.5 max-w-5xl mx-auto">
           <button onClick={onBack} className="shrink-0 w-9 h-9 rounded-xl bg-card/60 border border-border/20 flex items-center justify-center hover:bg-card transition-colors active:scale-95">
             <ArrowLeft className="w-4 h-4 text-foreground" />
           </button>
@@ -702,8 +702,8 @@ export default function UnitDetailView({
       </div>
 
       {/* ===== NAVIGATION BREADCRUMB ===== */}
-      <div className="px-3 py-1.5 border-b border-border/5 bg-muted/5">
-        <div className="flex items-center gap-1.5 text-[10px] max-w-2xl mx-auto overflow-x-auto scrollbar-hide">
+      <div className="px-3 sm:px-6 py-1.5 border-b border-border/5 bg-muted/5">
+        <div className="flex items-center gap-1.5 text-[10px] max-w-5xl mx-auto overflow-x-auto scrollbar-hide">
           <button onClick={onBack} className="text-primary/70 font-bold hover:text-primary transition-colors shrink-0 flex items-center gap-1 active:scale-95">
             📚 {subject.shortName}
           </button>
@@ -717,7 +717,7 @@ export default function UnitDetailView({
       {/* ===== UNIT NAVIGATION STRIP — Ultra Premium ===== */}
       {subject.units.length > 1 && (
         <div className="sticky top-[57px] z-20 bg-background/90 backdrop-blur-md border-b border-border/5">
-          <div className="max-w-2xl mx-auto px-2 py-2">
+          <div className="max-w-5xl mx-auto px-3 sm:px-6 py-2">
             <div ref={unitStripRef} className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5" style={{ WebkitOverflowScrolling: 'touch' }}>
               {subject.units.map((u, i) => {
                 const isActive = u.id === unit.id;
@@ -799,7 +799,7 @@ export default function UnitDetailView({
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto px-4">
+      <div className="max-w-5xl mx-auto px-3 sm:px-6">
         {/* ===== RENAME INLINE ===== */}
         <Collapse open={!!editingName}>
               <div className="mt-3 flex items-center gap-2">
@@ -918,19 +918,6 @@ export default function UnitDetailView({
                   </div>
                 </div>
 
-                {/* ── 4 Emoji Stat Buttons ── */}
-                <div className="flex items-center gap-2 mb-3 flex-wrap">
-                  <div className="flex items-center gap-1.5">
-                    <DifficultyPill emoji="🟢" count={stats.easy} label="Easy" active={diffFilter === 'Easy'} onClick={() => handleDiffClick('Easy')} />
-                    <DifficultyPill emoji="🟡" count={stats.med} label="Medium" active={diffFilter === 'Medium'} onClick={() => handleDiffClick('Medium')} />
-                    <DifficultyPill emoji="🔴" count={stats.hard} label="Hard" active={diffFilter === 'Hard'} onClick={() => handleDiffClick('Hard')} />
-                  </div>
-                  {hasMostImportant && (
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-secondary/15 text-secondary border border-secondary/20 inline-flex items-center gap-1 ml-auto">
-                      <Shield className="w-3 h-3" /> MOST IMP
-                    </span>
-                  )}
-                </div>
 
                 {/* ── 4 Emoji Stat Buttons ── */}
                 <div className="mt-4 grid grid-cols-4 gap-2">
@@ -1447,29 +1434,32 @@ function EmojiStatPill({ emoji, label, value, active, onClick, colorVar }: {
   return (
     <motion.button
       onClick={onClick}
-      whileTap={{ scale: 0.92 }}
-      className={`relative flex flex-col items-center gap-1 py-3 px-2 rounded-2xl border-2 transition-all ${
+      whileTap={{ scale: 0.94 }}
+      className={`relative flex flex-col items-center justify-center gap-1 py-3 px-1.5 sm:px-2 rounded-2xl border transition-all duration-200 overflow-hidden ${
         active
-          ? 'border-foreground/20 shadow-md'
-          : 'border-transparent hover:border-border/15'
+          ? 'border-primary/40 shadow-lg ring-1 ring-primary/25'
+          : 'border-border/15 hover:border-border/30 hover:bg-card/60'
       }`}
       style={{
         background: active
-          ? `hsl(${colorVar} / 0.12)`
-          : 'hsl(var(--muted) / 0.12)',
+          ? `linear-gradient(135deg, hsl(${colorVar} / 0.18), hsl(${colorVar} / 0.08))`
+          : 'linear-gradient(135deg, hsl(var(--card) / 0.8), hsl(var(--card) / 0.4))',
       }}
     >
-      <span className="text-[22px] leading-none select-none">
+      {active && (
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-primary/10 to-transparent" />
+      )}
+      <span className="text-[20px] sm:text-[22px] leading-none select-none">
         {emoji}
       </span>
-      <span className={`text-[7px] tracking-[0.1em] uppercase font-extrabold leading-none mt-0.5 ${
-        active ? 'text-foreground/60' : 'text-foreground/35'
+      <span className={`text-[7px] sm:text-[8px] tracking-[0.12em] uppercase font-black leading-none mt-0.5 ${
+        active ? 'text-foreground' : 'text-foreground/50'
       }`}>{label}</span>
-      <motion.span className={`text-base font-black font-mono leading-none ${
-        active ? 'text-foreground' : 'text-foreground/70'
+      <motion.span className={`text-base sm:text-lg font-black font-mono leading-none ${
+        active ? 'text-foreground' : 'text-foreground/80'
       }`}
         key={`${label}-${value}`}
-        initial={{ scale: 1.3, opacity: 0 }}
+        initial={{ scale: 1.25, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 500, damping: 18 }}>
         {value}

@@ -84,7 +84,7 @@ export default function ProfilePage(props: Props) {
 
       {/* ── Sticky title bar ── */}
       <div ref={headerRef} className="sticky top-0 z-30 bg-background border-b border-border/20 shadow-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
-        <div className="max-w-2xl mx-auto px-4 pt-2.5 pb-2.5">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-2.5 pb-2.5">
           <div className="flex items-center gap-2.5">
             <button onClick={onClose} aria-label="Back" className="w-8 h-8 rounded-full bg-card/60 flex items-center justify-center border border-border/20 active:scale-90 transition-transform">
               <ArrowLeft className="w-4 h-4 text-foreground" />
@@ -97,7 +97,7 @@ export default function ProfilePage(props: Props) {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 pt-4 pb-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-4 pb-12">
         {/* ── Profile card: identity; edit (and log out) via the ✏️ ── */}
         <section className="relative rounded-3xl border border-border/20 bg-card/30 overflow-hidden mb-3">
           <div className={`h-16 bg-gradient-to-br ${COVER_GRADIENTS[gradientIdx]}`} />

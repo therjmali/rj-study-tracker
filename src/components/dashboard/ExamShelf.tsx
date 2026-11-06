@@ -82,7 +82,7 @@ export default function ExamShelf({ exams, subjects, onNavigate, onManageExams }
   return (
     <div className="space-y-2">
       {/* ── Premium card ── */}
-      <div className="glass-card overflow-hidden relative">
+      <div className="relative rounded-3xl border border-border/20 bg-card/45 backdrop-blur-md shadow-lg overflow-hidden">
         {/* Ambient glow */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute -top-20 -right-20 w-48 h-48 rounded-full bg-primary/6 blur-3xl" />

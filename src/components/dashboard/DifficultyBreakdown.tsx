@@ -71,7 +71,7 @@ export default function DifficultyBreakdown({ subjects, onNavigate, onToggleTopi
 
   return (
     <>
-      <div className="glass-card p-4 space-y-3 relative overflow-hidden">
+      <div className="relative rounded-3xl border border-border/20 bg-card/45 backdrop-blur-md p-4 sm:p-5 space-y-3 overflow-hidden shadow-lg">
         <div className="absolute top-0 right-0 w-28 h-28 rounded-full bg-destructive/5 blur-3xl -mr-10 -mt-10 pointer-events-none" />
 
         <div className="relative z-10">

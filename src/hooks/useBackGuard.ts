@@ -50,11 +50,29 @@ function init() {
     lastUrl = currentUrl;
 
     // URL changed → real navigation (react-router tabs/overlays). Don't intercept.
-    if (urlChanged || stack.length === 0) return;
+    if (urlChanged) return;
 
-    // Same URL → our phantom entry was consumed. Fire the top handler.
-    const handler = stack.pop();
-    if (handler) handler();
+    // Same URL → our phantom entry was consumed. Fire the top valid handler.
+    while (stack.length > 0) {
+      const handler = stack.pop();
+      if (handler) {
+        handler();
+        return;
+      }
+    }
+    window.dispatchEvent(new CustomEvent('rj:back-unhandled'));
+  });
+
+  // Native Android hardware/gesture back button forwarded from BridgeActivity
+  window.addEventListener('rj:hardware-back', () => {
+    while (stack.length > 0) {
+      const handler = stack.pop();
+      if (handler) {
+        handler();
+        return;
+      }
+    }
+    window.dispatchEvent(new CustomEvent('rj:back-unhandled'));
   });
 }
 

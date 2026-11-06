@@ -33,9 +33,9 @@ export const clampZoom = (n: number): number => {
 function readStored(): number {
   try {
     const raw = localStorage.getItem(ZOOM_KEY);
-    if (raw === null) return ZOOM_DEFAULT;
+    if (raw === null || raw === '' || raw === 'undefined' || raw === 'null') return ZOOM_DEFAULT;
     const n = Number(raw);
-    return Number.isFinite(n) && n > 0 ? clampZoom(n) : ZOOM_DEFAULT;
+    return Number.isFinite(n) && n >= ZOOM_MIN && n <= ZOOM_MAX ? clampZoom(n) : ZOOM_DEFAULT;
   } catch { return ZOOM_DEFAULT; }
 }
 

@@ -219,13 +219,13 @@ export default function StatCardsGrid({ subjects, dailyLogs, semesterConfig, dif
         </button>
       )}
 
-    <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
+    <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-2 gap-3 sm:gap-4">
       {/* Progress */}
       <motion.div variants={fadeUp}
         onClick={() => toggleCard('progress')}
-        className={`glass-card p-4 min-h-[110px] flex flex-col justify-between group hover:shadow-md transition-all cursor-pointer ${cardRing('progress')}`}>
+        className={`relative rounded-3xl p-4 sm:p-5 min-h-[120px] flex flex-col justify-between group hover:shadow-xl transition-all duration-300 cursor-pointer border border-primary/20 bg-gradient-to-br from-primary/12 via-card/75 to-card/45 shadow-sm backdrop-blur-md overflow-hidden ${cardRing('progress')}`}>
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+          <p className="text-[10px] font-black text-primary/80 uppercase tracking-widest flex items-center gap-1.5">
             <BookOpen className="w-3.5 h-3.5 text-primary" /> Progress
           </p>
           <ChevronDown className={`w-3 h-3 text-muted-foreground/40 transition-transform ${expandedCard === 'progress' ? 'rotate-180' : ''}`} />
@@ -248,9 +248,9 @@ export default function StatCardsGrid({ subjects, dailyLogs, semesterConfig, dif
       {/* Streak */}
       <motion.div variants={fadeUp}
         onClick={() => toggleCard('streak')}
-        className={`glass-card p-4 min-h-[110px] flex flex-col justify-between group hover:shadow-md transition-all cursor-pointer ${cardRing('streak')}`}>
+        className={`relative rounded-3xl p-4 sm:p-5 min-h-[120px] flex flex-col justify-between group hover:shadow-xl transition-all duration-300 cursor-pointer border border-chart-4/20 bg-gradient-to-br from-chart-4/12 via-card/75 to-card/45 shadow-sm backdrop-blur-md overflow-hidden ${cardRing('streak')}`}>
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+          <p className="text-[10px] font-black text-chart-4/90 uppercase tracking-widest flex items-center gap-1.5">
             <Flame className="w-3.5 h-3.5 text-chart-4" /> Streak
           </p>
           <ChevronDown className={`w-3 h-3 text-muted-foreground/40 transition-transform ${expandedCard === 'streak' ? 'rotate-180' : ''}`} />
@@ -286,9 +286,9 @@ export default function StatCardsGrid({ subjects, dailyLogs, semesterConfig, dif
       {/* Time */}
       <motion.div variants={fadeUp}
         onClick={() => toggleCard('time')}
-        className={`glass-card p-4 min-h-[110px] flex flex-col justify-between group hover:shadow-md transition-all cursor-pointer ${cardRing('time')}`}>
+        className={`relative rounded-3xl p-4 sm:p-5 min-h-[120px] flex flex-col justify-between group hover:shadow-xl transition-all duration-300 cursor-pointer border border-secondary/20 bg-gradient-to-br from-secondary/12 via-card/75 to-card/45 shadow-sm backdrop-blur-md overflow-hidden ${cardRing('time')}`}>
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+          <p className="text-[10px] font-black text-secondary/90 uppercase tracking-widest flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-secondary" /> Study Time
           </p>
           <ChevronDown className={`w-3 h-3 text-muted-foreground/40 transition-transform ${expandedCard === 'time' ? 'rotate-180' : ''}`} />
@@ -320,7 +320,7 @@ export default function StatCardsGrid({ subjects, dailyLogs, semesterConfig, dif
       {/* Important */}
       <motion.div variants={fadeUp}
         onClick={() => toggleCard('important')}
-        className={`glass-card p-4 min-h-[110px] flex flex-col justify-between group hover:shadow-md transition-all cursor-pointer ${cardRing('important')}`}>
+        className={`relative rounded-3xl p-4 sm:p-5 min-h-[120px] flex flex-col justify-between group hover:shadow-xl transition-all duration-300 cursor-pointer border border-accent/20 bg-gradient-to-br from-accent/12 via-card/75 to-card/45 shadow-sm backdrop-blur-md overflow-hidden ${cardRing('important')}`}>
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
             <Star className="w-3.5 h-3.5 text-accent" /> Important

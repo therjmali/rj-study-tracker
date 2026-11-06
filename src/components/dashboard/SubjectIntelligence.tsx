@@ -30,7 +30,7 @@ export default function SubjectIntelligence({
   const overallPct = totalTopics > 0 ? Math.round((doneTopics / totalTopics) * 100) : 0;
 
   return (
-    <div className="glass-card overflow-hidden relative">
+    <div className="relative rounded-3xl border border-border/20 bg-card/45 backdrop-blur-md shadow-lg overflow-hidden">
       <button
         onClick={() => setOpen(p => !p)}
         className="w-full flex items-center gap-3 p-4 text-left hover:bg-card/30 transition-colors active:scale-[0.998]"

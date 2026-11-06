@@ -109,15 +109,172 @@ export default function ProgressCard({ subjects, dailyLogs, studyGoals, dbSessio
   const animatedTopicPct = useCountUp(topicPct, 1000, 200);
   const animatedTimePct = useCountUp(timePct, 1000, 200);
   const allGoalsMet = todayTopicsDone >= targetTopics && todayMinutes >= targetMinutes;
+  const [sharing, setSharing] = useState(false);
+
+  const generateProgressCardJpg = async (): Promise<Blob | null> => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1200;
+    canvas.height = 700;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    // Background Gradient
+    const grad = ctx.createLinearGradient(0, 0, 1200, 700);
+    grad.addColorStop(0, '#1c1612');
+    grad.addColorStop(0.5, '#2e1913');
+    grad.addColorStop(1, '#120f0e');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1200, 700);
+
+    // Decorative glow
+    const radial = ctx.createRadialGradient(900, 150, 20, 900, 150, 450);
+    radial.addColorStop(0, 'rgba(180, 69, 43, 0.45)');
+    radial.addColorStop(1, 'rgba(180, 69, 43, 0)');
+    ctx.fillStyle = radial;
+    ctx.fillRect(0, 0, 1200, 700);
+
+    // Outer border
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(30, 30, 1140, 640);
+
+    // Header Brand
+    ctx.fillStyle = '#cf5a3c';
+    ctx.font = 'bold 24px system-ui, sans-serif';
+    ctx.fillText('RJ TRACKER PRO ✦ STUDY COMMAND CENTER', 70, 90);
+
+    // Title & Subtitle
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 48px system-ui, sans-serif';
+    ctx.fillText(report.title || 'Study Progress Report', 70, 155);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    ctx.font = '500 24px system-ui, sans-serif';
+    ctx.fillText(report.subtitle || 'Personal Performance & Mastery', 70, 195);
+
+    // Left Section - Circular Progress
+    const centerX = 230;
+    const centerY = 390;
+    const radius = 120;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 20;
+    ctx.stroke();
+
+    // Progress Arc
+    const score = Math.max(0, Math.min(100, report.score || 0));
+    const startAngle = -0.5 * Math.PI;
+    const endAngle = startAngle + (score / 100) * 2 * Math.PI;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+    ctx.strokeStyle = '#34d399';
+    ctx.lineWidth = 20;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Center Score Text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 64px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${score}%`, centerX, centerY + 18);
+    ctx.font = 'bold 20px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.fillText('OF GOAL', centerX, centerY + 50);
+
+    // Center Stats
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 68px monospace';
+    ctx.fillText(fmtMinutes(report.minutes), 420, 340);
+
+    ctx.font = '600 28px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.fillText(`studied · ${report.topics} topic${report.topics === 1 ? '' : 's'} completed`, 420, 390);
+
+    // Right Tiles
+    const tileX = 810;
+    // Tile 1: Streak
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.fillRect(tileX, 250, 320, 100);
+    ctx.fillStyle = '#fb923c';
+    ctx.font = 'bold 36px system-ui, sans-serif';
+    ctx.fillText(`🔥 ${report.streak || 1} Days`, tileX + 25, 305);
+    ctx.font = '600 18px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.fillText('ACTIVE STUDY STREAK', tileX + 25, 335);
+
+    // Tile 2: Today Goals
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.fillRect(tileX, 375, 320, 100);
+    ctx.fillStyle = allGoalsMet ? '#34d399' : '#38bdf8';
+    ctx.font = 'bold 30px system-ui, sans-serif';
+    ctx.fillText(allGoalsMet ? '⭐ All Goals Met!' : `🎯 ${todayTopicsDone}/${targetTopics} Topics`, tileX + 25, 430);
+    ctx.font = '600 18px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.fillText(`TIME: ${formatStudyTime(todayMinutes)} / ${formatStudyTime(targetMinutes)}`, tileX + 25, 460);
+
+    // Bottom Footer
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.font = '500 18px system-ui, sans-serif';
+    ctx.fillText('Generated with RJ Tracker Pro — Private Offline Nursing & Exam Study Tracker', 70, 620);
+
+    return new Promise(resolve => {
+      canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.95);
+    });
+  };
 
   const share = async () => {
-    const text = [
-      `📊 ${report.title} · ${report.subtitle}`,
-      `⏱ ${fmtMinutes(report.minutes)} studied · ✅ ${report.topics} topics · 🎯 ${report.score}% of goal`,
-      allGoalsMet ? '🏆 Daily Goals Crushed!' : `🎯 Today: ${todayTopicsDone}/${targetTopics} topics · ${formatStudyTime(todayMinutes)}/${formatStudyTime(targetMinutes)}`,
-      report.streak ? `🔥 ${report.streak}-day streak` : '',
-    ].filter(Boolean).join('\n');
-    try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); toast.success('Copied to clipboard'); } } catch { /* cancelled */ }
+    if (sharing) return;
+    setSharing(true);
+    toast.loading('Generating progress card JPG…', { id: 'share-img' });
+    try {
+      const blob = await generateProgressCardJpg();
+      const text = [
+        `📊 ${report.title} · ${report.subtitle}`,
+        `⏱ ${fmtMinutes(report.minutes)} studied · ✅ ${report.topics} topics · 🎯 ${report.score}% of goal`,
+        allGoalsMet ? '🏆 Daily Goals Crushed!' : `🎯 Today: ${todayTopicsDone}/${targetTopics} topics · ${formatStudyTime(todayMinutes)}/${formatStudyTime(targetMinutes)}`,
+        report.streak ? `🔥 ${report.streak}-day streak` : '',
+      ].filter(Boolean).join('\n');
+
+      if (blob) {
+        const filename = `RJ-Study-Progress-${today}.jpg`;
+        const isNativePlatform = typeof (window as any).Capacitor !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.();
+        if (isNativePlatform) {
+          const { saveAndShare } = await import('../../platform/native');
+          await saveAndShare(filename, blob);
+          toast.success('✨ Progress card JPG shared!', { id: 'share-img' });
+          return;
+        }
+
+        const file = new File([blob], filename, { type: 'image/jpeg' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'My Study Progress', text });
+          toast.success('Shared successfully!', { id: 'share-img' });
+          return;
+        }
+
+        // Web download fallback
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('📷 Progress card JPG saved to Downloads!', { id: 'share-img' });
+      } else {
+        if (navigator.share) await navigator.share({ text });
+        else { await navigator.clipboard.writeText(text); toast.success('Summary copied to clipboard', { id: 'share-img' }); }
+      }
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        toast.error('Could not export progress image', { id: 'share-img' });
+      } else {
+        toast.dismiss('share-img');
+      }
+    } finally {
+      setSharing(false);
+    }
   };
 
   return (
@@ -134,7 +291,7 @@ export default function ProgressCard({ subjects, dailyLogs, studyGoals, dbSessio
             <p className="text-[15px] font-extrabold leading-tight truncate">{report.title}</p>
             <p className="text-[11px] opacity-85 truncate">{report.subtitle}</p>
           </div>
-          <button onClick={share} aria-label="Share progress" className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center active:scale-90 transition-all shrink-0"><Share2 className="w-4 h-4" /></button>
+          <button onClick={share} disabled={sharing} aria-label="Share progress card image" className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center active:scale-90 transition-all shrink-0 disabled:opacity-50"><Share2 className="w-4 h-4" /></button>
         </div>
 
         {/* period chips */}
