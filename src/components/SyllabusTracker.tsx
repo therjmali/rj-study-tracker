@@ -29,7 +29,7 @@ import FolderAnalytics from './syllabus/FolderAnalytics';
 import ReportBuilder from './report/ReportBuilder';
 import UnitListView from './syllabus/UnitListView';
 import ErrorBoundary from './shared/ErrorBoundary';
-import { getLocalDateStr } from '../lib/utils';
+import { getLocalDateStr, getLastActiveUnit } from '../lib/utils';
 import { useBackGuard } from '../hooks/useBackGuard';
 import { deepFilterSubjects, computeFilterCounts, getMatchingIds, topicMatchesSearch } from '../lib/syllabusFilter';
 import { renumberTopicNumbers } from '../lib/renumberTopics';
@@ -244,15 +244,20 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
       if (navTarget.unitId) {
         setUnitDetailData({ subjectId: navTarget.subjectId, unitId: navTarget.unitId });
       } else {
-        // Auto-expand the subject AND all its units (but don't open unit detail view)
-        setExpandedSubjects(prev => new Set([...prev, navTarget.subjectId!]));
-        if (targetSubject) {
-          const unitIds = targetSubject.units.map(u => u.id);
-          setExpandedUnits(prev => new Set([...prev, ...unitIds]));
+        const lastUnit = getLastActiveUnit(targetSubject);
+        if (lastUnit) {
+          setUnitDetailData({ subjectId: navTarget.subjectId, unitId: lastUnit.id });
+        } else {
+          // Auto-expand the subject AND all its units (fallback when subject has no units)
+          setExpandedSubjects(prev => new Set([...prev, navTarget.subjectId!]));
+          if (targetSubject) {
+            const unitIds = targetSubject.units.map(u => u.id);
+            setExpandedUnits(prev => new Set([...prev, ...unitIds]));
+          }
+          setTimeout(() => {
+            document.getElementById(`subject-${navTarget.subjectId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 350);
         }
-        setTimeout(() => {
-          document.getElementById(`subject-${navTarget.subjectId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 350);
       }
     }
     onClearNavTarget?.();

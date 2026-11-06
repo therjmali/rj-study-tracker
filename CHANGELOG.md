@@ -1,5 +1,14 @@
 # Changelog
 
+## 18.3.0 — Interactive Subject Mastery & Exam Countdown Widgets, Poster Quick-Resume & Breadcrumb Dropdown
+
+- **Subject Mastery & Live Unit Home Screen Widget (`SubjectWidgetProvider` 4×2):** Added a dedicated native Android AppWidget displaying the active subject's name, short name badge, completion percentage, active unit title, and unit progress. Includes a direct "⚡ Resume Unit ›" launch intent that opens the app straight into that subject's last noted active unit.
+- **Exam Countdown & Study Pace Home Screen Widget (`ExamWidgetProvider` 4×1):** Added a sleek native Android AppWidget tracking the student's next target examination, real-time days-remaining countdown pill, and required daily study pace (e.g., ⚡ Target: 3 topics / day). Tapping anywhere navigates straight to the exam schedule in the app.
+- **Subject Poster Tap to Resume Active Unit:** Clicking any subject card cover poster or floating "⚡ Resume Unit ›" badge now immediately opens the Unit Detail View of the last active unit (prioritizing the last unit studied in this session/device, or the first incomplete unit) instead of merely expanding the card.
+- **Interactive Unit Breadcrumb Dropdown Navigation:** Upgraded the Unit Detail View header breadcrumb (`FON > Unit 1 > INTRODUCTION TO HEALTH AND ILLNESS`). The `Unit 1` chip is now an interactive dropdown menu displaying all units with real-time topic counts, completion percentages, and active indicators, allowing students to effortlessly switch units without backing out to the syllabus list.
+- **All-in-One 4-Widget Hub & Native Pinning Manager:** Redesigned `WidgetManagerModal` with a 4-tab interactive switcher (Daily Progress, Subject Mastery, Exam Countdown, Quick Focus). Students can preview every widget with live stats and any subject's data, test launch directly, and pin any widget to their Android launcher with a single tap.
+- **Full Intent & Action Routing Pipeline:** Enhanced `MainActivity.java` and `App.tsx` native action handlers (`open-unit`, `open-subject`, `open-exam`) to seamlessly route launcher widget taps to the exact requested subject, unit, or exam schedule.
+
 ## 18.2.0 — Android Home Screen Widgets, Native Widget Pinning & Live Study Hub Controls
 
 - **Native Android Home Screen Widgets (`AppWidgetProvider`).** Introduced dedicated Android home screen widgets allowing students to monitor study momentum directly from their phone's home screen launcher without needing to open the app:

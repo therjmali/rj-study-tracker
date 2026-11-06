@@ -18,7 +18,7 @@ import SubjectOverview from './SubjectOverview';
 import SubjectActionsSheet from './SubjectActionsSheet';
 import type { Subject, SubTopic, Unit, RevisionKey, TopicNavRef } from '../../types';
 import type { SyllabusFilters } from './SyllabusHeader';
-import { formatDate, getCleanName, readableInk } from '../../lib/utils';
+import { formatDate, getCleanName, readableInk, getLastActiveUnit } from '../../lib/utils';
 import { computeGlobalTopicNumbers } from '../../lib/computeGlobalTopicNumbers';
 import { topicMatchesFilter, topicMatchesSearch, type SyllabusFilterState } from '../../lib/syllabusFilter';
 import { toast } from 'sonner';
@@ -292,12 +292,33 @@ const SubjectCard = memo(function SubjectCard({
         background: `linear-gradient(135deg, hsl(var(--card) / 0.85) 0%, color-mix(in srgb, ${subject.color} 6%, hsl(var(--card) / 0.75)) 50%, hsl(var(--card) / 0.65) 100%)`,
         borderLeft: `3px solid ${subject.color}50`,
       }}>
-      {/* Subject Cover Image — with fallback on load error */}
+      {/* Subject Cover Image / Poster — clicking launches last noted unit activity */}
       {subject.image && (
-        <div className="relative h-28 sm:h-36 w-full overflow-hidden rounded-t-2xl">
-          <img src={subject.image} alt={subject.name} className="w-full h-full object-cover"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-          <div className="absolute inset-0 bg-gradient-to-t from-card/95 via-card/40 to-transparent" />
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            const targetUnit = getLastActiveUnit(origSubject);
+            if (targetUnit) {
+              onOpenUnitEditor?.(subject.id, targetUnit.id);
+            }
+          }}
+          className="relative h-28 sm:h-36 w-full overflow-hidden rounded-t-2xl cursor-pointer group/poster select-none active:scale-[0.99] transition-transform"
+          title="Click to resume active unit"
+        >
+          <img
+            src={subject.image}
+            alt={subject.name}
+            className="w-full h-full object-cover group-hover/poster:scale-105 transition-transform duration-500"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-card/95 via-card/40 to-transparent group-hover/poster:via-card/25 transition-colors" />
+
+          {/* Quick resume badge in top-right */}
+          <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold shadow-lg group-hover/poster:bg-primary group-hover/poster:border-primary transition-all">
+            <span>⚡ Resume Unit</span>
+            <span className="text-xs">›</span>
+          </div>
+
           <div className="absolute bottom-2 left-3 right-3 flex items-end gap-2">
             <span className="text-xs font-black px-2.5 py-1 rounded-lg border backdrop-blur-md" style={{ backgroundColor: subject.color + '30', color: '#fff', borderColor: subject.color + '50', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>{subject.shortName}</span>
             <span className="text-sm font-bold text-white break-words drop-shadow-lg">{subject.name}</span>

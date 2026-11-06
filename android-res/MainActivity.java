@@ -280,6 +280,8 @@ public class MainActivity extends BridgeActivity {
         prefs.edit().putString("widget_data", json).apply();
         StudyWidgetProvider.updateAll(MainActivity.this);
         FocusWidgetProvider.updateAll(MainActivity.this);
+        SubjectWidgetProvider.updateAll(MainActivity.this);
+        ExamWidgetProvider.updateAll(MainActivity.this);
       } catch (Throwable ignored) {}
     }
 
@@ -300,7 +302,16 @@ public class MainActivity extends BridgeActivity {
       try {
         AppWidgetManager mgr = getSystemService(AppWidgetManager.class);
         if (mgr == null || !mgr.isRequestPinAppWidgetSupported()) return false;
-        Class<?> providerClass = "focus".equalsIgnoreCase(widgetType) ? FocusWidgetProvider.class : StudyWidgetProvider.class;
+        Class<?> providerClass;
+        if ("focus".equalsIgnoreCase(widgetType)) {
+          providerClass = FocusWidgetProvider.class;
+        } else if ("subject".equalsIgnoreCase(widgetType)) {
+          providerClass = SubjectWidgetProvider.class;
+        } else if ("exam".equalsIgnoreCase(widgetType)) {
+          providerClass = ExamWidgetProvider.class;
+        } else {
+          providerClass = StudyWidgetProvider.class;
+        }
         ComponentName provider = new ComponentName(MainActivity.this, providerClass);
         return mgr.requestPinAppWidget(provider, null, null);
       } catch (Throwable t) {

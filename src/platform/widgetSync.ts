@@ -1,10 +1,30 @@
 /**
  * Android Home Screen Widget Synchronization & Pinning Bridge.
  *
- * Keeps Android AppWidgets (Study Progress & Focus Timer) updated with
- * live stats (today's study time, completed topics, streak, syllabus progress)
- * and enables native one-tap widget pinning to the Android home screen launcher.
+ * Keeps Android AppWidgets (Study Progress, Subject Mastery, Exam Countdown, Quick Focus)
+ * updated with live stats and enables native one-tap widget pinning to the Android launcher.
  */
+
+export interface ActiveSubjectWidgetData {
+  id: string;
+  name: string;
+  shortName: string;
+  icon?: string;
+  color?: string;
+  percent: number;
+  completedTopics: number;
+  totalTopics: number;
+  activeUnitId?: string;
+  activeUnitName?: string;
+  activeUnitPercent?: number;
+}
+
+export interface ExamWidgetData {
+  title: string;
+  date: string;
+  daysRemaining: number;
+  targetPace?: string;
+}
 
 export interface WidgetStats {
   todayMinutes: number;
@@ -14,7 +34,11 @@ export interface WidgetStats {
   syllabusPercent: number;
   activeTimer: boolean;
   timerDisplay?: string;
+  activeSubject?: ActiveSubjectWidgetData;
+  examTarget?: ExamWidgetData;
 }
+
+export type WidgetType = 'study' | 'focus' | 'subject' | 'exam';
 
 interface NativeWidgetBridge {
   updateWidgetData?: (json: string) => void;
@@ -35,8 +59,8 @@ export function isPinWidgetSupported(): boolean {
   }
 }
 
-/** Request pinning a widget to the Android Home Screen ('study' or 'focus') */
-export function requestPinWidget(widgetType: 'study' | 'focus'): boolean {
+/** Request pinning a widget to the Android Home Screen */
+export function requestPinWidget(widgetType: WidgetType): boolean {
   try {
     const bridge = getBridge();
     if (bridge?.requestPinWidget) {

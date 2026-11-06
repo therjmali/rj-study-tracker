@@ -127,6 +127,14 @@ export default function UnitDetailView({
     return () => clearTimeout(unitCopyTimer.current);
   }, [unitCopyStep]);
 
+  // Persist last active unit for this subject so resuming jumps to last noted activity
+  useEffect(() => {
+    try {
+      localStorage.setItem('last-active-unit-' + subject.id, unit.id);
+      sessionStorage.setItem('last-active-unit-' + subject.id, unit.id);
+    } catch {}
+  }, [subject.id, unit.id]);
+
   const unitStripRef = useRef<HTMLDivElement>(null);
   const activeUnitRef = useRef<HTMLButtonElement | null>(null);
 
@@ -708,7 +716,56 @@ export default function UnitDetailView({
             📚 {subject.shortName}
           </button>
           <ChevronRight className="w-2.5 h-2.5 text-muted-foreground/30 shrink-0" />
-          <span className="text-foreground/50 font-bold shrink-0">Unit {unitIndex + 1}</span>
+          
+          {/* Clickable Unit dropdown to jump across units */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-card/50 hover:bg-card/90 text-foreground font-black border border-border/20 hover:border-border/35 transition-all active:scale-95 cursor-pointer shadow-xs"
+                title="Click to jump to another unit"
+              >
+                <span>Unit {unitIndex + 1}</span>
+                <ChevronDown className="w-2.5 h-2.5 text-primary opacity-80" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="bg-card/95 backdrop-blur-2xl border-border/25 max-h-[340px] overflow-y-auto min-w-[250px] p-1.5 rounded-2xl shadow-2xl z-50">
+              <div className="px-2 py-1 text-[9px] font-black uppercase tracking-wider text-muted-foreground border-b border-border/10 mb-1 flex items-center justify-between">
+                <span>Select Unit</span>
+                <span className="text-primary">{unitIndex + 1} of {subject.units.length}</span>
+              </div>
+              {subject.units.map((u, i) => {
+                const uDone = u.subTopics.filter(t => t.completed).length;
+                const uTotal = u.subTopics.length;
+                const uPct = uTotal > 0 ? Math.round((uDone / uTotal) * 100) : 0;
+                const isCur = i === unitIndex;
+                const cleanUName = u.name.replace(/^Unit\s+\d+\s*:\s*/i, '');
+                return (
+                  <DropdownMenuItem
+                    key={u.id}
+                    onClick={() => {
+                      if (!isCur && onNavigateToUnit) {
+                        setSwipeDirection(i > unitIndex ? 'left' : 'right');
+                        setTimeout(() => { onNavigateToUnit(i); setSwipeDirection(null); }, 100);
+                      }
+                    }}
+                    className={`flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs cursor-pointer transition-colors ${
+                      isCur ? 'bg-primary/15 text-primary font-bold' : 'hover:bg-muted/30 text-foreground'
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono font-black opacity-60">Unit {i + 1}</span>
+                        {isCur && <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
+                      </div>
+                      <p className="text-[11px] font-medium truncate text-foreground/90 mt-0.5">{cleanUName}</p>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold shrink-0 opacity-70 ml-2" style={{ color: uPct === 100 ? 'hsl(var(--secondary))' : undefined }}>{uPct}%</span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <ChevronRight className="w-2.5 h-2.5 text-muted-foreground/30 shrink-0" />
           <span className="text-foreground/70 font-bold truncate">{cleanUnitName}</span>
         </div>

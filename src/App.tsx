@@ -21,7 +21,7 @@ import { DEFAULT_SEMESTER, generateDefaultLogs } from './data/syllabus';
 import { getStats, getLevel, getLevelProgress } from './lib/gamification';
 import { countDueTopics } from './lib/srs';
 import type { AppTab, Subject, DailyLog, AppState, HistoryEntry, UserSettings, ExamConfig, TrashItem, StoreState, Folder, Reminder, StudentMode, DbStudySession } from './types';
-import { getLocalDateStr, normalizeSubjectId } from './lib/utils';
+import { getLocalDateStr, normalizeSubjectId, getLastActiveUnit } from './lib/utils';
 import { DEFAULT_SETTINGS } from './types';
 import { getDueReminders, getTodayStr } from './lib/reminderUtils';
 import { getBrandConfig, getAppName } from './lib/brandConfig';
@@ -1377,6 +1377,61 @@ function AppInner() {
 
     const targetTopics = settings.studyGoals?.dailyTopics || 5;
 
+    // Pick active subject & unit for the Subject Mastery widget
+    let activeSubjectData: import('./platform/widgetSync').ActiveSubjectWidgetData | undefined;
+    if (appState.subjects.length > 0) {
+      const activeSubj = appState.subjects.find(s => s.units.some(u => u.subTopics.some(t => !t.completed))) || appState.subjects[0];
+      if (activeSubj) {
+        const lastUnit = getLastActiveUnit(activeSubj);
+        let done = 0;
+        let tot = 0;
+        activeSubj.units.forEach(u => u.subTopics.forEach(t => {
+          tot++;
+          if (t.completed) done++;
+        }));
+        const sPct = tot > 0 ? Math.round((done / tot) * 100) : 0;
+        let uDone = 0;
+        let uTot = 0;
+        if (lastUnit) {
+          uTot = lastUnit.subTopics.length;
+          uDone = lastUnit.subTopics.filter(t => t.completed).length;
+        }
+        activeSubjectData = {
+          id: activeSubj.id,
+          name: activeSubj.name,
+          shortName: activeSubj.shortName,
+          icon: activeSubj.icon,
+          color: activeSubj.color,
+          percent: sPct,
+          completedTopics: done,
+          totalTopics: tot,
+          activeUnitId: lastUnit?.id,
+          activeUnitName: lastUnit ? lastUnit.name.replace(/^Unit\s+\d+\s*:\s*/i, '') : undefined,
+          activeUnitPercent: uTot > 0 ? Math.round((uDone / uTot) * 100) : 0,
+        };
+      }
+    }
+
+    // Pick upcoming exam target for the Exam Countdown widget
+    let examData: import('./platform/widgetSync').ExamWidgetData | undefined;
+    const exams = appState.semesterConfig?.exams || [];
+    if (exams.length > 0) {
+      const now = new Date(today).getTime();
+      const upcoming = exams
+        .map(x => ({ ...x, time: new Date(x.date).getTime() }))
+        .filter(x => !isNaN(x.time) && x.time >= now)
+        .sort((a, b) => a.time - b.time)[0];
+      if (upcoming) {
+        const diffDays = Math.ceil((upcoming.time - now) / (1000 * 60 * 60 * 24));
+        examData = {
+          title: upcoming.label,
+          date: upcoming.date,
+          daysRemaining: diffDays,
+          targetPace: diffDays > 0 ? `⚡ Target: ${Math.max(1, Math.round(15 / diffDays))} topics / day` : '⚡ Exam Today!',
+        };
+      }
+    }
+
     updateNativeWidgets({
       todayMinutes: todayMins,
       todayTopics,
@@ -1385,8 +1440,10 @@ function AppInner() {
       syllabusPercent: stats.pct,
       activeTimer: timerState.active,
       timerDisplay: timerState.active ? (timerState.appMode === 'stopwatch' ? '⏱ Running' : '⏳ Running') : '25:00',
+      activeSubject: activeSubjectData,
+      examTarget: examData,
     });
-  }, [appState.subjects, appState.dailyLogs, dbSessions, stats.streak, stats.pct, settings.studyGoals, timerState.active, timerState.appMode]);
+  }, [appState.subjects, appState.dailyLogs, appState.semesterConfig?.exams, dbSessions, stats.streak, stats.pct, settings.studyGoals, timerState.active, timerState.appMode]);
 
   // "Start focus" from a reminder notification.
   const timerActionsRef = useRef(timerActions);
@@ -1423,7 +1480,8 @@ function AppInner() {
   }, [setGlobalTopicDetail]);
   useEffect(() => {
     const onAction = (e: Event) => {
-      const id = (e as CustomEvent<{ id: string }>).detail?.id;
+      const detail = (e as CustomEvent<{ id: string; subjectId?: string; unitId?: string; topicId?: string }>).detail;
+      const id = detail?.id;
       if (id === 'start-focus') {
         setPomodoroOpen(true);
         const s = timerStateRef.current;
@@ -1432,8 +1490,7 @@ function AppInner() {
         setPomodoroOpen(true);
         setTimeout(() => window.dispatchEvent(new Event('rj:focus-note')), 450);
       } else if (id === 'timer-topic') {
-        const d = (e as CustomEvent<{ subjectId?: string; unitId?: string; topicId?: string }>).detail;
-        openRunningTopic(d);
+        openRunningTopic(detail);
       } else if (id === 'timer-open') {
         setPomodoroOpen(true);
       } else if (id === 'open-progress') {
@@ -1449,6 +1506,16 @@ function AppInner() {
         setProfileOpen(true);
       } else if (id === 'open-widgets') {
         setWidgetModalOpen(true);
+      } else if (id === 'open-unit' || id === 'open-subject') {
+        if (detail?.subjectId) {
+          setProfileOpen(false); setPomodoroOpen(false); setSearchOpen(false);
+          setSyllabusNavTarget({ subjectId: detail.subjectId, unitId: detail.unitId });
+          startTransition(() => setActiveTab('syllabus'));
+        }
+      } else if (id === 'open-exam') {
+        setProfileOpen(false); setPomodoroOpen(false);
+        startTransition(() => setActiveTab('dashboard'));
+        setTimeout(() => document.getElementById('exam-shelf')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 500);
       }
     };
     window.addEventListener('rj:native-action', onAction);
@@ -1488,6 +1555,28 @@ function AppInner() {
     for (const s of appState.subjects) for (const u of s.units) for (const t of u.subTopics) if (t.completed && t.completedDate === today) n++;
     return n;
   }, [appState.subjects]);
+
+  const todayStudyMinutes = useMemo(() => {
+    const today = getLocalDateStr();
+    let mins = 0;
+    for (const s of appState.subjects) {
+      for (const u of s.units) {
+        for (const t of u.subTopics) {
+          if (t.timeEntries) {
+            for (const e of t.timeEntries) {
+              if (e.date === today) mins += e.minutes;
+            }
+          }
+        }
+      }
+    }
+    if (dbSessions && Array.isArray(dbSessions)) {
+      for (const ds of dbSessions) {
+        if (ds.date === today && ds.minutes) mins += ds.minutes;
+      }
+    }
+    return mins;
+  }, [appState.subjects, dbSessions]);
 
   const handleImport = useCallback((state: AppState) => { setAppState(state); }, [setAppState]);
 
@@ -2114,11 +2203,19 @@ function AppInner() {
       <WidgetManagerModal
         open={widgetModalOpen}
         onClose={() => setWidgetModalOpen(false)}
-        todayMinutes={stats.totalHours * 60}
-        todayTopicsDone={stats.done}
+        todayMinutes={todayStudyMinutes}
+        todayTopicsDone={todayTopicsDone}
         targetTopics={settings.studyGoals?.dailyTopics || 5}
         streakDays={stats.streak}
         syllabusPercent={stats.pct}
+        timerDisplay={timerState.active ? (timerState.appMode === 'stopwatch' ? '⏱ Running' : '⏳ Running') : '25:00'}
+        subjects={appState.subjects}
+        exams={appState.semesterConfig?.exams || []}
+        onOpenUnit={(sId, uId) => {
+          setProfileOpen(false); setPomodoroOpen(false); setSearchOpen(false);
+          setSyllabusNavTarget({ subjectId: sId, unitId: uId });
+          startTransition(() => setActiveTab('syllabus'));
+        }}
       />
 
       <BottomSheet open={pomodoroOpen} onClose={() => { setPomodoroOpen(false); setPomodoroPreFill(null); }} title="⏱️ Focus Timer">

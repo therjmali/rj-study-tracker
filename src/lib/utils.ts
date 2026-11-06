@@ -583,3 +583,41 @@ export function readableInk(color: string | undefined | null): string {
   if (!color) return 'hsl(var(--foreground))';
   return `color-mix(in srgb, ${color} 62%, hsl(var(--foreground)))`;
 }
+
+/**
+ * Find the last active unit for a subject based on saved preference,
+ * latest study activity date, or the first incomplete unit.
+ */
+export function getLastActiveUnit(subj: import('../types').Subject | undefined): import('../types').Unit | undefined {
+  if (!subj || !subj.units || subj.units.length === 0) return undefined;
+  try {
+    const saved = localStorage.getItem('last-active-unit-' + subj.id);
+    if (saved) {
+      const found = subj.units.find(u => u.id === saved);
+      if (found) return found;
+    }
+  } catch {}
+  // Find unit with most recent activity (completedDate or timeEntries)
+  let latestUnit: import('../types').Unit | undefined;
+  let latestDate = '';
+  for (const u of subj.units) {
+    for (const t of u.subTopics) {
+      if (t.completedDate && t.completedDate > latestDate) {
+        latestDate = t.completedDate;
+        latestUnit = u;
+      }
+      if (t.timeEntries) {
+        for (const te of t.timeEntries) {
+          if (te.date && te.date > latestDate) {
+            latestDate = te.date;
+            latestUnit = u;
+          }
+        }
+      }
+    }
+  }
+  if (latestUnit) return latestUnit;
+  // Otherwise first incomplete unit
+  const incomp = subj.units.find(u => u.subTopics.some(t => !t.completed));
+  return incomp || subj.units[0];
+}
