@@ -96,6 +96,7 @@ public class MainActivity extends BridgeActivity {
     try {
       android.webkit.WebView wv = getBridge().getWebView();
       wv.setOverScrollMode(View.OVER_SCROLL_NEVER);
+      wv.setLayerType(View.LAYER_TYPE_HARDWARE, null);
       if (android.os.Build.VERSION.SDK_INT >= 26) {
         wv.setRendererPriorityPolicy(android.webkit.WebView.RENDERER_PRIORITY_IMPORTANT, false);
       }

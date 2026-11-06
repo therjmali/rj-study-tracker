@@ -254,6 +254,9 @@ export async function createApp(options = {}) {
       'Content-Length': Buffer.byteLength(text),
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+      'Permissions-Policy': 'interest-cohort=()',
       'Referrer-Policy': 'no-referrer',
       ...extraHeaders,
     });
@@ -270,7 +273,10 @@ export async function createApp(options = {}) {
     }
     if (!size) return {};
     try {
-      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'), (key, value) => {
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') return undefined;
+        return value;
+      });
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
         throw new ApiError(400, 'invalid_json', 'Request body must be a JSON object.');
       }
@@ -592,7 +598,10 @@ export async function createApp(options = {}) {
       }
 
       for (const [key, incoming] of Object.entries(push)) {
-        if (!SECTION_KEY_RE.test(key)) { rejected.push({ key, reason: 'invalid_key' }); continue; }
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype' || !SECTION_KEY_RE.test(key)) {
+          rejected.push({ key, reason: 'invalid_key' });
+          continue;
+        }
         if (!incoming || typeof incoming !== 'object' || !('value' in incoming)) { rejected.push({ key, reason: 'missing_value' }); continue; }
         let size = 0;
         try { size = Buffer.byteLength(JSON.stringify(incoming.value)); } catch { rejected.push({ key, reason: 'unserialisable' }); continue; }

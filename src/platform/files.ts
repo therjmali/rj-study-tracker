@@ -46,7 +46,9 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 
 function dataUrlToBlob(dataUrl: string): Blob {
   const [head, body = ''] = dataUrl.split(',');
-  const mime = /data:([^;]+)/.exec(head)?.[1] || 'application/octet-stream';
+  const rawMime = /data:([^;]+)/.exec(head)?.[1] || 'application/octet-stream';
+  // Neutralize dangerous MIME types (html, x-javascript, etc.) to octet-stream
+  const mime = /^(image\/(jpeg|png|webp|gif)|application\/pdf|text\/plain)$/i.test(rawMime) ? rawMime : 'application/octet-stream';
   const bin = atob(body);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);

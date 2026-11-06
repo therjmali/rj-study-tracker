@@ -46,11 +46,14 @@ export default function ExamCountdownCarousel({ exams, subjects, onManageExams }
     resetAutoSwipe();
   };
 
-  const touchStart = useRef(0);
-  const onTouchStart = (e: React.TouchEvent) => { touchStart.current = e.touches[0].clientX; };
+  const touchStart = useRef({ x: 0, y: 0 });
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
   const onTouchEnd = (e: React.TouchEvent) => {
-    const diff = e.changedTouches[0].clientX - touchStart.current;
-    if (Math.abs(diff) > 50) goTo(diff < 0 ? 1 : -1);
+    const dx = e.changedTouches[0].clientX - touchStart.current.x;
+    const dy = e.changedTouches[0].clientY - touchStart.current.y;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) goTo(dx < 0 ? 1 : -1);
   };
 
   if (upcoming.length === 0) return null;
@@ -58,7 +61,7 @@ export default function ExamCountdownCarousel({ exams, subjects, onManageExams }
   const exam = upcoming[activeIndex] || upcoming[0];
 
   return (
-    <div className="glass-card overflow-hidden relative" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className="glass-card overflow-hidden relative touch-pan-y" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {count > 1 && (
         <>
           <button onClick={() => goTo(-1)} className="absolute left-1.5 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-card/60 backdrop-blur border border-border/20 flex items-center justify-center hover:bg-card/80 transition-colors">

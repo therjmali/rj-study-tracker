@@ -1537,7 +1537,11 @@ html:not(.amoled-mode):not(.glass-dark) .text-destructive { color: color-mix(in 
 .text-foreground\/10, .text-foreground\/15, .text-foreground\/20, .text-foreground\/25, .text-foreground\/30, .text-foreground\/35, .text-foreground\/40 { color: hsl(var(--foreground) / 0.62); }
 .text-secondary\/80, .text-secondary\/70, .text-secondary\/60 { color: color-mix(in srgb, hsl(var(--secondary)) 70%, hsl(var(--foreground))); }
 
-/* Snappier touch: no 300 ms tap delay / grey flash, and no pull-to-refresh bounce inside the installed app */
+/* Snappier touch & fluid momentum scrolling */
 html { -webkit-tap-highlight-color: transparent; }
 button, a, [role="button"], [role="tab"], summary, label, input, select { touch-action: manipulation; }
-html, body { overscroll-behavior-y: none; }
+html, body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
+}

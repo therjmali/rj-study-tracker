@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Flame, Share2, TrendingDown, TrendingUp, Trophy } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Flame, Share2, TrendingDown, TrendingUp, Trophy, Target, CheckCircle2, Clock, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import type { DailyLog, DbStudySession, StudyGoals, Subject } from '../../types';
 import { PERIODS, buildReport, deltaLabel, fmtMinutes, verdict, type PeriodId } from '../../lib/progressReport';
-import { getLocalDateStr } from '../../lib/utils';
+import { getLocalDateStr, formatStudyTime, getEffectiveDayMinutes } from '../../lib/utils';
 import { useCountUp } from '../../hooks/useCountUp';
 
 interface Props {
@@ -36,6 +36,29 @@ function Ring({ pct, size = 112 }: { pct: number; size?: number }) {
   );
 }
 
+function MiniRing({ value, max, size = 46, color }: { value: number; max: number; size?: number; color: string }) {
+  const pct = max > 0 ? Math.min(value / max, 1) : 0;
+  const stroke = 4.5;
+  const r = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - pct);
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0 -rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--muted) / 0.25)" strokeWidth={stroke} />
+      <motion.circle
+        cx={size / 2} cy={size / 2} r={r}
+        fill="none" stroke={color} strokeWidth={stroke}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        initial={{ strokeDashoffset: circumference }}
+        animate={{ strokeDashoffset: offset }}
+        transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+      />
+    </svg>
+  );
+}
+
 function Delta({ now, before, unit }: { now: number; before: number; unit: string }) {
   const d = deltaLabel(now, before);
   if (d.up === null) return <span className="text-[10px] font-semibold text-muted-foreground">vs {unit}: {d.text}</span>;
@@ -47,8 +70,8 @@ function Delta({ now, before, unit }: { now: number; before: number; unit: strin
 }
 
 /**
- * Progress card — the same card the nightly notification opens. Switch between Today, Yesterday, 1 week,
- * 30 days, a custom range or the complete journey.
+ * Merged Ultra-Premium Command Shelf: Progress Card + Today's Goals
+ * Unifies the comprehensive progress breakdown, period filters, and live goal tracking into one cohesive shelf.
  */
 export default function ProgressCard({ subjects, dailyLogs, studyGoals, dbSessions }: Props) {
   const init = useRef(load()).current;
@@ -69,23 +92,45 @@ export default function ProgressCard({ subjects, dailyLogs, studyGoals, dbSessio
   const subjectTotal = report.subjects.reduce((a, s) => a + s.minutes, 0) || 1;
   const prevUnit = period === 'today' ? 'yesterday' : period === 'yesterday' ? 'day before' : 'previous';
 
+  // Live Today's Goals Tracking
+  const { todayTopicsDone, todayMinutes } = useMemo(() => {
+    let topics = 0;
+    subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
+      if (t.completed && t.completedDate === today) topics++;
+    })));
+    const mins = getEffectiveDayMinutes(subjects, dailyLogs, today, dbSessions);
+    return { todayTopicsDone: topics, todayMinutes: mins };
+  }, [subjects, dailyLogs, today, dbSessions]);
+
+  const targetTopics = studyGoals.dailyTopics || 5;
+  const targetMinutes = Math.round((studyGoals.dailyHours || 3) * 60);
+  const topicPct = Math.min(100, Math.round((todayTopicsDone / targetTopics) * 100));
+  const timePct = Math.min(100, Math.round((todayMinutes / targetMinutes) * 100));
+  const animatedTopicPct = useCountUp(topicPct, 1000, 200);
+  const animatedTimePct = useCountUp(timePct, 1000, 200);
+  const allGoalsMet = todayTopicsDone >= targetTopics && todayMinutes >= targetMinutes;
+
   const share = async () => {
     const text = [
       `📊 ${report.title} · ${report.subtitle}`,
       `⏱ ${fmtMinutes(report.minutes)} studied · ✅ ${report.topics} topics · 🎯 ${report.score}% of goal`,
+      allGoalsMet ? '🏆 Daily Goals Crushed!' : `🎯 Today: ${todayTopicsDone}/${targetTopics} topics · ${formatStudyTime(todayMinutes)}/${formatStudyTime(targetMinutes)}`,
       report.streak ? `🔥 ${report.streak}-day streak` : '',
     ].filter(Boolean).join('\n');
     try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); toast.success('Copied to clipboard'); } } catch { /* cancelled */ }
   };
 
   return (
-    <section id="progress-card" aria-label="Progress card" className="rounded-3xl overflow-hidden border border-border/20 shadow-lg shadow-primary/10 scroll-mt-20">
+    <section id="progress-card" aria-label="Progress and Goals shelf" className="rounded-3xl overflow-hidden border border-border/20 shadow-lg shadow-primary/10 scroll-mt-20">
       {/* ── Hero ── */}
       <div className="relative text-primary-foreground p-4 sm:p-5" style={{ background: 'linear-gradient(135deg, color-mix(in srgb, hsl(var(--primary)) 62%, #000) 0%, color-mix(in srgb, hsl(var(--primary)) 52%, #000) 55%, color-mix(in srgb, hsl(var(--secondary)) 58%, #000) 130%)' }}>
         <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(120% 90% at 100% 0%, rgba(255,255,255,0.22), transparent 55%)' }} />
         <div className="relative flex items-center justify-between gap-2 mb-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Progress card</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 flex items-center gap-1.5">
+              <span>Progress &amp; Goals Shelf</span>
+              {allGoalsMet && <span className="bg-amber-400/30 text-amber-200 text-[9px] px-1.5 py-0.2 rounded-full font-bold">Goals Met ⭐</span>}
+            </p>
             <p className="text-[15px] font-extrabold leading-tight truncate">{report.title}</p>
             <p className="text-[11px] opacity-85 truncate">{report.subtitle}</p>
           </div>
@@ -133,6 +178,66 @@ export default function ProgressCard({ subjects, dailyLogs, studyGoals, dbSessio
 
       {/* ── Body ── */}
       <div className="bg-card p-4 space-y-4">
+        {/* ═══ MERGED SECTION: TODAY'S GOALS COMMAND STRIP ═══ */}
+        <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/5 via-accent/5 to-secondary/5 p-3.5 relative overflow-hidden">
+          <div className="flex items-center justify-between gap-2 mb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                <Target className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <h4 className="text-[11px] font-black text-foreground uppercase tracking-wider leading-none">Today's Goals Status</h4>
+                <p className="text-[9px] text-muted-foreground font-medium mt-0.5">Daily target tracker &amp; completion</p>
+              </div>
+            </div>
+            {allGoalsMet ? (
+              <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+                <Sparkles className="w-3 h-3" />
+                <span>All Goals Met! 🎉</span>
+              </motion.div>
+            ) : (
+              <span className="text-[10px] font-bold text-muted-foreground">
+                {todayTopicsDone >= targetTopics ? '✅ Topics Met' : `${targetTopics - todayTopicsDone} topics remaining`}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            {/* Topic target ring */}
+            <div className="flex items-center gap-2.5 bg-background/50 rounded-xl p-2 border border-border/15">
+              <div className="relative">
+                <MiniRing value={todayTopicsDone} max={targetTopics} color="hsl(var(--primary))" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-[10px] font-black text-primary font-mono">{animatedTopicPct}%</span>
+                </div>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-black text-foreground font-mono leading-none">
+                  {todayTopicsDone}<span className="text-muted-foreground text-[10px]">/{targetTopics}</span>
+                </p>
+                <p className="text-[9px] text-muted-foreground font-semibold mt-0.5">Topics Target</p>
+              </div>
+            </div>
+
+            {/* Time target ring */}
+            <div className="flex items-center gap-2.5 bg-background/50 rounded-xl p-2 border border-border/15">
+              <div className="relative">
+                <MiniRing value={todayMinutes} max={targetMinutes} color="hsl(var(--secondary))" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-[10px] font-black text-secondary font-mono">{animatedTimePct}%</span>
+                </div>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-black text-foreground font-mono leading-none truncate">
+                  {formatStudyTime(todayMinutes)}<span className="text-muted-foreground text-[10px]">/{formatStudyTime(targetMinutes)}</span>
+                </p>
+                <p className="text-[9px] text-muted-foreground font-semibold mt-0.5">Study Hours Target</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ PERIOD STATS GRID ═══ */}
         <div className="grid grid-cols-3 gap-2">
           {[
             { k: 'Study time', v: fmtMinutes(report.minutes), sub: report.goalMinutes ? `goal ${fmtMinutes(report.goalMinutes)}` : '', d: report.prev ? { n: report.minutes, b: report.prev.minutes } : null },

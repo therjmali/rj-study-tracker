@@ -46,8 +46,8 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
 
   return (
     <>
-    <header className="sticky top-0 z-50 px-3 pt-2 pb-1.5 pointer-events-auto">
-      <div className="relative overflow-hidden rounded-[24px] sm:rounded-[28px] border border-white/10 bg-white/[0.03] dark:bg-black/[0.4] px-3 sm:px-4 py-2 shadow-[0_18px_48px_-26px_rgba(0,0,0,0.8)] backdrop-blur-2xl max-w-6xl mx-auto">
+    <header className="sticky top-0 z-50 px-3 pt-2 pb-1.5 pointer-events-auto will-change-transform" style={{ transform: 'translateZ(0)' }}>
+      <div className="relative overflow-hidden rounded-[24px] sm:rounded-[28px] border border-white/10 bg-white/[0.03] dark:bg-black/[0.4] px-3 sm:px-4 py-2 shadow-[0_18px_48px_-26px_rgba(0,0,0,0.8)] backdrop-blur-md max-w-6xl mx-auto">
         <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.12),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(167,139,250,0.10),transparent_30%)]" />
 

@@ -58,8 +58,24 @@ function LiveTimeBadge() {
 
 export default function StudyReport({ subjects, dailyLogs, dbSessions, timeFilter, customFrom, customTo, subjectFilter, externalRange, onOpenTopicDetail, onNavigate }: Props) {
   const [chartOpen, setChartOpen] = useState(true);
+  const [reportOpen, setReportOpen] = useState(() => {
+    try {
+      const stored = localStorage.getItem('rj-study-report-open-v2');
+      return stored !== null ? stored === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const quote = useMemo(() => getRotatingQuote(), []);
+
+  const toggleReportOpen = () => {
+    setReportOpen(prev => {
+      const next = !prev;
+      try { localStorage.setItem('rj-study-report-open-v2', String(next)); } catch {}
+      return next;
+    });
+  };
 
   const { startStr, endStr, startDate, endDate } = useMemo(() => {
     if (externalRange) {
@@ -165,9 +181,26 @@ export default function StudyReport({ subjects, dailyLogs, dbSessions, timeFilte
       <div className="p-4 space-y-3 relative">
         <BgBlobs />
 
-        <div className="flex items-center justify-between flex-wrap gap-2 relative z-10">
-          <div>
-            <h3 className="text-base font-bold text-foreground flex items-center gap-1.5">📊 Study Report</h3>
+        {/* ── Toggle Header ── */}
+        <div
+          onClick={toggleReportOpen}
+          role="button"
+          tabIndex={0}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleReportOpen(); } }}
+          className="flex items-center justify-between flex-wrap gap-2 relative z-10 cursor-pointer select-none group"
+          aria-expanded={reportOpen}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-foreground flex items-center gap-1.5 group-hover:text-primary transition-colors">
+                📊 Study Report
+              </h3>
+              {!reportOpen && (
+                <span className="text-[10px] font-bold text-primary px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+                  {formatStudyHours(totalHours)} · {cardData.topicsDone} topics
+                </span>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground font-medium">{rangeLabel}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -177,111 +210,129 @@ export default function StudyReport({ subjects, dailyLogs, dbSessions, timeFilte
                 <Flame className="w-3 h-3" /> {streakData.current}d
               </span>
             )}
+            <motion.div
+              animate={{ rotate: reportOpen ? 180 : 0 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="w-7 h-7 rounded-full bg-card/60 border border-border/20 flex items-center justify-center shrink-0 group-hover:bg-card/90 transition-colors"
+            >
+              <ChevronDown className="w-4 h-4 text-foreground" />
+            </motion.div>
           </div>
         </div>
 
-        {/* ═══ 4 Consolidated Stat Cards ═══ */}
-        <div className="grid grid-cols-2 gap-2 relative z-10">
-          {/* 1. Study Time — with avg/day subtitle */}
-          <ConsolidatedCard
-            id="time"
-            icon={<Clock className="w-4 h-4 text-primary" />}
-            label="Study Hours"
-            value={formatStudyHours(totalHours)}
-            sub={`~${formatStudyTime(Math.round(totalHours * 60 / Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1)))}/day`}
-            color="primary"
-            diff={totalHours - cardData.prevHours}
-            isExpanded={expandedCard === 'time'}
-            onToggle={() => toggleCard('time')}
-          />
+        {/* ── Collapsible Body ── */}
+        <AnimatePresence initial={false}>
+          {reportOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="space-y-3 overflow-hidden"
+            >
+              {/* ═══ 4 Consolidated Stat Cards ═══ */}
+              <div className="grid grid-cols-2 gap-2 relative z-10">
+                {/* 1. Study Time — with avg/day subtitle */}
+                <ConsolidatedCard
+                  id="time"
+                  icon={<Clock className="w-4 h-4 text-primary" />}
+                  label="Study Hours"
+                  value={formatStudyHours(totalHours)}
+                  sub={`~${formatStudyTime(Math.round(totalHours * 60 / Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1)))}/day`}
+                  color="primary"
+                  diff={totalHours - cardData.prevHours}
+                  isExpanded={expandedCard === 'time'}
+                  onToggle={() => toggleCard('time')}
+                />
 
-          {/* 2. Topics Done — expandable with subject/unit breakdown */}
-          <ConsolidatedCard
-            id="topics"
-            icon={<BookOpen className="w-4 h-4 text-secondary" />}
-            label="Topics Done"
-            value={String(cardData.topicsDone)}
-            sub={`Best: ${cardData.bestCount > 0 ? `${cardData.bestCount} on ${formatDate(cardData.bestDate)}` : '—'}`}
-            color="secondary"
-            diff={cardData.topicsDone - cardData.prevTopics}
-            hasDetail={cardData.bySubjectDone.length > 0}
-            isExpanded={expandedCard === 'topics'}
-            onToggle={() => toggleCard('topics')}
-          />
+                {/* 2. Topics Done — expandable with subject/unit breakdown */}
+                <ConsolidatedCard
+                  id="topics"
+                  icon={<BookOpen className="w-4 h-4 text-secondary" />}
+                  label="Topics Done"
+                  value={String(cardData.topicsDone)}
+                  sub={`Best: ${cardData.bestCount > 0 ? `${cardData.bestCount} on ${formatDate(cardData.bestDate)}` : '—'}`}
+                  color="secondary"
+                  diff={cardData.topicsDone - cardData.prevTopics}
+                  hasDetail={cardData.bySubjectDone.length > 0}
+                  isExpanded={expandedCard === 'topics'}
+                  onToggle={() => toggleCard('topics')}
+                />
 
-          {/* 3. In Process — expandable with subject/unit breakdown */}
-          <ConsolidatedCard
-            id="inprocess"
-            icon={<Target className="w-4 h-4 text-accent" />}
-            label="In Process"
-            value={String(cardData.inProcessCount)}
-            sub={`${cardData.avgPerDay} topics/day avg`}
-            color="accent"
-            hasDetail={cardData.bySubjectInProcess.length > 0}
-            isExpanded={expandedCard === 'inprocess'}
-            onToggle={() => toggleCard('inprocess')}
-          />
+                {/* 3. In Process — expandable with subject/unit breakdown */}
+                <ConsolidatedCard
+                  id="inprocess"
+                  icon={<Target className="w-4 h-4 text-accent" />}
+                  label="In Process"
+                  value={String(cardData.inProcessCount)}
+                  sub={`${cardData.avgPerDay} topics/day avg`}
+                  color="accent"
+                  hasDetail={cardData.bySubjectInProcess.length > 0}
+                  isExpanded={expandedCard === 'inprocess'}
+                  onToggle={() => toggleCard('inprocess')}
+                />
 
-          {/* 4. Mood */}
-          <ConsolidatedCard
-            id="mood"
-            icon={<Smile className="w-4 h-4 text-destructive" />}
-            label="Mood"
-            value={MOOD_EMOJI[lastMood] || lastMood}
-            color="destructive"
-            isExpanded={false}
-            onToggle={() => {}}
-          />
-        </div>
+                {/* 4. Mood */}
+                <ConsolidatedCard
+                  id="mood"
+                  icon={<Smile className="w-4 h-4 text-destructive" />}
+                  label="Mood"
+                  value={MOOD_EMOJI[lastMood] || lastMood}
+                  color="destructive"
+                  isExpanded={false}
+                  onToggle={() => {}}
+                />
+              </div>
 
-        {/* Expanded Detail Panel — renders below the grid */}
-        <AnimatePresence>
-          {expandedCard === 'topics' && cardData.bySubjectDone.length > 0 && (
-            <SubjectUnitDetail
-              key="topics-detail"
-              title="✅ Completed Topics"
-              data={cardData.bySubjectDone}
-              onOpenTopicDetail={onOpenTopicDetail}
-              onNavigate={onNavigate}
-              accentColor="secondary"
-            />
-          )}
-          {expandedCard === 'inprocess' && cardData.bySubjectInProcess.length > 0 && (
-            <SubjectUnitDetail
-              key="inprocess-detail"
-              title="🔄 In-Progress Topics"
-              data={cardData.bySubjectInProcess}
-              onOpenTopicDetail={onOpenTopicDetail}
-              onNavigate={onNavigate}
-              accentColor="accent"
-            />
+              {/* Expanded Detail Panel — renders below the grid */}
+              <AnimatePresence>
+                {expandedCard === 'topics' && cardData.bySubjectDone.length > 0 && (
+                  <SubjectUnitDetail
+                    key="topics-detail"
+                    title="✅ Completed Topics"
+                    data={cardData.bySubjectDone}
+                    onOpenTopicDetail={onOpenTopicDetail}
+                    onNavigate={onNavigate}
+                    accentColor="secondary"
+                  />
+                )}
+                {expandedCard === 'inprocess' && cardData.bySubjectInProcess.length > 0 && (
+                  <SubjectUnitDetail
+                    key="inprocess-detail"
+                    title="🔄 In-Progress Topics"
+                    data={cardData.bySubjectInProcess}
+                    onOpenTopicDetail={onOpenTopicDetail}
+                    onNavigate={onNavigate}
+                    accentColor="accent"
+                  />
+                )}
+              </AnimatePresence>
+
+              {/* Collapsible: Trend Chart */}
+              <CollapsibleSection title="📈 Trend" subtitle={`${cardData.topicsDone} topics · ${formatStudyHours(totalHours)}`}
+                open={chartOpen} onToggle={() => setChartOpen(p => !p)}>
+                <div className="px-4 pb-4">
+                  <TrendAnalysis
+                    subjects={filteredSubjects}
+                    dailyLogs={dailyLogs}
+                    dbSessions={dbSessions}
+                    range={{ from: startStr, to: endStr }}
+                    isAllTime={timeFilter === 'all'}
+                    onOpenTopicDetail={onOpenTopicDetail}
+                    onNavigate={onNavigate}
+                    hideShelf
+                  />
+                </div>
+              </CollapsibleSection>
+
+              {/* Quote footer */}
+              <div className="pt-2 border-t border-border/10 relative z-10">
+                <p className="text-sm text-foreground/70 italic font-medium">&ldquo;{quote.text}&rdquo;</p>
+                <p className="text-xs text-muted-foreground mt-0.5 font-medium">— {quote.author}</p>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
-      </div>
-
-      {/* Collapsible: Trend Chart */}
-      <CollapsibleSection title="📈 Trend" subtitle={`${cardData.topicsDone} topics · ${formatStudyHours(totalHours)}`}
-        open={chartOpen} onToggle={() => setChartOpen(p => !p)}>
-        <div className="px-4 pb-4">
-          <TrendAnalysis
-            subjects={filteredSubjects}
-            dailyLogs={dailyLogs}
-            dbSessions={dbSessions}
-            range={{ from: startStr, to: endStr }}
-            isAllTime={timeFilter === 'all'}
-            onOpenTopicDetail={onOpenTopicDetail}
-            onNavigate={onNavigate}
-            hideShelf
-          />
-        </div>
-      </CollapsibleSection>
-
-      {/* Quote footer */}
-      <div className="px-4 pb-4 pt-1 relative z-10">
-        <div className="pt-2 border-t border-border/10">
-          <p className="text-sm text-foreground/70 italic font-medium">&ldquo;{quote.text}&rdquo;</p>
-          <p className="text-xs text-muted-foreground mt-0.5 font-medium">— {quote.author}</p>
-        </div>
       </div>
     </GlowCard>
   );

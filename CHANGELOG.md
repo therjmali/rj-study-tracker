@@ -1,5 +1,12 @@
 # Changelog
 
+## 18.0.0 — 60/120fps Silky Scrolling, Merged Progress & Goals Shelf, Collapsible Reports & Security Hardening
+
+- **60/120fps Butter-Smooth Scrolling & Lag Fix.** Completely eliminated GPU blur bottlenecks on Android WebViews by optimizing `liquid-glass.css`, hardware layer composition (`LAYER_TYPE_HARDWARE`), and replacing heavy 28px-40px full-screen blur passes with lightweight mathematically smooth gradients and 14px accelerated acrylic glass. Restored native momentum fling scrolling, resolved touch event capture conflicts in `BottomNav` and carousel swipes, and hardened scroll lock restoration to prevent scroll freezing or compositor crashes.
+- **Merged Progress & Today's Goals Command Shelf.** Unified `ProgressCard` and `TodayProgressRing` into a single, cohesive ultra-premium command shelf. Combines comprehensive multi-period historical analysis (Today, Yesterday, 1 week, 30 days, Custom, All Time) with real-time daily target tracking: dual progress rings for topics done and study hours, celebration badges when all daily targets are achieved, KPI deltas vs previous periods, and time distribution by subject.
+- **Collapsible / Uncollapsible Daily Reports & Forms.** Added fluid accordion containers with spring transitions and persistence for `StudyReport`, `AllSessionsManager`, and `ComparePeriods`. Users can collapse or expand daily reports, search filters, and session managers on demand with persistent state across app launches.
+- **Enterprise Security & Vulnerability Hardening.** Neutralized prototype pollution vectors across the cloud sync server, client data imports, and three-way document merge engine with JSON revivers and prototype key rejection. Enforced hardened HTTP response headers (`X-Frame-Options: DENY`, `Strict-Transport-Security`, `Permissions-Policy`, `X-Content-Type-Options: nosniff`), and sanitized MIME types to prevent script execution through virtual uploads.
+
 ## 17.1.0 — Unified Liquid Glass 2.0, Lucide navigation, floating header & dashboard sync invitation
 
 - **Unified Liquid Glass 2.0 design system.** Integrated the shared `liquid-glass.css` material layer, matching Quiz Master Pro with ambient multi-radial backdrop refraction, luminous edge borders (`--qmp-glass-edge`), and frosted card depth.

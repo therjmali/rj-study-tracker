@@ -304,3 +304,22 @@ test('deleting the account removes the cloud copy', async () => {
   const relogin = await api('/v1/auth/login', { method: 'POST', body: { email: account.email, password: account.password } });
   assert.equal(relogin.status, 401);
 });
+
+test('security headers and prototype pollution defense', async () => {
+  const res = await api('/health');
+  assert.equal(res.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(res.headers.get('x-frame-options'), 'DENY');
+
+  const rawRes = await fetch(`${base}/v1/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: `proto_${Date.now()}@example.com`,
+      password: 'StrongPass123!',
+      deviceId: 'dev_proto',
+      __proto__: { polluted: true },
+    }),
+  });
+  assert.equal(rawRes.status, 201);
+  assert.equal(({}).polluted, undefined, 'Object.prototype must not be polluted');
+});

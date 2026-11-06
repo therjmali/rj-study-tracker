@@ -102,6 +102,7 @@ function mergeValue(base: unknown, local: unknown, remote: unknown, path: string
       const out: Record<string, unknown> = {};
       const keys = new Set([...Object.keys(baseObj), ...Object.keys(local), ...Object.keys(remote)]);
       for (const key of keys) {
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
         const childPath = path ? `${path}.${key}` : key;
         const b = baseObj[key];
         const l = local[key];

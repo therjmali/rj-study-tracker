@@ -63,7 +63,7 @@ function BottomNavInner({ activeTab, onTabChange, srsDueCount = 0, onOpenProfile
   }, [handleSwipe]);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden px-3 pt-2" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0.5rem))' }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden px-3 pt-2 touch-pan-x pointer-events-auto" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0.5rem))', touchAction: 'pan-x' }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="glass-nav relative rounded-[20px] mx-auto max-w-lg overflow-hidden shadow-lg">
         <div className="flex items-center h-[60px] px-1">
           {TABS.map(tab => {

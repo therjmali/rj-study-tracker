@@ -85,7 +85,18 @@ export default function AllSessionsManager({
   const [addingSession, setAddingSession] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<MergedSession | null>(null);
   const [moveSession, setMoveSession] = useState<MergedSession | null>(null);
+  const [managerOpen, setManagerOpen] = useState(() => {
+    try { return localStorage.getItem('rj-sessions-open-v1') !== 'false'; } catch { return true; }
+  });
   const undoRef = useRef<{ timer: ReturnType<typeof setTimeout> } | null>(null);
+
+  const toggleManager = () => {
+    setManagerOpen(p => {
+      const next = !p;
+      try { localStorage.setItem('rj-sessions-open-v1', String(next)); } catch {}
+      return next;
+    });
+  };
 
   /* ── merge ALL sessions across all dates ── */
   const allSessions = useMemo<MergedSession[]>(() => {
@@ -253,7 +264,14 @@ export default function AllSessionsManager({
           <div className="w-6 h-6 rounded-lg bg-secondary/15 border border-secondary/20 flex items-center justify-center">
             <Timer className="w-3.5 h-3.5 text-secondary" />
           </div>
-          <span className="text-[11px] font-bold text-foreground uppercase tracking-wide flex-1">Session Manager</span>
+          <button onClick={toggleManager} className="text-[11px] font-bold text-foreground uppercase tracking-wide flex-1 text-left flex items-center gap-1.5 hover:text-primary transition-colors">
+            <span>Session Manager</span>
+            {!managerOpen && allSessions.length > 0 && (
+              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-secondary/15 text-secondary font-mono">
+                {allSessions.length}
+              </span>
+            )}
+          </button>
           <button onClick={() => setAddingSession(true)}
             className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary/10 border border-primary/20 text-[9px] font-bold text-primary hover:bg-primary/15 transition-all active:scale-95">
             <Plus className="w-3 h-3" /> Add
@@ -270,10 +288,24 @@ export default function AllSessionsManager({
               </span>
             </div>
           )}
+          <button onClick={toggleManager} aria-label={managerOpen ? 'Collapse sessions' : 'Expand sessions'} className="w-6 h-6 rounded-full bg-card/60 border border-border/20 flex items-center justify-center hover:bg-card/90 transition-colors">
+            <motion.div animate={{ rotate: managerOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+              <ChevronDown className="w-3.5 h-3.5 text-foreground" />
+            </motion.div>
+          </button>
         </div>
       </div>
 
-      <div className="bg-card/20 backdrop-blur-sm">
+      <AnimatePresence initial={false}>
+        {managerOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="bg-card/20 backdrop-blur-sm">
         {/* ── Search ── */}
         <div className="px-3 pt-2.5 pb-1">
           <div className="relative">
@@ -377,6 +409,9 @@ export default function AllSessionsManager({
           </div>
         )}
       </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Delete Confirm ── */}
       <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>

@@ -2,7 +2,7 @@ import { useState, useMemo, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, BookOpen, Zap, Flame, Target, BarChart3, TrendingUp, TrendingDown,
-  ChevronRight, Calendar, Award, CalendarDays,
+  ChevronRight, ChevronDown, Calendar, Award, CalendarDays,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -54,6 +54,17 @@ export default function ComparePeriods({ subjects, dailyLogs }: Props) {
   // Expandable sections for analysis/records/habits
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggle = (k: string) => setExpanded(p => ({ ...p, [k]: !p[k] }));
+
+  const [open, setOpen] = useState(() => {
+    try { return localStorage.getItem('rj-compare-periods-open') !== 'false'; } catch { return true; }
+  });
+  const toggleOpen = () => {
+    setOpen(p => {
+      const next = !p;
+      try { localStorage.setItem('rj-compare-periods-open', String(next)); } catch {}
+      return next;
+    });
+  };
 
   // ── Date boundaries ──
   const now = new Date();
@@ -150,69 +161,86 @@ export default function ComparePeriods({ subjects, dailyLogs }: Props) {
   return (
     <div className="space-y-3">
       {/* ── Header ── */}
-      <div className="flex items-center gap-2">
+      <div onClick={toggleOpen} role="button" tabIndex={0}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleOpen(); } }}
+        className="flex items-center gap-2 cursor-pointer select-none group">
         <BarChart3 className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-bold text-foreground">Compare Periods</h3>
-        <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold border border-primary/20 ml-auto">PRO</span>
-      </div>
-
-      {/* ── Tab Bar ── */}
-      <div className="flex rounded-xl bg-muted/20 border border-border/15 p-1 gap-0.5">
-        {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-bold transition-all ${
-              tab === t.key
-                ? 'bg-card text-foreground shadow-sm border border-border/20'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}>
-            <span className="text-xs">{t.icon}</span>
-            <span className="hidden xs:inline">{t.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* ── Tab Content ── */}
-      <AnimatePresence mode="wait">
-        <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.2 }}>
-
-          {tab === 'compare' && (
-            <CompareTab
-              compareView={compareView}
-              setCompareView={setCompareView}
-              active={active}
-              todayS={todayS} yesterdayS={yesterdayS}
-              twStats={twStats} lwStats={lwStats}
-              tmStats={tmStats} lmStats={lmStats}
-              customCurStats={customCurStats} customPrevStats={customPrevStats}
-              customCurFrom={customCurFrom} customCurTo={customCurTo}
-              customPrevFrom={customPrevFrom} customPrevTo={customPrevTo}
-              setCustomCurFrom={setCustomCurFrom} setCustomCurTo={setCustomCurTo}
-              setCustomPrevFrom={setCustomPrevFrom} setCustomPrevTo={setCustomPrevTo}
-              calendarOpen={calendarOpen} setCalendarOpen={setCalendarOpen}
-              calendarStep={calendarStep} setCalendarStep={setCalendarStep}
-            />
-          )}
-
-          {tab === 'analysis' && (
-            <AnalysisTab
-              allHourly={allHourly} peakH={peakH}
-              powerIndex={powerIndex}
-              twStats={twStats} lwStats={lwStats}
-              tmStats={tmStats} lmStats={lmStats}
-              subjects={subjects} dailyLogs={dailyLogs}
-              expanded={expanded} toggle={toggle}
-            />
-          )}
-
-          {tab === 'records' && (
-            <RecordsTab subjects={subjects} dailyLogs={dailyLogs} expanded={expanded} toggle={toggle} />
-          )}
-
-          {tab === 'habits' && (
-            <HabitsTab subjects={subjects} dailyLogs={dailyLogs} expanded={expanded} toggle={toggle} />
-          )}
+        <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">Compare Periods</h3>
+        <span className="text-[8px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold border border-primary/20">PRO</span>
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }} className="ml-auto w-6 h-6 rounded-full bg-card/60 border border-border/20 flex items-center justify-center">
+          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
         </motion.div>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-3 overflow-hidden"
+          >
+            {/* ── Tab Bar ── */}
+            <div className="flex rounded-xl bg-muted/20 border border-border/15 p-1 gap-0.5">
+              {tabs.map(t => (
+                <button key={t.key} onClick={() => setTab(t.key)}
+                  className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-bold transition-all ${
+                    tab === t.key
+                      ? 'bg-card text-foreground shadow-sm border border-border/20'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}>
+                  <span className="text-xs">{t.icon}</span>
+                  <span className="hidden xs:inline">{t.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* ── Tab Content ── */}
+            <AnimatePresence mode="wait">
+              <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}>
+
+                {tab === 'compare' && (
+                  <CompareTab
+                    compareView={compareView}
+                    setCompareView={setCompareView}
+                    active={active}
+                    todayS={todayS} yesterdayS={yesterdayS}
+                    twStats={twStats} lwStats={lwStats}
+                    tmStats={tmStats} lmStats={lmStats}
+                    customCurStats={customCurStats} customPrevStats={customPrevStats}
+                    customCurFrom={customCurFrom} customCurTo={customCurTo}
+                    customPrevFrom={customPrevFrom} customPrevTo={customPrevTo}
+                    setCustomCurFrom={setCustomCurFrom} setCustomCurTo={setCustomCurTo}
+                    setCustomPrevFrom={setCustomPrevFrom} setCustomPrevTo={setCustomPrevTo}
+                    calendarOpen={calendarOpen} setCalendarOpen={setCalendarOpen}
+                    calendarStep={calendarStep} setCalendarStep={setCalendarStep}
+                  />
+                )}
+
+                {tab === 'analysis' && (
+                  <AnalysisTab
+                    allHourly={allHourly} peakH={peakH}
+                    powerIndex={powerIndex}
+                    twStats={twStats} lwStats={lwStats}
+                    tmStats={tmStats} lmStats={lmStats}
+                    subjects={subjects} dailyLogs={dailyLogs}
+                    expanded={expanded} toggle={toggle}
+                  />
+                )}
+
+                {tab === 'records' && (
+                  <RecordsTab subjects={subjects} dailyLogs={dailyLogs} expanded={expanded} toggle={toggle} />
+                )}
+
+                {tab === 'habits' && (
+                  <HabitsTab subjects={subjects} dailyLogs={dailyLogs} expanded={expanded} toggle={toggle} />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

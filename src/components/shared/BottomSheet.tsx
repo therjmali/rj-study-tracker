@@ -30,9 +30,10 @@ function unlockBodyScroll(id: string) {
   }
 }
 
-/** Safety: force-reset if no sheets open but still locked */
+/** Safety: force-reset if no sheets open or on tab/route changes */
 export function forceResetScrollLock() {
-  if (openSheets.size === 0) {
+  openSheets.clear();
+  if (typeof document !== 'undefined') {
     document.documentElement.style.overflow = '';
     document.body.style.position = '';
     document.body.style.top = '';
