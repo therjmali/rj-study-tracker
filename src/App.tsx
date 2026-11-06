@@ -38,6 +38,8 @@ import NotificationContainer from './components/shared/NotificationContainer';
 import HelpModal from './components/shared/HelpModal';
 import FloatingTimer from './components/shared/FloatingTimer';
 import FloatingWidgetHub from './components/shared/FloatingWidgetHub';
+import WidgetManagerModal from './components/widgets/WidgetManagerModal';
+import { updateNativeWidgets } from './platform/widgetSync';
 import MilestoneToast from './components/dashboard/MilestoneToast';
 import AchievementPopup from './components/shared/AchievementPopup';
 import BottomSheet, { forceResetScrollLock } from './components/shared/BottomSheet';
@@ -459,6 +461,7 @@ function AppInner() {
     try { return !localStorage.getItem('nursetrack-onboarded-v7'); } catch { return false; }
   });
   const [pomodoroOpen, setPomodoroOpen] = useState(false);
+  const [widgetModalOpen, setWidgetModalOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mcqOpen, setMcqOpen] = useState(false);
   const [flashcardOpen, setFlashcardOpen] = useState(false);
@@ -528,6 +531,7 @@ function AppInner() {
     navigate('/');
   });
   useBackGuard(pomodoroOpen, () => setPomodoroOpen(false));
+  useBackGuard(widgetModalOpen, () => setWidgetModalOpen(false));
   useBackGuard(mcqOpen, () => setMcqOpen(false));
   useBackGuard(flashcardOpen, () => setFlashcardOpen(false));
   useBackGuard(notifCenterOpen, () => setNotifCenterOpen(false));
@@ -546,6 +550,7 @@ function AppInner() {
         return;
       }
       if (pomodoroOpen) { setPomodoroOpen(false); return; }
+      if (widgetModalOpen) { setWidgetModalOpen(false); return; }
       if (mcqOpen) { setMcqOpen(false); return; }
       if (flashcardOpen) { setFlashcardOpen(false); return; }
       if (notifCenterOpen) { setNotifCenterOpen(false); return; }
@@ -579,7 +584,7 @@ function AppInner() {
 
     window.addEventListener('rj:back-unhandled', handleUnhandledBack);
     return () => window.removeEventListener('rj:back-unhandled', handleUnhandledBack);
-  }, [profileOpen, pomodoroOpen, mcqOpen, flashcardOpen, notifCenterOpen, cloudDataOpen, searchOpen, quickCompleteOpen, helpOpen, activeTab, navigate]);
+  }, [profileOpen, pomodoroOpen, widgetModalOpen, mcqOpen, flashcardOpen, notifCenterOpen, cloudDataOpen, searchOpen, quickCompleteOpen, helpOpen, activeTab, navigate]);
   const [qcSubjectId, setQcSubjectId] = useState('');
   const [qcUnitId, setQcUnitId] = useState('');
   const [qcTopicId, setQcTopicId] = useState('');
@@ -1349,6 +1354,40 @@ function AppInner() {
     : null;
   useEffect(() => { registerBackupContext(() => backupCtxRef.current); }, []);
 
+  // Sync live stats and timer status to Android Home Screen Widgets
+  useEffect(() => {
+    const today = getLocalDateStr();
+    let todayMins = 0;
+    let todayTopics = 0;
+
+    appState.subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
+      if (t.completed && t.completedDate === today) todayTopics++;
+      if (t.timeEntries) {
+        t.timeEntries.forEach(e => {
+          if (e.date === today) todayMins += e.minutes;
+        });
+      }
+    })));
+
+    if (dbSessions && Array.isArray(dbSessions)) {
+      dbSessions.forEach(ds => {
+        if (ds.date === today && ds.minutes) todayMins += ds.minutes;
+      });
+    }
+
+    const targetTopics = settings.studyGoals?.dailyTopics || 5;
+
+    updateNativeWidgets({
+      todayMinutes: todayMins,
+      todayTopics,
+      targetTopics,
+      streakDays: stats.streak,
+      syllabusPercent: stats.pct,
+      activeTimer: timerState.active,
+      timerDisplay: timerState.active ? (timerState.appMode === 'stopwatch' ? '⏱ Running' : '⏳ Running') : '25:00',
+    });
+  }, [appState.subjects, appState.dailyLogs, dbSessions, stats.streak, stats.pct, settings.studyGoals, timerState.active, timerState.appMode]);
+
   // "Start focus" from a reminder notification.
   const timerActionsRef = useRef(timerActions);
   timerActionsRef.current = timerActions;
@@ -1408,6 +1447,8 @@ function AppInner() {
       } else if (id === 'open-settings') {
         setProfileInitialSection('focus');
         setProfileOpen(true);
+      } else if (id === 'open-widgets') {
+        setWidgetModalOpen(true);
       }
     };
     window.addEventListener('rj:native-action', onAction);
@@ -2063,10 +2104,22 @@ function AppInner() {
           dailyLogs={appState.dailyLogs}
           studyGoals={settings.studyGoals}
           onOpenFocusTimer={openPomodoro}
+          onOpenWidgetManager={() => setWidgetModalOpen(true)}
           onToggleTimer={() => timerActions.toggle()}
           streakDays={stats.streak}
         />
       )}
+
+      {/* Android Home Screen Widgets Manager Sheet */}
+      <WidgetManagerModal
+        open={widgetModalOpen}
+        onClose={() => setWidgetModalOpen(false)}
+        todayMinutes={stats.totalHours * 60}
+        todayTopicsDone={stats.done}
+        targetTopics={settings.studyGoals?.dailyTopics || 5}
+        streakDays={stats.streak}
+        syllabusPercent={stats.pct}
+      />
 
       <BottomSheet open={pomodoroOpen} onClose={() => { setPomodoroOpen(false); setPomodoroPreFill(null); }} title="⏱️ Focus Timer">
         <ErrorBoundary fallbackTitle="Focus Timer crashed">

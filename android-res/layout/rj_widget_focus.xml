@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rj_widget_focus_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/rj_widget_bg"
+    android:padding="12dp"
+    android:orientation="vertical"
+    android:gravity="center">
+
+    <!-- Top mini header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="⚡ FOCUS"
+            android:textColor="#E0764F"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
+        <TextView
+            android:id="@+id/rj_widget_focus_streak"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔥 0d"
+            android:textColor="#FB923C"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Big Timer Display -->
+    <TextView
+        android:id="@+id/rj_widget_focus_timer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="25:00"
+        android:textColor="#F1F5F9"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:singleLine="true" />
+
+    <TextView
+        android:id="@+id/rj_widget_focus_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="Focus Ready"
+        android:textColor="#94A3B8"
+        android:textSize="10sp"
+        android:singleLine="true" />
+
+    <!-- Action button -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="28dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/rj_widget_btn"
+        android:gravity="center"
+        android:text="⏱️ Start Study"
+        android:textColor="#FFFFFF"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+</LinearLayout>

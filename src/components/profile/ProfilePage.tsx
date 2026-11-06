@@ -11,6 +11,7 @@ import { formatStudyTime, getUnifiedTotalMinutes } from '../../lib/utils';
 import SettingsHub from '../settings/SettingsHub';
 import ProfileEditorSheet, { COVER_GRADIENTS } from './ProfileEditorSheet';
 import StatusStrip from '../data/StatusStrip';
+import WidgetManagerModal from '../widgets/WidgetManagerModal';
 
 interface Props {
   user: User;
@@ -53,6 +54,7 @@ export default function ProfilePage(props: Props) {
   const { user, onUpdateUser, subjects, dailyLogs, appState, settings, onUpdateSettings, onImport, onReset, onClearHistory, history, exams, onUpdateExams, onPomodoroComplete, trash, onRestoreTrash, onDeleteTrash, onEmptyTrash, onClose, onLogout, onOpenAi, reminders, onUpdateReminders, onOpenHelp, dbSessions, initialSection } = props;
   const [editorOpen, setEditorOpen] = useState(false);
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
+  const [widgetModalOpen, setWidgetModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const [jump, setJump] = useState<{ id: string; n: number } | null>(null);
@@ -147,12 +149,30 @@ export default function ProfilePage(props: Props) {
         </div>
 
         {onOpenAi && (
-          <button onClick={onOpenAi} className="w-full mb-4 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-left active:scale-[0.99] transition-transform">
+          <button onClick={onOpenAi} className="w-full mb-3 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-left active:scale-[0.99] transition-transform">
             <span className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-xl">🤖</span>
             <span className="flex-1"><span className="block text-[13px] font-bold text-foreground">AI Tutor</span><span className="block text-[11px] text-muted-foreground">Chat, MCQs, flashcards and study plans</span></span>
             <span className="text-primary text-lg">›</span>
           </button>
         )}
+
+        {/* Android Home Screen Widgets Card */}
+        <button
+          onClick={() => setWidgetModalOpen(true)}
+          className="w-full mb-4 flex items-center gap-3 rounded-2xl border border-primary/25 bg-card/60 hover:bg-card/80 p-3.5 text-left active:scale-[0.99] transition-all shadow-sm group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center text-xl shadow-inner shrink-0 group-hover:scale-105 transition-transform">
+            📱
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[13px] font-black text-foreground">Android Home Screen Widgets</span>
+              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-primary/20 text-primary">NEW</span>
+            </div>
+            <span className="block text-[11px] text-muted-foreground truncate">Add live study progress &amp; focus timer widgets to your phone</span>
+          </div>
+          <span className="text-primary text-lg font-bold pr-1">›</span>
+        </button>
 
         {/* ── Settings Hub: search + suggestions sit directly below the AI Tutor card ── */}
         <SettingsHub
@@ -167,6 +187,17 @@ export default function ProfilePage(props: Props) {
       </div>
 
       <ProfileEditorSheet open={editorOpen} user={user} onClose={() => setEditorOpen(false)} onSave={onUpdateUser} onLogout={onLogout} />
+
+      {/* Android Home Screen Widgets Manager */}
+      <WidgetManagerModal
+        open={widgetModalOpen}
+        onClose={() => setWidgetModalOpen(false)}
+        todayMinutes={getUnifiedTotalMinutes(subjects, dbSessions, dailyLogs)}
+        todayTopicsDone={doneTopics}
+        targetTopics={settings.studyGoals?.dailyTopics || 5}
+        streakDays={stats.streak}
+        syllabusPercent={pct}
+      />
 
       {/* Full-screen photo viewer */}
       <AnimatePresence>

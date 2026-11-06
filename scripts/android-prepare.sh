@@ -16,10 +16,13 @@ done
 # Values: launcher background colour + branded launch theme (replaces the template styles.xml)
 cp android-res/values/*.xml android/app/src/main/res/values/
 
-# Drawables (shapes, branded splash) + notification layouts
-mkdir -p android/app/src/main/res/drawable android/app/src/main/res/layout
+# Drawables (shapes, branded splash) + notification layouts + AppWidget XML
+mkdir -p android/app/src/main/res/drawable android/app/src/main/res/layout android/app/src/main/res/xml
 cp android-res/drawable/*.xml android/app/src/main/res/drawable/
 cp android-res/layout/*.xml android/app/src/main/res/layout/
+if [ -d android-res/xml ]; then
+  cp android-res/xml/*.xml android/app/src/main/res/xml/
+fi
 
 # Notification status-bar icon
 for d in android-res/drawable-*; do
@@ -50,6 +53,10 @@ fi
 # Notification buttons (Pause / Resume) — a manifest receiver runs even when the app process is dead
 if ! grep -q "TimerActionReceiver" "$MANIFEST"; then
   sed -i 's#</application>#    <receiver android:name=".TimerActionReceiver" android:exported="false" />\n    </application>#' "$MANIFEST"
+fi
+# Android Home Screen AppWidgets
+if ! grep -q "StudyWidgetProvider" "$MANIFEST"; then
+  sed -i 's#</application>#    <receiver android:name=".StudyWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_study_widget_info" />\n    </receiver>\n    <receiver android:name=".FocusWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_focus_widget_info" />\n    </receiver>\n    </application>#' "$MANIFEST"
 fi
 
 # Cloud sync: the bundled WebView must be allowed to reach the sync server.

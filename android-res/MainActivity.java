@@ -1,6 +1,8 @@
 package app.rjtracker.pro;
 
 import android.app.ActivityManager;
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -267,6 +269,43 @@ public class MainActivity extends BridgeActivity {
     @JavascriptInterface
     public void exitApp() {
       runOnUiThread(MainActivity.this::finish);
+    }
+
+    /* ── Android Home Screen Widgets ── */
+
+    @JavascriptInterface
+    public void updateWidgetData(String json) {
+      try {
+        android.content.SharedPreferences prefs = getSharedPreferences("rj_widget_prefs", MODE_PRIVATE);
+        prefs.edit().putString("widget_data", json).apply();
+        StudyWidgetProvider.updateAll(MainActivity.this);
+        FocusWidgetProvider.updateAll(MainActivity.this);
+      } catch (Throwable ignored) {}
+    }
+
+    @JavascriptInterface
+    public boolean isPinWidgetSupported() {
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false;
+      try {
+        AppWidgetManager mgr = getSystemService(AppWidgetManager.class);
+        return mgr != null && mgr.isRequestPinAppWidgetSupported();
+      } catch (Throwable t) {
+        return false;
+      }
+    }
+
+    @JavascriptInterface
+    public boolean requestPinWidget(String widgetType) {
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false;
+      try {
+        AppWidgetManager mgr = getSystemService(AppWidgetManager.class);
+        if (mgr == null || !mgr.isRequestPinAppWidgetSupported()) return false;
+        Class<?> providerClass = "focus".equalsIgnoreCase(widgetType) ? FocusWidgetProvider.class : StudyWidgetProvider.class;
+        ComponentName provider = new ComponentName(MainActivity.this, providerClass);
+        return mgr.requestPinAppWidget(provider, null, null);
+      } catch (Throwable t) {
+        return false;
+      }
     }
 
     /** window.RJNative.setBars("#ecdfc8", true) */

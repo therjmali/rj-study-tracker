@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rj_widget_study_name">RJ Study Tracker - Progress &amp; Streak</string>
+    <string name="rj_widget_study_desc">Track today\'s study hours, syllabus progress, and active streak from your home screen.</string>
+    <string name="rj_widget_focus_name">RJ Study Tracker - Quick Focus Timer</string>
+    <string name="rj_widget_focus_desc">Quick launch focus timer and live session tracker.</string>
+</resources>

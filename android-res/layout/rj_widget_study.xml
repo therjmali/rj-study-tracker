@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rj_widget_study_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/rj_widget_bg"
+    android:padding="14dp">
+
+    <!-- Header: Logo/Icon + App Name + Streak Badge -->
+    <LinearLayout
+        android:id="@+id/rj_widget_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:src="@mipmap/ic_launcher_round"
+            android:scaleType="centerInside"
+            android:contentDescription="RJ Tracker" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="RJ TRACKER PRO"
+            android:textColor="#F1F5F9"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:singleLine="true" />
+
+        <TextView
+            android:id="@+id/rj_widget_streak_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/rj_widget_pill"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="🔥 0d"
+            android:textColor="#FB923C"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Main Content: Stats Row -->
+    <LinearLayout
+        android:id="@+id/rj_widget_stats_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/rj_widget_header"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal"
+        android:baselineAligned="false">
+
+        <!-- Today Study Time Column -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TODAY'S STUDY"
+                android:textColor="#94A3B8"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05" />
+
+            <TextView
+                android:id="@+id/rj_widget_study_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="0h 00m"
+                android:textColor="#38BDF8"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:singleLine="true" />
+        </LinearLayout>
+
+        <!-- Topics Done Column -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="end">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DAILY GOAL"
+                android:textColor="#94A3B8"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05" />
+
+            <TextView
+                android:id="@+id/rj_widget_topics_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="0 / 5 Topics"
+                android:textColor="#34D399"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:singleLine="true" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Progress Bar & Syllabus Status -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="vertical">
+
+        <ProgressBar
+            android:id="@+id/rj_widget_progress_bar"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="5dp"
+            android:progress="0"
+            android:max="100"
+            android:progressDrawable="@drawable/rj_progress" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/rj_widget_syllabus_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Syllabus Progress"
+                android:textColor="#64748B"
+                android:textSize="9sp"
+                android:singleLine="true" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tap to open ⚡"
+                android:textColor="#E0764F"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+</RelativeLayout>

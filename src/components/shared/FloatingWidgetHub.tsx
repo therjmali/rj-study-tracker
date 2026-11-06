@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, X, ChevronUp, ChevronDown, Clock, Target, Flame, Sparkles, Maximize2 } from 'lucide-react';
+import { Play, Pause, X, ChevronUp, ChevronDown, Clock, Target, Flame, Sparkles, Maximize2, Smartphone } from 'lucide-react';
 import { useTimerTick } from '../../hooks/useGlobalTimer';
 import type { GlobalTimerState } from '../../hooks/useGlobalTimer';
 import type { Subject, DailyLog, StudyGoals } from '../../types';
@@ -21,6 +21,7 @@ interface Props {
   dailyLogs: DailyLog[];
   studyGoals: StudyGoals;
   onOpenFocusTimer: () => void;
+  onOpenWidgetManager?: () => void;
   onToggleTimer?: () => void;
   onQuickLog15?: () => void;
   streakDays?: number;
@@ -32,6 +33,7 @@ export default function FloatingWidgetHub({
   dailyLogs,
   studyGoals,
   onOpenFocusTimer,
+  onOpenWidgetManager,
   onToggleTimer,
   streakDays = 0,
 }: Props) {
@@ -187,6 +189,15 @@ export default function FloatingWidgetHub({
               >
                 <Maximize2 className="w-3.5 h-3.5" /> Full Focus Timer
               </button>
+              {onOpenWidgetManager && (
+                <button
+                  onClick={onOpenWidgetManager}
+                  className="h-9 px-3 rounded-xl bg-muted/40 border border-border/20 text-foreground text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-muted/60 active:scale-95 transition-all"
+                  title="Add Android Home Screen Widgets"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-primary" /> Widgets
+                </button>
+              )}
             </div>
           </motion.div>
         ) : (

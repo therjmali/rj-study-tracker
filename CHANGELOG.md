@@ -1,5 +1,15 @@
 # Changelog
 
+## 18.2.0 — Android Home Screen Widgets, Native Widget Pinning & Live Study Hub Controls
+
+- **Native Android Home Screen Widgets (`AppWidgetProvider`).** Introduced dedicated Android home screen widgets allowing students to monitor study momentum directly from their phone's home screen launcher without needing to open the app:
+  - **Study Progress & Streak Widget (4×2 / 4×1):** Displays real-time today's study duration, completed topics vs daily goal, active streak flame badge, and an animated horizontal syllabus completion progress bar. Tapping anywhere launches directly into the Home Dashboard.
+  - **Quick Focus Timer Widget (2×2 Compact):** Clean squircle focus widget displaying the current timer countdown/stopwatch state, active streak count, and a direct "⏱️ Start Study" action button that launches the Focus Timer modal in the app with zero latency.
+- **One-Tap Native Home Screen Widget Pinning.** Integrated `AppWidgetManager.requestPinAppWidget` via `RJNative` bridge on Android 8.0+ (Oreo, API 26+). Students can pin either widget directly to their home screen launcher with a single tap from inside the app, with fallback interactive instructions for manual placement.
+- **Dedicated Android Home Screen Widgets Hub & Manager.** Added an interactive widget control center (`WidgetManagerModal`) accessible from Profile, Settings, and the Floating Widget Hub. Features live device mockups with real-time stats, instant previewing, one-tap pinning, and a 3-step visual Android launcher placement guide.
+- **Real-Time Web-to-Native Data Synchronization.** Created `widgetSync.ts` bridge that automatically serializes today's study minutes, daily target completion, streak count, and timer states to native Android `SharedPreferences` (`rj_widget_prefs`) whenever topics are completed, sessions logged, or timers updated.
+- **Floating Study Hub Quick Widget Launcher.** Upgraded `FloatingWidgetHub` with a direct "Widgets" shortcut button to quickly open widget options and configure home screen controls on the fly.
+
 ## 18.1.0 — Hierarchical Back Navigation, Landscape Bottom Nav, Live Internet Indicator, Progress JPG Sharing & Squircle Unit Dashboard
 
 - **Hierarchical Android Back-Button Navigation & Double-Back App Exit.** Intercepted the native Android hardware and gesture back button via `OnBackPressedCallback` in `MainActivity.java`. Pressing the back button inside Profile, Unit Detail View, sheets, or any sub-tab (Syllabus, Stats, Review, AI Tutor) now shifts the user back to the Home screen (Dashboard) first instead of prematurely exiting the app. Native app termination is strictly guarded on the Home screen with a 2.5-second double-back confirmation toast ("Press back again to exit") powered by `RJNative.exitApp()`.
