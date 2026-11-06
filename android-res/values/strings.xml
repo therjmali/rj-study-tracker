@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">RJ Tracker Pro</string>
+    <string name="title_activity_main">RJ Tracker Pro</string>
+    <string name="package_name">app.rjtracker.pro</string>
+    <string name="custom_url_scheme">app.rjtracker.pro</string>
     <string name="rj_widget_study_name">RJ Study Tracker - Progress &amp; Streak</string>
     <string name="rj_widget_study_desc">Track today\'s study hours, syllabus progress, and active streak from your home screen.</string>
     <string name="rj_widget_focus_name">RJ Study Tracker - Quick Focus Timer</string>
