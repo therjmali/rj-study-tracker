@@ -2063,6 +2063,7 @@ function AppInner() {
           dailyLogs={appState.dailyLogs}
           studyGoals={settings.studyGoals}
           onOpenFocusTimer={openPomodoro}
+          onToggleTimer={() => timerActions.toggle()}
           streakDays={stats.streak}
         />
       )}

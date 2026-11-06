@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, X, ChevronUp, ChevronDown, Clock, Target, Flame, Sparkles, Maximize2 } from 'lucide-react';
-import { useGlobalTimer, useTimerTick } from '../../hooks/useGlobalTimer';
+import { useTimerTick } from '../../hooks/useGlobalTimer';
 import type { GlobalTimerState } from '../../hooks/useGlobalTimer';
 import type { Subject, DailyLog, StudyGoals } from '../../types';
 import { getLocalDateStr, formatStudyTime } from '../../lib/utils';
@@ -21,6 +21,7 @@ interface Props {
   dailyLogs: DailyLog[];
   studyGoals: StudyGoals;
   onOpenFocusTimer: () => void;
+  onToggleTimer?: () => void;
   onQuickLog15?: () => void;
   streakDays?: number;
 }
@@ -31,12 +32,12 @@ export default function FloatingWidgetHub({
   dailyLogs,
   studyGoals,
   onOpenFocusTimer,
+  onToggleTimer,
   streakDays = 0,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const { timeLeft, swTime } = useTimerTick();
-  const { pauseTimer, resumeTimer } = useGlobalTimer();
 
   const today = getLocalDateStr();
 
@@ -123,7 +124,7 @@ export default function FloatingWidgetHub({
               <div className="flex items-center gap-1.5 shrink-0">
                 {timer.active ? (
                   <button
-                    onClick={() => pauseTimer()}
+                    onClick={() => onToggleTimer?.()}
                     className="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-90 transition-transform shadow-md"
                     title="Pause"
                   >
@@ -131,7 +132,7 @@ export default function FloatingWidgetHub({
                   </button>
                 ) : timer.hasProgress ? (
                   <button
-                    onClick={() => resumeTimer()}
+                    onClick={() => onToggleTimer?.()}
                     className="w-9 h-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center active:scale-90 transition-transform shadow-md"
                     title="Resume"
                   >
