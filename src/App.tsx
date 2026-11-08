@@ -43,6 +43,7 @@ import { updateNativeWidgets } from './platform/widgetSync';
 import MilestoneToast from './components/dashboard/MilestoneToast';
 import AchievementPopup from './components/shared/AchievementPopup';
 import BottomSheet, { forceResetScrollLock } from './components/shared/BottomSheet';
+import AiFab from './components/layout/AiFab';
 import GlobalSearch, { clearSearchSnapshot } from './components/shared/GlobalSearch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@project/components/ui/select';
 import { Input } from '@project/components/ui/input';
@@ -610,6 +611,18 @@ function AppInner() {
   const [redoLen, setRedoLen] = useState(0);
 
   useTheme(settings.theme, settings.themeMode ?? 'light', settings.glassTone ?? 'auto');
+
+  // One-time move to the new Vyxel look (people who chose Papyrus or Liquid Glass keep their choice).
+  useEffect(() => {
+    let seen = false;
+    try { seen = localStorage.getItem('rj-vyxel-theme-v1') === '1'; if (!seen) localStorage.setItem('rj-vyxel-theme-v1', '1'); } catch { seen = true; }
+    if (seen) return;
+    const mode = settings.themeMode ?? 'light';
+    if (mode !== 'light' && mode !== 'amoled') return;
+    setSettings(prev => ({ ...prev, theme: 'vyxel', themeMode: (prev.themeMode ?? 'light') === 'amoled' ? 'vyxeldark' : 'vyxel' }));
+    toast('New Vyxel theme applied 💜', { description: 'Change it anytime in Settings → Appearance.', duration: 6000 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Apply text size CSS variables
   useEffect(() => {
@@ -1540,6 +1553,7 @@ function AppInner() {
       const dark = isDarkCanvas('glass', prev.glassTone ?? 'auto');
       return { ...prev, glassTone: dark ? 'light' : 'dark' };
     }
+    if (cur === 'vyxel' || cur === 'vyxeldark') return { ...prev, themeMode: cur === 'vyxel' ? 'vyxeldark' : 'vyxel' };
     const next = cur === 'light' ? 'amoled' : cur === 'amoled' ? 'ancient' : 'light';
     return { ...prev, themeMode: next };
   }), [setSettings]);
@@ -2179,7 +2193,8 @@ function AppInner() {
       <BottomNav activeTab={activeTab} onTabChange={handleBottomNavChange} srsDueCount={srsDueCount} onOpenProfile={openProfile} profileOpen={profileOpen} />
 
       {/* Unified FAB — hidden on AI tab to avoid overlap */}
-      {activeTab !== 'gamification' && <UnifiedFAB
+      {activeTab !== 'gamification' && <AiFab
+        onOpenAi={() => handleBottomNavChange('gamification', 'right')}
         onOpenQuickComplete={() => { setQcDate(getLocalDateStr()); setQcSubjectId(''); setQcUnitId(''); setQcTopicId(''); setQuickCompleteOpen(true); }}
         onOpenPomodoro={openPomodoro}
         timerRunning={timerState.active}
@@ -2452,62 +2467,6 @@ function AppInner() {
       </AnimatePresence>
     </div>
     </TimerProvider>
-  );
-}
-
-function UnifiedFAB({ onOpenQuickComplete, onOpenPomodoro, timerRunning }: {
-  onOpenQuickComplete: () => void;
-  onOpenPomodoro: () => void;
-  timerRunning: boolean;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="fixed bottom-[6rem] right-4 lg:bottom-6 lg:right-6 z-[55] flex flex-col items-center gap-2">
-      <AnimatePresence>
-        {expanded && (
-          <>
-            <motion.button
-              key="qc"
-              initial={{ opacity: 0, scale: 0.6, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.6, y: 16 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 28, mass: 0.6 }}
-              onClick={() => { setExpanded(false); onOpenQuickComplete(); }}
-              className="w-11 h-11 rounded-[14px] bg-secondary text-secondary-foreground flex items-center justify-center"
-              style={{ boxShadow: '0 2px 8px hsl(var(--secondary) / 0.20), 0 6px 18px hsl(var(--secondary) / 0.12)' }}
-              aria-label="Quick Complete"
-            >
-              <CheckCircle2 className="w-5 h-5" />
-            </motion.button>
-            <motion.button
-              key="pomo"
-              initial={{ opacity: 0, scale: 0.6, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.6, y: 16 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 28, mass: 0.6, delay: 0.04 }}
-              onClick={() => { setExpanded(false); onOpenPomodoro(); }}
-              className="w-11 h-11 rounded-[14px] bg-chart-4 text-white flex items-center justify-center"
-              style={{ boxShadow: '0 2px 8px hsl(var(--chart-4) / 0.20), 0 6px 18px hsl(var(--chart-4) / 0.12)' }}
-              aria-label="Focus Timer"
-            >
-              <Timer className="w-5 h-5" />
-            </motion.button>
-          </>
-        )}
-      </AnimatePresence>
-      <motion.button
-        onClick={() => setExpanded(p => !p)}
-        whileTap={{ scale: 0.92 }}
-        animate={{ rotate: expanded ? 45 : 0 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-        className={`w-14 h-14 rounded-[18px] flex items-center justify-center transition-colors ${timerRunning ? 'bg-chart-4' : 'bg-primary'} text-primary-foreground`}
-        style={{ boxShadow: `0 2px 8px hsl(var(--primary) / 0.22), 0 6px 20px hsl(var(--primary) / 0.14)` }}
-        aria-label="Actions"
-      >
-        {timerRunning ? <Timer className="w-5.5 h-5.5" /> : <Plus className="w-6 h-6" />}
-      </motion.button>
-    </div>
   );
 }
 

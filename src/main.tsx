@@ -17,6 +17,7 @@ import { installNativeBridge } from './platform/native';
 import { scheduleDailySnapshot } from './platform/snapshots';
 import { initializeCloudAuth, resolveAuthIfStuck, seedCloudAuthFromCache } from './platform/cloud/authStore';
 import { startConnectivity } from './platform/connectivity';
+import { scheduleUpdateCheck } from './platform/updater';
 import { applyZoom, zoomPagePoint } from './platform/zoom';
 
 const queryClient = new QueryClient();
@@ -73,5 +74,6 @@ bootStorage()
   // Background work — never blocks the first paint.
   void initializeCloudAuth().catch(() => undefined);
   startConnectivity();
+  scheduleUpdateCheck();
   window.setTimeout(resolveAuthIfStuck, 4000);
 });

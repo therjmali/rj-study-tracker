@@ -173,6 +173,13 @@ public class MainActivity extends BridgeActivity {
     return sb.append('"').toString();
   }
 
+  /** Progress / result events of the in-app updater, pushed to the web layer (window.__rjUpdate). */
+  private final ApkUpdater.Listener updateListener = new ApkUpdater.Listener() {
+    @Override public void onEvent(String state, long done, long total, String error) {
+      js("window.__rjUpdate&&window.__rjUpdate({state:" + q(state) + ",done:" + done + ",total:" + total + ",error:" + q(error) + "})");
+    }
+  };
+
   private void js(final String script) {
     if (getBridge() == null || getBridge().getWebView() == null) return;
     final WebView wv = getBridge().getWebView();
@@ -283,6 +290,27 @@ public class MainActivity extends BridgeActivity {
   /* ───────────────────────────── JS bridge ───────────────────────────── */
 
   public class RJBridge {
+
+    /* ── In-app updates ── */
+    @JavascriptInterface
+    public boolean canInstallPackages() {
+      return Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls();
+    }
+
+    @JavascriptInterface
+    public void openInstallPermission() {
+      runOnUiThread(() -> ApkUpdater.openPermissionSettings(MainActivity.this));
+    }
+
+    @JavascriptInterface
+    public void downloadUpdate(String url, String sha256) {
+      ApkUpdater.download(getApplicationContext(), url, sha256, updateListener);
+    }
+
+    @JavascriptInterface
+    public void installUpdate() {
+      runOnUiThread(() -> ApkUpdater.install(MainActivity.this, updateListener));
+    }
 
     @JavascriptInterface
     public void exitApp() {

@@ -1,3 +1,4 @@
+import { recordMcqAnswer } from '@/platform/mcqStats';
 import { useState, useCallback } from 'react';
 import { CheckCircle2, XCircle, Loader2, RotateCcw, Brain, ChevronRight } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
@@ -55,7 +56,9 @@ export default function MCQPractice({ topicName, subjectName, onClose }: Props) 
     if (selectedAnswer !== null) return;
     setSelectedAnswer(idx);
     setShowExplanation(true);
-    if (idx === questions[currentIdx].correctIndex) {
+    const right = idx === questions[currentIdx].correctIndex;
+    recordMcqAnswer(right);
+    if (right) {
       setScore(s => s + 1);
     }
   };

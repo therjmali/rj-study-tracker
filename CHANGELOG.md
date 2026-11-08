@@ -1,5 +1,24 @@
 # Changelog
 
+## 18.5.0 — Vyxel Theme, AI Partners, In-App Updates
+
+**New look: Vyxel theme**
+- Palette, shapes and motion ported from the Vyxel Apps design (violet primary, teal secondary, amber accent, soft 20–32 px silhouettes, springy interruptible motion). New modes **Vyxel** (light) and **Vyxel Dark** plus a **Vyxel** accent, applied once automatically to anyone on Parchment or Ink (Papyrus and Liquid Glass users keep their choice). Switch any time in Settings → Appearance; the quick theme button flips Vyxel ↔ Vyxel Dark.
+
+**In-app updates (Settings → App Updates, and a quiet check every 6 h)**
+- Checks this project's GitHub releases, shows what's new, then downloads inside the app with a live progress bar. Before Android's installer opens, the app verifies the file's SHA-256, package name, higher version and signing key. Only the project's own GitHub release links are ever downloaded. Web / installed PWA builds get an "Update & reload" button.
+
+**AI Tutor**
+- **Five partners:** Google Gemini, Groq, OpenAI GPT, Anthropic Claude and Cohere. A key manager (🔑 in the chat header and in Settings → AI) lets you add, replace, reveal, paste, test and remove keys, pick main/fast models (with the models your key can actually use), and see each partner's status (No key / Saved / Verified · latency / Key rejected / Rate-limited). Keys never leave the device.
+- **Auto-switch:** if the active partner is rate-limited, rejects its key or is down, the next ready partner answers; a dead internet connection is never retried blindly.
+- **Analytical engine:** answers are grounded in your real offline data — current unit and topic, syllabus %, exam date and days left, 7-day study log, MCQ count and measured accuracy, plus app-computed pace figures (required vs observed topics/day, verdict) so the AI never has to guess arithmetic. Missing data is reported as NOT_AVAILABLE instead of being invented. A live strip under the chat header shows exactly what the AI sees.
+- MCQ practice now logs answers and accuracy on the device (included in backups).
+- The chat header no longer says "Powered by Claude" — it shows the partner that actually answered.
+
+**Header & buttons**
+- Fixed the squeezed app name and the doubled logo: the status pill is an icon-only circle on phones in calm states (full label only when something needs attention), and when the app logo and profile photo are the same picture the stock mark is shown on the left so the same face never appears twice.
+- The floating **+** is replaced by an **AI Tutor** button (corner dot: green ready · amber offline · red add a key). Long-press it for Quick Complete and Focus Timer.
+
 ## 18.4.0 — Instant Start, Offline Intelligence & Security Hardening
 
 **Instant, offline-first start**

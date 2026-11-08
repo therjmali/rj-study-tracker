@@ -6,6 +6,7 @@ import { Button } from '@project/components/ui/button';
 import type { User, ThemeMode, StudentMode } from '../../types';
 import { getAppName } from '../../lib/brandConfig';
 import ConnectionStatusPill from './ConnectionStatusPill';
+import { useSameImage } from '../../lib/imageSimilarity';
 
 interface Props {
   user: User;
@@ -27,16 +28,21 @@ interface Props {
   onLevelClick?: () => void;
 }
 
-function AppIcon({ mode }: { mode?: StudentMode }) {
+function AppIcon({ mode, suppressCustom = false }: { mode?: StudentMode; suppressCustom?: boolean }) {
   const custom = useAppIcon();
-  if (custom) return <img src={custom.dataUrl} alt="" className="w-full h-full object-cover rounded-[inherit]" draggable={false} />;
+  if (custom && !suppressCustom) return <img src={custom.dataUrl} alt="" className="w-full h-full object-cover rounded-[inherit]" draggable={false} />;
   if (mode === 'agriculture') return <Wheat className="w-4 h-4 text-primary-foreground" />;
   if (mode === 'nursing') return <Stethoscope className="w-4 h-4 text-primary-foreground" />;
   return <GraduationCap className="w-4 h-4 text-primary-foreground" />;
 }
 
 function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, level, xpProgress = 0, onOpenSearch, syncStatus = 'idle', dueReminders = 0, onOpenReminders, studentMode, onNavigateHome, onOpenCloudData, streakDays = 0, todayTopicsDone = 0, onLevelClick }: Props) {
-  const isLight = themeMode === 'light';
+  const isLight = themeMode === 'light' || themeMode === 'vyxel';
+  // If the custom app logo is the same picture as the profile photo, show the stock mark on the left so the
+  // same face never appears twice in the header (the photo stays on the right, where the profile opens).
+  const customIcon = useAppIcon();
+  const avatarImg = isImageAvatar(user.avatar) ? user.avatar : null;
+  const logoDuplicatesAvatar = useSameImage(customIcon?.dataUrl, avatarImg);
   const isAncient = themeMode === 'ancient';
   const isGlass = themeMode === 'glass';
   const appName = getAppName(studentMode);
@@ -55,9 +61,9 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
           {/* Left: App icon + name */}
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
             <button onClick={onNavigateHome} className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center shadow-[0_8px_20px_-10px_hsl(var(--primary))] shrink-0 hover:scale-105 active:scale-95 transition-all border border-primary/20" aria-label="Go to Home">
-              <AppIcon mode={studentMode} />
+              <AppIcon mode={studentMode} suppressCustom={logoDuplicatesAvatar} />
             </button>
-            <button onClick={onNavigateHome} className="font-heading text-foreground text-[15px] sm:text-[16px] font-black tracking-tight hover:text-primary transition-colors truncate">
+            <button onClick={onNavigateHome} className="font-heading text-foreground text-[15px] sm:text-[16px] font-black tracking-tight hover:text-primary transition-colors truncate min-w-[3.25rem]">
               {appName}
             </button>
             <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-black leading-none border border-primary/15 shrink-0 tracking-widest uppercase">PRO</span>

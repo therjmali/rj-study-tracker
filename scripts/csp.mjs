@@ -12,9 +12,12 @@
  *    (remote subject icons, Google Fonts inside printed reports) keeps working.
  */
 export const AI_HOSTS = [
-  'https://api.anthropic.com',
-  'https://api.openai.com',
-  'https://generativelanguage.googleapis.com',
+  'https://generativelanguage.googleapis.com', // Google Gemini
+  'https://api.groq.com',                      // Groq
+  'https://api.openai.com',                    // OpenAI GPT
+  'https://api.anthropic.com',                 // Anthropic Claude
+  'https://api.cohere.com',                    // Cohere
+  'https://api.github.com',                    // in-app update check (public release info only)
 ];
 
 export function buildCsp({ supabaseUrl = '' } = {}) {

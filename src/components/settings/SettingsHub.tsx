@@ -11,6 +11,7 @@ import ExamCountdown from '../ExamCountdown';
 import ReminderManager from '../reminders/ReminderManager';
 import OverviewTab from '../profile/OverviewTab';
 import AiDevicePanel from '../platform/AiDevicePanel';
+import UpdatePanel from '../platform/UpdatePanel';
 import AppIconPanel from '../platform/AppIconPanel';
 import NotificationsPanel from '../platform/NotificationsPanel';
 import AutoBackupPanel from '../platform/AutoBackupPanel';
@@ -73,6 +74,7 @@ export type ItemId =
   | 'notifications'
   | 'autoBackup'
   | 'cloudSync' | 'profile' | 'dataHub'
+  | 'appUpdate'
   | 'shortcuts' | 'help';
 
 interface ItemMeta { id: ItemId; icon: string; title: string; description: string; keywords: string[] }
@@ -101,7 +103,7 @@ const CATEGORIES: CategoryMeta[] = [
   {
     id: 'appearance', icon: '🎨', title: 'Appearance & Display', subtitle: 'Theme, accent colour, text size and layout',
     items: [
-      { id: 'displayMode', icon: '🌗', title: 'Display Mode', description: 'Parchment, Ink or Papyrus — light and dark themes', keywords: ['theme', 'dark', 'light', 'mode', 'amoled', 'night', 'parchment', 'ink', 'papyrus', 'sepia', 'ancient'] },
+      { id: 'displayMode', icon: '🌗', title: 'Display Mode', description: 'Vyxel, Vyxel Dark, Parchment, Ink or Papyrus — light and dark themes', keywords: ['theme', 'dark', 'light', 'mode', 'amoled', 'night', 'parchment', 'ink', 'papyrus', 'sepia', 'ancient'] },
       { id: 'accent', icon: '🎨', title: 'Accent Colour', description: 'The highlight colour used across the app', keywords: ['color', 'colour', 'accent', 'palette', 'tint', 'highlight'] },
       { id: 'zoom', icon: '🔍', title: 'Zoom', description: 'Zoom the whole app in or out, with a live preview', keywords: ['zoom', 'scale', 'magnify', 'bigger', 'smaller', 'larger', 'enlarge', 'shrink', 'size', 'tablet', 'landscape', 'display', 'percent', 'fit', 'whole app', 'everything', 'preview', 'pinch', 'in', 'out'] },
       { id: 'textLayout', icon: '🔤', title: 'Text Size & Layout', description: 'Unit, module and topic font sizes, presets and row density', keywords: ['text', 'font', 'size', 'bigger', 'smaller', 'large', 'small', 'universal', 'density', 'compact', 'spacious', 'spacing', 'readable', 'unit', 'module', 'topic', 'layout'] },
@@ -147,6 +149,12 @@ const CATEGORIES: CategoryMeta[] = [
     id: 'data', icon: '💾', title: 'Backup, Data & Trash', subtitle: 'Download, restore, recover and reset your data',
     items: [
       { id: 'dataHub', icon: '🗄️', title: 'Backup, Data & Trash', description: 'Download and verify everything, restore or reset, and recover deleted subjects — all in one place', keywords: ['data', 'download', 'export', 'backup', 'cloud copy', 'verify', 'self test', 'inventory', 'a-z', 'az', 'all data', 'all settings', 'checksum', 'integrity', 'compare', 'sync status', 'size', 'storage', 'import', 'restore', 'json', 'reset', 'clear', 'history', 'delete', 'merge', 'upload', 'file', 'recover', 'trash', 'bin', 'deleted', 'remove', 'empty'] },
+    ],
+  },
+  {
+    id: 'updates', icon: '🚀', title: 'App Updates', subtitle: 'Get the latest version without leaving the app',
+    items: [
+      { id: 'appUpdate', icon: '⬆️', title: 'Check for updates', description: 'See what is new, download and install the latest version in one tap', keywords: ['update', 'upgrade', 'version', 'install', 'apk', 'release', 'new'] },
     ],
   },
   {
@@ -298,6 +306,7 @@ export default function SettingsHub(props: SettingsHubProps) {
       case 'pomodoroPrefs': return <PomodoroSettingsPanel settings={settings} onUpdate={onUpdateSettings} />;
       case 'reminders': return onUpdateReminders ? <ReminderManager reminders={reminders || []} onUpdate={onUpdateReminders} /> : null;
       case 'aiDevice': return <AiDevicePanel />;
+      case 'appUpdate': return <UpdatePanel />;
       case 'appIcon': return <AppIconPanel />;
       case 'notifications': return <NotificationsPanel />;
       case 'autoBackup': return <AutoBackupPanel />;

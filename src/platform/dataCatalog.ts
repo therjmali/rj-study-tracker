@@ -30,6 +30,7 @@ const DEVICE_ENTRIES: CatalogEntry[] = [
   { key: 'nursetrack-chat-history', label: 'AI tutor chat history', group: 'device', type: 'json', scope: 'device' },
   { key: 'rj-local-profile-v1', label: 'Guest profile on this device', group: 'device', type: 'json', scope: 'device' },
   { key: 'nursetrack-install-dismissed', label: 'Install prompt dismissed', group: 'device', type: 'string', scope: 'device' },
+  { key: 'rj-mcq-stats-v1', label: 'MCQ practice log (answers & accuracy)', group: 'device', type: 'json', scope: 'device' },
   { key: 'rj-ai-settings-v1', label: 'AI provider keys & model', group: 'device', type: 'json', scope: 'secret' },
 ];
 

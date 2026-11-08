@@ -256,8 +256,8 @@ export interface HistoryEntry {
   icon: string;
 }
 
-export type ThemeId = 'default' | 'ocean' | 'emerald' | 'sunset' | 'rose' | 'purple' | 'ancient';
-export type ThemeMode = 'light' | 'amoled' | 'ancient' | 'glass';
+export type ThemeId = 'default' | 'ocean' | 'emerald' | 'sunset' | 'rose' | 'purple' | 'ancient' | 'vyxel';
+export type ThemeMode = 'light' | 'amoled' | 'ancient' | 'glass' | 'vyxel' | 'vyxeldark';
 /** Liquid Glass appearance: follow the phone, or force light / dark. */
 export type GlassTone = 'auto' | 'light' | 'dark';
 
@@ -386,8 +386,8 @@ export interface UserSettings {
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
-  theme: 'default',
-  themeMode: 'light',
+  theme: 'vyxel',
+  themeMode: 'vyxel',
   pomodoroSettings: {
     focusMin: 25,
     shortBreakMin: 5,

@@ -61,6 +61,10 @@ fi
 
 # Cloud sync: the bundled WebView must be allowed to reach the sync server.
 # (Capacitor templates already include this; re-assert it so a template change cannot break sync.)
+# In-app updates: lets the student confirm installing the downloaded update (Android still asks each time).
+if ! grep -q 'android.permission.REQUEST_INSTALL_PACKAGES' "$MANIFEST"; then
+  sed -i 's#<application#<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n    <application#' "$MANIFEST"
+fi
 if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
   sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET" />\n    <application#' "$MANIFEST"
 fi

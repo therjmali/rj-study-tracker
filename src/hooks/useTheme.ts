@@ -84,6 +84,38 @@ export const MODES: ModePreset[] = [
       '--input': '216 30% 82%',
     },
   },
+  {
+    // Vyxel — light. Palette ported from Vyxel Apps (AGPL-3.0, © Nikhil): cool violet-tinted surfaces, soft containers.
+    id: 'vyxel', name: 'Vyxel', emoji: '💜',
+    vars: {
+      '--background': '300 100% 99%',
+      '--foreground': '240 10% 12%',
+      '--card': '0 0% 100%',
+      '--card-foreground': '240 10% 12%',
+      '--popover': '0 0% 100%',
+      '--popover-foreground': '240 10% 12%',
+      '--muted': '273 29% 94%',
+      '--muted-foreground': '260 6% 29%',
+      '--border': '278 11% 86%',
+      '--input': '270 24% 90%',
+    },
+  },
+  {
+    // Vyxel — dark (deep graphite surfaces with the same violet / teal / amber accents).
+    id: 'vyxeldark', name: 'Vyxel Dark', emoji: '🌌',
+    vars: {
+      '--background': '230 16% 7%',
+      '--foreground': '263 15% 90%',
+      '--card': '231 11% 12%',
+      '--card-foreground': '263 15% 90%',
+      '--popover': '232 11% 15%',
+      '--popover-foreground': '263 15% 90%',
+      '--muted': '232 11% 15%',
+      '--muted-foreground': '273 10% 79%',
+      '--border': '232 7% 22%',
+      '--input': '232 7% 22%',
+    },
+  },
 ];
 
 const GLASS_DARK_VARS: ModeVars = {
@@ -101,7 +133,7 @@ const GLASS_DARK_VARS: ModeVars = {
 
 /** Does this mode (and glass tone) give a dark canvas? */
 export function isDarkCanvas(mode: ThemeMode, glassTone: GlassTone = 'auto'): boolean {
-  if (mode === 'amoled') return true;
+  if (mode === 'amoled' || mode === 'vyxeldark') return true;
   if (mode !== 'glass') return false;
   if (glassTone === 'dark') return true;
   if (glassTone === 'light') return false;
@@ -151,6 +183,8 @@ export interface ThemePreset {
   emoji: string;
   preview: string;
   vars: AccentVars;
+  /** Exact accent set for dark canvases (skips the automatic lightness lift). */
+  darkVars?: AccentVars;
 }
 
 export const THEMES: ThemePreset[] = [
@@ -287,6 +321,42 @@ export const THEMES: ThemePreset[] = [
       '--chart-5': '195 70% 50%',
     },
   },
+  {
+    // Vyxel — violet primary, teal secondary, amber tertiary (tonal values from Vyxel Apps' Material 3 palette).
+    id: 'vyxel', name: 'Vyxel', emoji: '💜', preview: '#6242E0',
+    vars: {
+      '--primary': '252 72% 57%',
+      '--primary-foreground': '0 0% 100%',
+      '--secondary': '178 100% 21%',
+      '--secondary-foreground': '0 0% 100%',
+      '--accent': '35 100% 27%',
+      '--accent-foreground': '0 0% 100%',
+      '--destructive': '0 75% 42%',
+      '--destructive-foreground': '0 0% 100%',
+      '--ring': '252 72% 57%',
+      '--chart-1': '252 72% 57%',
+      '--chart-2': '177 100% 26%',
+      '--chart-3': '37 100% 38%',
+      '--chart-4': '218 70% 52%',
+      '--chart-5': '0 75% 42%',
+    },
+    darkVars: {
+      '--primary': '252 100% 87%',
+      '--primary-foreground': '262 100% 28%',
+      '--secondary': '177 66% 58%',
+      '--secondary-foreground': '178 100% 11%',
+      '--accent': '31 100% 71%',
+      '--accent-foreground': '32 100% 15%',
+      '--destructive': '6 100% 84%',
+      '--destructive-foreground': '357 100% 21%',
+      '--ring': '252 100% 87%',
+      '--chart-1': '252 100% 87%',
+      '--chart-2': '177 66% 58%',
+      '--chart-3': '31 100% 71%',
+      '--chart-4': '217 100% 75%',
+      '--chart-5': '6 100% 84%',
+    },
+  },
 ];
 
 export function useTheme(themeId: ThemeId, mode: ThemeMode = 'light', glassTone: GlassTone = 'auto') {
@@ -303,15 +373,15 @@ export function useTheme(themeId: ThemeId, mode: ThemeMode = 'light', glassTone:
 
   useEffect(() => {
     const glassDark = mode === 'glass' && (glassTone === 'dark' || (glassTone === 'auto' && systemDark));
-    const dark = mode === 'amoled' || glassDark;
+    const dark = mode === 'amoled' || mode === 'vyxeldark' || glassDark;
     const modePreset = MODES.find(m => m.id === mode) ?? MODES[0];
     const accentPreset = THEMES.find(t => t.id === themeId) ?? THEMES[0];
     const root = document.documentElement;
 
     const modeVars = glassDark ? GLASS_DARK_VARS : modePreset.vars;
     Object.entries(modeVars).forEach(([k, v]) => root.style.setProperty(k, v));
-    const accentVars: Record<string, string> = { ...accentPreset.vars };
-    if (dark) {
+    const accentVars: Record<string, string> = { ...(dark && accentPreset.darkVars ? accentPreset.darkVars : accentPreset.vars) };
+    if (dark && !accentPreset.darkVars) {
       // Accent colours are tuned for light parchment; on a dark canvas they must be lifted or every
       // `text-primary` label / tab / badge becomes unreadable (measured: 1.2:1 on black).
       const lift = (key: string, fgKey: string | null, min: number) => {
@@ -325,12 +395,16 @@ export function useTheme(themeId: ThemeId, mode: ThemeMode = 'light', glassTone:
       ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5'].forEach(k => lift(k, null, 62));
     }
     Object.entries(accentVars).forEach(([k, v]) => root.style.setProperty(k, v));
-    root.style.setProperty('--accent-ink', accentInk(accentPreset.vars['--accent'], dark));
+    root.style.setProperty('--accent-ink', accentInk((dark && accentPreset.darkVars ? accentPreset.darkVars : accentPreset.vars)['--accent'], dark));
 
     if (mode === 'light') {
       root.style.setProperty('--sidebar-background', '285 28% 16%');
       root.style.setProperty('--sidebar-foreground', '40 25% 92%');
       root.style.setProperty('--sidebar-border', '285 20% 22%');
+    } else if (mode === 'vyxel') {
+      root.style.setProperty('--sidebar-background', '240 6% 20%');
+      root.style.setProperty('--sidebar-foreground', '262 33% 95%');
+      root.style.setProperty('--sidebar-border', '260 6% 29%');
     } else if (mode === 'ancient') {
       root.style.setProperty('--sidebar-background', '22 25% 12%');
       root.style.setProperty('--sidebar-foreground', '36 35% 90%');
@@ -346,8 +420,9 @@ export function useTheme(themeId: ThemeId, mode: ThemeMode = 'light', glassTone:
       root.style.setProperty('--sidebar-border', modeVars['--border']);
     }
 
-    root.classList.toggle('light-mode', mode === 'light');
-    root.classList.toggle('amoled-mode', mode === 'amoled');
+    root.classList.toggle('light-mode', mode === 'light' || mode === 'vyxel');
+    root.classList.toggle('amoled-mode', mode === 'amoled' || mode === 'vyxeldark');
+    root.classList.toggle('vyxel-mode', mode === 'vyxel' || mode === 'vyxeldark');
     root.classList.toggle('ancient-mode', mode === 'ancient');
     root.classList.toggle('glass-mode', mode === 'glass');
     root.classList.toggle('glass-dark', glassDark);

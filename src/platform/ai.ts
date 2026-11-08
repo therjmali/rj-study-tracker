@@ -1,56 +1,43 @@
 /**
- * AI layer — runs entirely in the browser with the student's *own* API key.
+ * AI layer — runs entirely in the browser with the student's *own* API keys.
  *
- * Supported providers: Google Gemini (has a free tier), Anthropic Claude, OpenAI.
- * The key never leaves the device except in the request to the chosen provider,
- * and it is intentionally excluded from backups.
+ * Five partners: Google Gemini · Groq · OpenAI GPT · Anthropic Claude · Cohere.
+ * Keys never leave the device except in the request to the chosen provider, are never synced, and are
+ * excluded from backups unless the student opts in. If the active provider is rate-limited, rejects
+ * its key or has an outage, the next provider that has a key is used automatically (can be turned off).
  */
 import { LocalApiError } from './localDb';
+import {
+  PROVIDER_IDS, PROVIDER_META, buildRequest, buildModelsRequest, parseModelList, readChunk, shouldFallback,
+  type ProviderId, type ProviderMeta,
+} from './aiProviders.mjs';
+import { renderEnginePrompt, type Telemetry } from '../lib/tutorTelemetryLogic.mjs';
 
-export type AiProvider = 'gemini' | 'anthropic' | 'openai';
+export type AiProvider = ProviderId;
+export const PROVIDER_ORDER: AiProvider[] = PROVIDER_IDS;
+
+/** Result of the last "Test key" (never contains the key itself). */
+export interface KeyStatus { ok: boolean; at: number; ms?: number; code?: string; error?: string; models?: string[] }
 
 export interface AiSettings {
   provider: AiProvider;
   keys: Partial<Record<AiProvider, string>>;
   models: Partial<Record<AiProvider, { main?: string; fast?: string }>>;
+  /** Switch to the next provider that has a key when the active one fails (default on). */
+  fallback?: boolean;
+  status?: Partial<Record<AiProvider, KeyStatus>>;
 }
 
-export const PROVIDERS: Record<AiProvider, {
-  label: string; keyUrl: string; keyHint: string; defaultMain: string; defaultFast: string; note: string;
-}> = {
-  gemini: {
-    label: 'Google Gemini',
-    keyUrl: 'https://aistudio.google.com/apikey',
-    keyHint: 'AIza…',
-    defaultMain: 'gemini-2.5-flash',
-    defaultFast: 'gemini-2.5-flash-lite',
-    note: 'Free tier available — easiest way to start.',
-  },
-  anthropic: {
-    label: 'Anthropic Claude',
-    keyUrl: 'https://console.anthropic.com/settings/keys',
-    keyHint: 'sk-ant-…',
-    defaultMain: 'claude-sonnet-5-5',
-    defaultFast: 'claude-haiku-5-5',
-    note: 'Pay-as-you-go. Best explanations for nursing topics.',
-  },
-  openai: {
-    label: 'OpenAI',
-    keyUrl: 'https://platform.openai.com/api-keys',
-    keyHint: 'sk-…',
-    defaultMain: 'gpt-4.1',
-    defaultFast: 'gpt-4.1-mini',
-    note: 'Pay-as-you-go.',
-  },
-};
+export const PROVIDERS: Record<AiProvider, ProviderMeta> = PROVIDER_META;
 
 const SETTINGS_KEY = 'rj-ai-settings-v1';
 const CHANGE_EVENT = 'rj:ai-settings-changed';
+const RUN_EVENT = 'rj:ai-run';
 export const OPEN_SETTINGS_EVENT = 'rj:open-platform-settings';
 
 /* ───────────────────────────── settings store ───────────────────────────── */
 
-const DEFAULTS: AiSettings = { provider: 'gemini', keys: {}, models: {} };
+const DEFAULTS: AiSettings = { provider: 'gemini', keys: {}, models: {}, fallback: true, status: {} };
 let cached: AiSettings | null = null;
 
 export function getAiSettings(): AiSettings {
@@ -62,9 +49,11 @@ export function getAiSettings(): AiSettings {
       provider: parsed?.provider && PROVIDERS[parsed.provider as AiProvider] ? parsed.provider : DEFAULTS.provider,
       keys: parsed?.keys && typeof parsed.keys === 'object' ? parsed.keys : {},
       models: parsed?.models && typeof parsed.models === 'object' ? parsed.models : {},
+      fallback: parsed?.fallback !== false,
+      status: parsed?.status && typeof parsed.status === 'object' ? parsed.status : {},
     };
   } catch {
-    cached = { ...DEFAULTS, keys: {}, models: {} };
+    cached = { ...DEFAULTS, keys: {}, models: {}, status: {} };
   }
   return cached;
 }
@@ -80,8 +69,47 @@ export function subscribeAiSettings(cb: () => void): () => void {
   return () => window.removeEventListener(CHANGE_EVENT, cb);
 }
 
+/** Providers that currently have a key, in display order. */
+export function configuredProviders(s: AiSettings = getAiSettings()): AiProvider[] {
+  return PROVIDER_ORDER.filter(p => !!s.keys[p]?.trim());
+}
+
 export function isAiConfigured(s: AiSettings = getAiSettings()): boolean {
-  return !!s.keys[s.provider]?.trim();
+  return configuredProviders(s).length > 0;
+}
+
+/** The order providers are tried in: the active one first, then (if enabled) every other provider with a key. */
+export function aiCandidates(s: AiSettings = getAiSettings()): AiProvider[] {
+  const have = configuredProviders(s);
+  if (!have.length) return [];
+  const activeHasKey = have.includes(s.provider);
+  if (!activeHasKey && s.fallback === false) return [];
+  const first = activeHasKey ? s.provider : have[0];
+  return [first, ...(s.fallback === false ? [] : have.filter(p => p !== first))];
+}
+
+export function setProviderKey(provider: AiProvider, key: string): void {
+  const s = getAiSettings();
+  const keys = { ...s.keys, [provider]: key.trim() };
+  const status = { ...(s.status ?? {}) }; delete status[provider];
+  saveAiSettings({ ...s, keys, status, provider: s.keys[s.provider]?.trim() ? s.provider : provider });
+}
+export function removeProviderKey(provider: AiProvider): void {
+  const s = getAiSettings();
+  const keys = { ...s.keys }; delete keys[provider];
+  const status = { ...(s.status ?? {}) }; delete status[provider];
+  const left = PROVIDER_ORDER.filter(p => keys[p]?.trim());
+  saveAiSettings({ ...s, keys, status, provider: s.provider === provider ? (left[0] ?? s.provider) : s.provider });
+}
+export function setActiveProvider(provider: AiProvider): void { saveAiSettings({ ...getAiSettings(), provider }); }
+export function setFallbackEnabled(on: boolean): void { saveAiSettings({ ...getAiSettings(), fallback: on }); }
+export function setProviderModel(provider: AiProvider, tier: 'main' | 'fast', model: string): void {
+  const s = getAiSettings();
+  saveAiSettings({ ...s, models: { ...s.models, [provider]: { ...s.models[provider], [tier]: model.trim() || undefined } } });
+}
+function recordStatus(provider: AiProvider, st: KeyStatus): void {
+  const s = getAiSettings();
+  saveAiSettings({ ...s, status: { ...(s.status ?? {}), [provider]: { ...st, models: st.models?.slice(0, 80) } } });
 }
 
 export function openAiSettings(): void {
@@ -92,11 +120,25 @@ export function openAiSettings(): void {
 export function reportAiError(err: unknown, toast: { error: (m: string) => unknown; info: (m: string) => unknown }, fallback = 'AI request failed. Please try again.') {
   const e = err as { code?: string; message?: string };
   if (e?.code === 'NO_API_KEY') {
-    toast.info('Add your free AI key to unlock this feature.');
+    toast.info('Add a free AI key to unlock this feature.');
     openAiSettings();
     return;
   }
   toast.error(e?.message || fallback);
+}
+
+/* ───────────────────────────── last-run tracker (for the status chip) ───────────────────────────── */
+
+export interface AiRun { provider: AiProvider; model: string; at: number; fellBackFrom?: AiProvider }
+let lastRun: AiRun | null = null;
+export function getLastAiRun(): AiRun | null { return lastRun; }
+export function subscribeAiRun(cb: () => void): () => void {
+  window.addEventListener(RUN_EVENT, cb);
+  return () => window.removeEventListener(RUN_EVENT, cb);
+}
+function noteRun(provider: AiProvider, model: string, firstTried: AiProvider): void {
+  lastRun = { provider, model, at: Date.now(), ...(provider !== firstTried ? { fellBackFrom: firstTried } : {}) };
+  window.dispatchEvent(new Event(RUN_EVENT));
 }
 
 /* ───────────────────────────── provider plumbing ───────────────────────────── */
@@ -113,20 +155,29 @@ interface CallOptions {
   signal?: AbortSignal;
 }
 
-function resolve(tier: Tier) {
+function modelFor(provider: AiProvider, tier: Tier): string {
   const s = getAiSettings();
-  const key = s.keys[s.provider]?.trim();
-  if (!key) throw new LocalApiError('NO_API_KEY', 'AI is not set up yet. Add an API key in AI settings.');
-  const meta = PROVIDERS[s.provider];
-  const model = (s.models[s.provider]?.[tier] || (tier === 'main' ? meta.defaultMain : meta.defaultFast)).trim();
-  return { provider: s.provider, key, model };
+  const meta = PROVIDERS[provider];
+  return (s.models[provider]?.[tier] || (tier === 'main' ? meta.defaultMain : meta.defaultFast)).trim();
+}
+
+function candidatesOrThrow(): AiProvider[] {
+  const list = aiCandidates();
+  if (!list.length) {
+    const s = getAiSettings();
+    const label = PROVIDERS[s.provider]?.label ?? 'AI';
+    throw new LocalApiError('NO_API_KEY', isAiConfigured(s)
+      ? `No API key for ${label}. Add one in AI settings, or turn on automatic provider switching.`
+      : 'AI is not set up yet. Add an API key in AI settings.');
+  }
+  return list;
 }
 
 async function failFromResponse(res: Response): Promise<never> {
   let detail = '';
   try {
     const body = await res.json();
-    detail = body?.error?.message || body?.message || '';
+    detail = body?.error?.message || body?.message || (typeof body?.error === 'string' ? body.error : '') || '';
   } catch { /* ignore */ }
   if (res.status === 401 || res.status === 403) {
     throw new LocalApiError('BAD_API_KEY', 'The AI provider rejected your API key. Check it in AI settings.');
@@ -152,84 +203,37 @@ async function request(url: string, init: RequestInit): Promise<Response> {
   return res;
 }
 
-function build(opts: CallOptions, stream: boolean): { url: string; init: RequestInit; read: (data: any) => string } {
-  const { provider, key, model } = resolve(opts.tier);
-
-  if (provider === 'anthropic') {
-    return {
-      url: 'https://api.anthropic.com/v1/messages',
-      init: {
-        method: 'POST',
-        signal: opts.signal,
-        headers: {
-          'content-type': 'application/json',
-          'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model, max_tokens: opts.maxTokens, system: opts.system, stream,
-          messages: opts.messages,
-        }),
-      },
-      read: (d) => stream
-        ? (d?.type === 'content_block_delta' && d?.delta?.type === 'text_delta' ? d.delta.text ?? '' : '')
-        : (Array.isArray(d?.content) ? d.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('') : ''),
-    };
-  }
-
-  if (provider === 'openai') {
-    return {
-      url: 'https://api.openai.com/v1/chat/completions',
-      init: {
-        method: 'POST',
-        signal: opts.signal,
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-        body: JSON.stringify({
-          model, stream,
-          max_completion_tokens: opts.maxTokens,
-          ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
-          messages: [{ role: 'system', content: opts.system }, ...opts.messages],
-        }),
-      },
-      read: (d) => stream ? (d?.choices?.[0]?.delta?.content ?? '') : (d?.choices?.[0]?.message?.content ?? ''),
-    };
-  }
-
-  // Gemini
-  const method = stream ? 'streamGenerateContent?alt=sse' : 'generateContent';
-  const sep = stream ? '&' : '?';
-  return {
-    url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:${method}${sep}key=${encodeURIComponent(key)}`,
-    init: {
-      method: 'POST',
-      signal: opts.signal,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: opts.system }] },
-        contents: opts.messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
-        generationConfig: {
-          maxOutputTokens: Math.max(opts.maxTokens, 2048) * 2,
-          ...(opts.json ? { responseMimeType: 'application/json' } : {}),
-        },
-      }),
-    },
-    read: (d) => Array.isArray(d?.candidates?.[0]?.content?.parts)
-      ? d.candidates[0].content.parts.map((p: any) => p.text ?? '').join('')
-      : '',
-  };
+function build(opts: CallOptions, stream: boolean, provider: AiProvider) {
+  const key = (getAiSettings().keys[provider] ?? '').trim();
+  const model = modelFor(provider, opts.tier);
+  const { url, init } = buildRequest(provider, {
+    key, model, system: opts.system, messages: opts.messages, maxTokens: opts.maxTokens, json: opts.json, stream,
+  });
+  return { url, init: { ...init, signal: opts.signal } as RequestInit, read: (d: unknown) => readChunk(provider, d, stream), model };
 }
 
 async function complete(opts: CallOptions): Promise<string> {
-  const { url, init, read } = build(opts, false);
-  const res = await request(url, init);
-  const text = read(await res.json()).trim();
-  if (!text) throw new LocalApiError('EMPTY', 'The AI returned an empty answer. Please try again.');
-  return text;
+  const list = candidatesOrThrow();
+  let lastErr: unknown;
+  for (let i = 0; i < list.length; i++) {
+    const provider = list[i];
+    try {
+      const { url, init, read, model } = build(opts, false, provider);
+      const res = await request(url, init);
+      const text = read(await res.json()).trim();
+      if (!text) throw new LocalApiError('EMPTY', 'The AI returned an empty answer. Please try again.');
+      noteRun(provider, model, list[0]);
+      return text;
+    } catch (err) {
+      lastErr = err;
+      if ((err as Error)?.name === 'AbortError' || !shouldFallback((err as { code?: string })?.code) || i === list.length - 1) throw err;
+    }
+  }
+  throw lastErr;
 }
 
-async function* streamText(opts: CallOptions): AsyncGenerator<string> {
-  const { url, init, read } = build(opts, true);
+async function* streamOne(opts: CallOptions, provider: AiProvider): AsyncGenerator<string> {
+  const { url, init, read } = build(opts, true, provider);
   const res = await request(url, init);
   if (!res.body) {
     const text = read(await res.json());
@@ -259,6 +263,50 @@ async function* streamText(opts: CallOptions): AsyncGenerator<string> {
   }
   const tail = handle(buf.replace(/\r$/, ''));
   if (tail) yield tail;
+}
+
+/** Streams from the active provider; if it fails BEFORE the first word, the next provider with a key takes over. */
+async function* streamText(opts: CallOptions): AsyncGenerator<string> {
+  const list = candidatesOrThrow();
+  for (let i = 0; i < list.length; i++) {
+    const provider = list[i];
+    let started = false;
+    try {
+      for await (const chunk of streamOne(opts, provider)) {
+        if (!started) { started = true; noteRun(provider, modelFor(provider, opts.tier), list[0]); }
+        yield chunk;
+      }
+      if (!started) throw new LocalApiError('EMPTY', 'The AI returned an empty answer. Please try again.');
+      return;
+    } catch (err) {
+      if (started || (err as Error)?.name === 'AbortError' || !shouldFallback((err as { code?: string })?.code) || i === list.length - 1) throw err;
+    }
+  }
+}
+
+/** Free, instant "is this key alive?" check: lists the models the key can use and measures the round trip. */
+export async function testProviderKey(provider: AiProvider, keyOverride?: string): Promise<KeyStatus> {
+  const key = (keyOverride ?? getAiSettings().keys[provider] ?? '').trim();
+  if (!key) throw new LocalApiError('NO_API_KEY', 'Paste your API key first.');
+  const { url, init } = buildModelsRequest(provider, key);
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  const t0 = performance.now();
+  let status: KeyStatus;
+  try {
+    const res = await request(url, { ...init, signal: ctrl.signal });
+    const models = parseModelList(provider, await res.json().catch(() => null));
+    status = { ok: true, at: Date.now(), ms: Math.round(performance.now() - t0), models };
+  } catch (err) {
+    const e = err as { name?: string; code?: string; message?: string };
+    if (e?.name === 'AbortError') throw new LocalApiError('NETWORK', 'The provider took too long to answer. Try again.');
+    if (e?.code === 'NETWORK') throw err; // offline / blocked: says nothing about the key, so do not mark it bad
+    status = { ok: false, at: Date.now(), code: e?.code, error: e?.message };
+  } finally {
+    clearTimeout(timer);
+  }
+  if ((getAiSettings().keys[provider] ?? '').trim() === key) recordStatus(provider, status);
+  return status;
 }
 
 function extractJson<T>(text: string, kind: 'array' | 'object'): T {
@@ -365,12 +413,21 @@ CRITICAL PERSONALIZATION RULES — you MUST follow these in EVERY response:
 /* ───────────────────────────── feature functions ───────────────────────────── */
 
 export async function* studyChat(input: {
-  messages: Msg[]; topicContext?: string;
+  messages: Msg[]; topicContext?: string; telemetry?: Telemetry;
 }): AsyncGenerator<string> {
-  let system = BASE_SYSTEM_PROMPT;
-  if (input.topicContext) {
-    system += `\n\n--- STUDENT DATA (CONFIDENTIAL — use to personalize) ---\n${input.topicContext}`;
-    system += PERSONALIZATION_RULES;
+  let system: string;
+  if (input.telemetry) {
+    // Analytical-engine mode: real, app-computed telemetry + strict zero-hallucination rules.
+    system = renderEnginePrompt(input.telemetry);
+    if (input.topicContext) {
+      system += `\n\n[SUPPLEMENTARY STUDENT PROFILE — secondary context. The telemetry above is authoritative; the same zero-hallucination rule applies.]\n${input.topicContext}`;
+    }
+  } else {
+    system = BASE_SYSTEM_PROMPT;
+    if (input.topicContext) {
+      system += `\n\n--- STUDENT DATA (CONFIDENTIAL — use to personalize) ---\n${input.topicContext}`;
+      system += PERSONALIZATION_RULES;
+    }
   }
   yield* streamText({ system, messages: input.messages, maxTokens: 2048, tier: 'main' });
 }

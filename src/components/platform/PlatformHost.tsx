@@ -4,6 +4,8 @@ import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
 import BottomSheet from '../shared/BottomSheet';
 import AiDevicePanel from './AiDevicePanel';
+import UpdatePanel from './UpdatePanel';
+import { OPEN_UPDATES_EVENT } from '@/platform/updater';
 import PlatformRuntime from './PlatformRuntime';
 import { OPEN_SETTINGS_EVENT } from '@/platform/ai';
 import { OPEN_PROFILE_SETUP_EVENT, getStoredProfile, saveProfile } from '@/platform/auth';
@@ -16,6 +18,7 @@ export default function PlatformHost() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'ai' | 'device'>('ai');
   const [profileOpen, setProfileOpen] = useState(false);
+  const [updatesOpen, setUpdatesOpen] = useState(false);
 
   useEffect(() => {
     const onSettings = (e: Event) => {
@@ -24,11 +27,14 @@ export default function PlatformHost() {
       setSettingsOpen(true);
     };
     const onProfile = () => setProfileOpen(true);
+    const onUpdates = () => setUpdatesOpen(true);
+    window.addEventListener(OPEN_UPDATES_EVENT, onUpdates);
     window.addEventListener(OPEN_SETTINGS_EVENT, onSettings);
     window.addEventListener(OPEN_PROFILE_SETUP_EVENT, onProfile);
     return () => {
       window.removeEventListener(OPEN_SETTINGS_EVENT, onSettings);
       window.removeEventListener(OPEN_PROFILE_SETUP_EVENT, onProfile);
+      window.removeEventListener(OPEN_UPDATES_EVENT, onUpdates);
     };
   }, []);
 
@@ -38,6 +44,9 @@ export default function PlatformHost() {
         <div className="px-4 pb-6 pt-1">
           <AiDevicePanel initialTab={settingsTab} />
         </div>
+      </BottomSheet>
+      <BottomSheet open={updatesOpen} onClose={() => setUpdatesOpen(false)} title="App updates" zIndex={120}>
+        <div className="px-4 pb-6 pt-1"><UpdatePanel /></div>
       </BottomSheet>
       <ProfileSetup open={profileOpen} onClose={() => setProfileOpen(false)} />
       <PlatformRuntime />

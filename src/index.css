@@ -1545,3 +1545,76 @@ html, body {
   overscroll-behavior-y: auto;
   touch-action: pan-y;
 }
+
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Vyxel theme — palette, shape language and motion ported from Vyxel Apps
+   (AGPL-3.0, © 2026 Nikhil, github.com/NikhilKain/vyxel-apps): electric violet primary, teal secondary,
+   amber tertiary, soft pill-forward silhouettes and springy, interruptible motion. Colours come from
+   useTheme.ts (modes "Vyxel" / "Vyxel Dark" + accent "Vyxel"); this block adds the shapes, surfaces and motion.
+   ════════════════════════════════════════════════════════════════════════════ */
+html.vyxel-mode {
+  --radius: 1.25rem;                                   /* Vyxel "medium" = 20dp */
+  --vx-card-radius: 26px;                              /* Vyxel Card */
+  --vx-hero-radius: 32px;                              /* Vyxel Hero / Sheet */
+  --vx-ease: cubic-bezier(0.2, 0, 0, 1);               /* emphasized */
+  --vx-ease-out: cubic-bezier(0.05, 0.7, 0.1, 1);      /* emphasized decelerate */
+  --vx-spring: cubic-bezier(0.34, 1.45, 0.64, 1);      /* expressive spring (≈ damping 0.72) */
+}
+html.vyxel-mode body::before { opacity: 0; }           /* no paper grain: clean Material surfaces */
+html.vyxel-mode .font-heading { letter-spacing: -0.02em; font-weight: 800; }
+html.vyxel-mode .glass-card { border-radius: var(--vx-card-radius); }
+html.vyxel-mode button,
+html.vyxel-mode [role="tab"],
+html.vyxel-mode [role="switch"] { transition-timing-function: var(--vx-ease); }
+html.vyxel-mode button:active { transition-timing-function: var(--vx-spring); }
+html.vyxel-mode ::selection { background: hsl(var(--primary) / 0.22); }
+
+/* Light: a faint violet bloom at the top, like Vyxel's hero surfaces */
+html.vyxel-mode.light-mode body {
+  background-image: radial-gradient(120% 55% at 50% -12%, hsl(252 72% 57% / 0.075), transparent 62%);
+  background-attachment: fixed;
+}
+html.vyxel-mode.light-mode .glass-card {
+  background: hsl(var(--card));
+  border-color: hsl(var(--border) / 0.7);
+  box-shadow: 0 1px 2px rgba(32, 0, 92, 0.05), 0 8px 24px -14px rgba(75, 31, 192, 0.22);
+}
+
+/* Dark: graphite surfaces (not pure black) with a violet / teal glow */
+html.vyxel-mode.amoled-mode body {
+  background-image: radial-gradient(120% 55% at 50% -12%, hsl(252 100% 87% / 0.085), transparent 62%);
+  background-attachment: fixed;
+}
+html.vyxel-mode.amoled-mode .glass-card {
+  background: hsl(var(--card) / 0.96);
+  border-color: hsl(var(--border) / 0.7);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.04), 0 8px 24px -14px rgba(0, 0, 0, 0.7);
+}
+html.vyxel-mode.amoled-mode .glass-subtle { background: hsl(var(--muted) / 0.7); border-color: hsl(var(--border) / 0.5); }
+html.vyxel-mode.amoled-mode .glass-nav,
+html.vyxel-mode.amoled-mode .glass-header { background: hsl(var(--background) / 0.94); border-color: hsl(var(--border) / 0.55); }
+html.vyxel-mode.amoled-mode .material-ultra-thin { background: hsl(var(--card) / 0.55); }
+html.vyxel-mode.amoled-mode .material-thin { background: hsl(var(--card) / 0.75); }
+html.vyxel-mode.amoled-mode .material-regular { background: hsl(var(--card) / 0.92); }
+html.vyxel-mode.amoled-mode .material-thick { background: hsl(var(--card) / 0.98); }
+html.vyxel-mode.amoled-mode .mesh-gradient {
+  background:
+    radial-gradient(ellipse at 20% 0%, hsl(252 100% 87% / 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 100%, hsl(176 63% 60% / 0.05) 0%, transparent 50%),
+    hsl(var(--background));
+}
+html.vyxel-mode.amoled-mode .gradient-text,
+html.vyxel-mode.amoled-mode .gradient-multi {
+  background: linear-gradient(135deg, hsl(252 100% 87%), hsl(176 63% 60%), hsl(31 100% 71%));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+html.vyxel-mode.light-mode .gradient-text,
+html.vyxel-mode.light-mode .gradient-multi {
+  background: linear-gradient(135deg, hsl(252 72% 57%), hsl(177 100% 21%), hsl(32 100% 27%));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.vyxel-mode button:active { transition-timing-function: linear; }
+}

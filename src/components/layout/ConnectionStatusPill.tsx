@@ -81,13 +81,16 @@ export default function ConnectionStatusPill({ onClick }: { onClick?: () => void
   }, [pill.kind, pill.label, pill.detail]);
 
   const attention = pill.tone === 'warn' || pill.kind === 'reconnected';
+  // Calm states are an icon-only circle on phones so the app name keeps its space; states that need
+  // attention (offline, unreachable, error, syncing, back online) show a short label everywhere.
+  const labelAlways = ['offline', 'degraded', 'error', 'reconnected', 'syncing'].includes(pill.kind);
   return (
     <>
       <button
         type="button"
         onClick={onClick}
         data-status={pill.kind}
-        className={`flex min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 shadow-[0_8px_18px_-12px_rgba(0,0,0,0.7)] transition-[background-color,border-color,color,transform] duration-300 active:scale-95 ${TONE[pill.tone]}`}
+        className={`flex h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded-full border ${labelAlways ? 'px-2.5' : 'px-0 sm:px-2.5'} shadow-[0_8px_18px_-12px_rgba(0,0,0,0.7)] transition-[background-color,border-color,color,transform] duration-300 active:scale-95 ${TONE[pill.tone]}`}
         title={`${pill.label} — ${pill.detail}`}
         aria-label={`${pill.label}. ${pill.detail}. Open cloud sync`}
       >
@@ -95,8 +98,8 @@ export default function ConnectionStatusPill({ onClick }: { onClick?: () => void
           {attention && <span className={`absolute inline-flex h-full w-full rounded-full opacity-40 motion-safe:animate-ping ${DOT[pill.tone]}`} />}
           <KindIcon kind={pill.kind} busy={pill.busy} />
         </span>
-        <span className="hidden min-w-0 flex-col items-start leading-none min-[400px]:flex">
-          <span className="text-[10px] font-black uppercase tracking-[0.14em]">{pill.label}</span>
+        <span className={`${labelAlways ? 'flex' : 'hidden sm:flex'} min-w-0 flex-col items-start leading-none`}>
+          <span className={`${labelAlways ? 'max-w-[84px] sm:max-w-none' : ''} truncate text-[10px] font-black uppercase tracking-[0.14em]`}>{pill.label}</span>
           <span className="mt-0.5 hidden max-w-[170px] truncate text-[9px] font-medium normal-case tracking-normal opacity-75 sm:block">{pill.detail}</span>
         </span>
       </button>

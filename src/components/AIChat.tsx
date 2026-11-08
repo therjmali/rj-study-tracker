@@ -1,10 +1,15 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Send, Bot, User, Trash2, Sparkles, Loader2, Brain, Zap, Lock, LogIn } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
+import { Send, Bot, User, Trash2, Sparkles, Loader2, Brain, Zap, Lock, LogIn, KeyRound, WifiOff } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import { Markdown } from '@project/components/markdown';
 import { toast } from 'sonner';
 import { studyChat } from '@/platform/api';
-import { reportAiError } from '@/platform/ai';
+import { PROVIDERS, getAiSettings, getLastAiRun, isAiConfigured, reportAiError, subscribeAiRun, subscribeAiSettings } from '@/platform/ai';
+import { useConnectivity } from '@/platform/connectivity';
+import BottomSheet from './shared/BottomSheet';
+import AiKeyManager from './platform/AiKeyManager';
+import { collectTutorTelemetry } from '../lib/tutorTelemetry';
+import { NA } from '../lib/tutorTelemetryLogic.mjs';
 import { useAuth } from '@/platform/auth';
 import { motion } from 'framer-motion';
 import type { Subject, DailyLog, UserSettings, ExamConfig, DbStudySession } from '../types';
@@ -26,6 +31,8 @@ interface Props {
 }
 
 const SUGGESTED_QUESTIONS = [
+  "Am I on pace to finish my syllabus before the exam?",
+  "What should I study next and for how long today?",
   "Explain the stages of labor and nursing management",
   "What are the types of schizophrenia and their symptoms?",
   "Describe Apgar scoring system with mnemonics",
@@ -115,6 +122,13 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
+  const [keysOpen, setKeysOpen] = useState(false);
+  const conn = useConnectivity();
+  const ai = useSyncExternalStore(subscribeAiSettings, getAiSettings, getAiSettings);
+  const run = useSyncExternalStore(subscribeAiRun, getLastAiRun, getLastAiRun);
+  const configured = isAiConfigured(ai);
+  const activeMeta = PROVIDERS[ai.provider];
+  const shownProvider = run && configured ? PROVIDERS[run.provider] : activeMeta;
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -124,6 +138,12 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
   const progressContext = useMemo(() => {
     return buildChatContext(subjects, dailyLogs, settings, exams, userName, dbSessions);
   }, [subjects, dailyLogs, settings, exams, userName, dbSessions]);
+
+  // The exact numbers the AI receives — shown so the student can see what its answers are grounded in.
+  const telemetry = useMemo(
+    () => collectTutorTelemetry(subjects, dailyLogs, exams, dbSessions),
+    [subjects, dailyLogs, exams, dbSessions, messages.length], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const dynamicSuggestions = useMemo(() => {
     const personalized: string[] = [];
@@ -159,6 +179,11 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
     const msg = text || input.trim();
     if (!msg || isStreaming) return;
 
+    if (!isAiConfigured()) {
+      toast.info('Add an AI key to start chatting.');
+      setKeysOpen(true);
+      return;
+    }
     const userMsg: ChatMessage = { role: 'user', content: msg };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
@@ -170,6 +195,7 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
       const stream = studyChat({
         messages: newMessages.map(m => ({ role: m.role, content: m.content })),
         topicContext: progressContext,
+        telemetry: collectTutorTelemetry(subjects, dailyLogs, exams, dbSessions),
       });
 
       let fullText = '';
@@ -185,7 +211,7 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
     } finally {
       setIsStreaming(false);
     }
-  }, [input, messages, isStreaming, progressContext]);
+  }, [input, messages, isStreaming, progressContext, subjects, dailyLogs, exams, dbSessions]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -209,7 +235,7 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
           </div>
           <div>
             <h2 className="text-base font-bold">NurseBot AI</h2>
-            <p className="text-[10px] text-muted-foreground">Powered by Claude • Sign in required</p>
+            <p className="text-[10px] text-muted-foreground">Sign in required</p>
           </div>
         </div>
         <GuestLockScreen />
@@ -220,31 +246,70 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
   return (
     <div className="flex flex-col h-[calc(100vh-10rem)] lg:h-[calc(100vh-6rem)]">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-primary" />
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/12">
+            <Bot className="h-5 w-5 text-primary" />
           </div>
-          <div>
-            <h2 className="text-base font-bold">NurseBot AI</h2>
-            <p className="text-[10px] text-muted-foreground">
-              Powered by Claude • {progressContext ? 'Context-aware' : 'Nursing Expert'}
-            </p>
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-black leading-tight">AI Tutor</h2>
+            <button
+              type="button" onClick={() => setKeysOpen(true)}
+              className="flex max-w-full items-center gap-1.5 text-[10px] font-semibold text-muted-foreground"
+              aria-label="Open AI settings"
+            >
+              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${!configured ? 'bg-red-500' : conn.status === 'online' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+              <span className="truncate">
+                {!configured ? 'No API key — tap to set up'
+                  : conn.status !== 'online' ? 'Offline — AI needs internet'
+                  : `${shownProvider.short}${run?.fellBackFrom ? ` (switched from ${PROVIDERS[run.fellBackFrom].short})` : ''} · analytical engine`}
+              </span>
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          {progressContext && (
-            <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-diff-easy/10 text-diff-easy font-bold border border-diff-easy/20">
-              📊 Progress Linked
-            </span>
-          )}
+        <div className="flex shrink-0 items-center gap-1">
           {messages.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={clearChat} className="text-xs gap-1 text-muted-foreground">
-              <Trash2 className="w-3.5 h-3.5" /> Clear
+            <Button variant="ghost" size="sm" onClick={clearChat} className="h-9 gap-1 px-2 text-xs text-muted-foreground">
+              <Trash2 className="h-3.5 w-3.5" /> Clear
             </Button>
           )}
+          <button
+            type="button" onClick={() => setKeysOpen(true)} aria-label="AI keys and providers"
+            className={`relative flex h-10 w-10 items-center justify-center rounded-2xl border transition-transform active:scale-95 ${configured ? 'border-border/40 bg-card text-foreground' : 'border-red-500/40 bg-red-500/10 text-red-500'}`}
+          >
+            <KeyRound className="h-[18px] w-[18px]" />
+            {!configured && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 animate-pulse rounded-full border-2 border-background bg-red-500" />}
+          </button>
         </div>
       </div>
+
+      {/* Live telemetry the engine is grounded in */}
+      <div className="-mx-1 mb-2 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]" aria-label="Data the AI uses">
+        {[
+          { k: 'unit', t: telemetry.currentUnit === NA ? 'Unit —' : telemetry.currentUnit },
+          { k: 'pct', t: telemetry.completionRate === NA ? 'Syllabus —' : `${telemetry.completionRate}% done` },
+          { k: 'exam', t: telemetry.daysRemaining === NA ? 'No exam set' : `${telemetry.daysRemaining} d to exam` },
+          { k: 'pace', t: telemetry.derived.paceVerdict === NA ? 'Pace —' : telemetry.derived.paceVerdict.startsWith('BEHIND') ? 'Behind pace' : telemetry.derived.paceVerdict === 'ON_TRACK' ? 'On track' : telemetry.derived.paceVerdict.replace('_', ' ').toLowerCase() },
+          { k: 'mcq', t: telemetry.totalMcqs === 0 ? 'MCQ log empty' : `MCQ ${telemetry.totalMcqs} · ${telemetry.accuracyRate}%` },
+        ].map(c => (
+          <span key={c.k} className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold ${c.k === 'pace' && c.t === 'Behind pace' ? 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-300' : 'border-border/40 bg-card/70 text-muted-foreground'}`}>{c.t}</span>
+        ))}
+      </div>
+
+      {!configured && messages.length === 0 && (
+        <button type="button" onClick={() => setKeysOpen(true)} className="mb-2 flex items-center gap-3 rounded-[22px] border border-primary/30 bg-primary/10 p-3 text-left active:scale-[0.99]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><KeyRound className="h-5 w-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-black text-foreground">Connect an AI partner</span>
+            <span className="block text-[11px] text-muted-foreground">Gemini, Groq, GPT, Claude or Cohere — most have a free tier. Your key stays on this phone.</span>
+          </span>
+        </button>
+      )}
+      {configured && conn.status !== 'online' && (
+        <div className="mb-2 flex items-center gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+          <WifiOff className="h-3.5 w-3.5 shrink-0" /> You're offline. The AI needs internet — your notes and tracker still work.
+        </div>
+      )}
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto space-y-3 pb-2 min-h-0">
@@ -325,6 +390,9 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
           </Button>
         </div>
       </div>
+      <BottomSheet open={keysOpen} onClose={() => setKeysOpen(false)} title="AI partners & keys" zIndex={120}>
+        <div className="px-4 pb-6 pt-1"><AiKeyManager /></div>
+      </BottomSheet>
     </div>
   );
 }
