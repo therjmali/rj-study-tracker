@@ -533,10 +533,11 @@ public class MainActivity extends BridgeActivity {
 
     /** Keeps the newest `keep` files whose name starts with `prefix`; returns how many were deleted. */
     @JavascriptInterface
-    public int pruneBackups(String treeUri, String subFolder, String prefix, int keep) {
+    public int pruneBackups(String treeUri, String subFolderIn, String prefixIn, int keep) {
       int deleted = 0;
-      subFolder = safeFolderName(subFolder);
-      prefix = safeFileName(prefix);
+      // final: the name filter below is a lambda, which can only capture effectively-final locals
+      final String subFolder = safeFolderName(subFolderIn);
+      final String prefix = safeFileName(prefixIn);
       try {
         ContentResolver cr = getContentResolver();
         if (treeUri != null && !treeUri.isEmpty()) {
