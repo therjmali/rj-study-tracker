@@ -30,6 +30,7 @@ import {
   clearBase, clearMeta, fingerprint, loadBase, loadMeta, readAllLocalSections,
   removeSectionValue, saveBase, saveMeta, writeSectionValue,
 } from './sections';
+import { getConnectivity, subscribeConnectivity } from '../connectivity';
 
 export type SyncPhase =
   | 'disabled'      // no account / no server
@@ -306,6 +307,18 @@ export function startSyncEngine(): void {
     localTimer = setTimeout(() => { void syncNow('local-change'); }, LOCAL_DEBOUNCE_MS);
   };
   const onEndpointChange = () => setState({ endpoint: getCloudEndpoint() });
+
+  // Real connectivity (device online AND cloud answering): pause when offline, sync the moment it recovers.
+  let lastNet = getConnectivity().status;
+  const onNet = () => {
+    const next = getConnectivity().status;
+    const prev = lastNet;
+    lastNet = next;
+    if (next === prev) return;
+    setOnline(next !== 'offline');
+    if (next === 'online' && prev !== 'online' && readAutoSync()) void syncNow('online');
+  };
+  unsubscribers.push(subscribeConnectivity(onNet));
 
   document.addEventListener('visibilitychange', onVisibility);
   window.addEventListener('online', onOnline);

@@ -17,6 +17,17 @@ export function registerServiceWorker(): void {
           });
         };
 
+        // First install: confirm once that the app now opens instantly without internet.
+        if (!navigator.serviceWorker.controller) {
+          navigator.serviceWorker.ready.then(() => {
+            try {
+              if (localStorage.getItem('rj-offline-ready') === '1') return;
+              localStorage.setItem('rj-offline-ready', '1');
+            } catch { /* storage unavailable: still tell them */ }
+            toast.success('Ready for offline use', { id: 'sw-offline-ready', description: 'RJ Tracker now opens instantly, even without internet.', duration: 6000 });
+          }).catch(() => undefined);
+        }
+
         if (reg.waiting && navigator.serviceWorker.controller) promptUpdate(reg.waiting);
 
         reg.addEventListener('updatefound', () => {

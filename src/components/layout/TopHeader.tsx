@@ -1,10 +1,11 @@
 import { isImageAvatar } from '../../lib/avatar';
-import { useState, useEffect, memo } from 'react';
+import { useState, memo } from 'react';
 import { useAppIcon } from '@/platform/appIcon';
 import { Stethoscope, Sun, Moon, Flame, Search, Cloud, CloudOff, Loader2, Bell, Wheat, GraduationCap, X, Contrast } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import type { User, ThemeMode, StudentMode } from '../../types';
 import { getAppName } from '../../lib/brandConfig';
+import ConnectionStatusPill from './ConnectionStatusPill';
 
 interface Props {
   user: User;
@@ -40,19 +41,6 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
   const isGlass = themeMode === 'glass';
   const appName = getAppName(studentMode);
   const [streakBannerDismissed, setStreakBannerDismissed] = useState(false);
-  const [isOnline, setIsOnline] = useState(() => typeof navigator !== 'undefined' ? navigator.onLine : true);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
   const hour = new Date().getHours();
   const showStreakWarning = !streakBannerDismissed && hour >= 18 && todayTopicsDone === 0 && streakDays > 2;
 
@@ -77,44 +65,8 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
 
           {/* Center: Sync + Net + Progress */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Live Online/Offline network status indicator 📶 */}
-            <div
-              className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black border transition-all ${
-                isOnline
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                  : 'border-amber-500/35 bg-amber-500/15 text-amber-600 dark:text-amber-400 animate-pulse'
-              }`}
-              title={isOnline ? 'Online — Connected to Internet' : 'Offline — Changes safely stored locally'}
-            >
-              <span className="text-[11px] leading-none">{isOnline ? '📶' : '📵'}</span>
-              <span className="hidden xs:inline text-[9px] tracking-wide uppercase font-black font-mono">
-                {isOnline ? 'NET' : 'OFF'}
-              </span>
-            </div>
-
-            {/* Sync indicator — clickable */}
-            <button
-              onClick={onOpenCloudData}
-              className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] shadow-[0_8px_18px_-12px_rgba(0,0,0,0.7)] transition-all active:scale-95 ${
-                syncStatus === 'syncing'
-                  ? 'border-primary/20 bg-primary/10 text-primary'
-                  : syncStatus === 'saved'
-                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
-                    : syncStatus === 'error'
-                      ? 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300'
-                      : 'border-border/60 bg-card/40 text-muted-foreground'
-              }`}
-              title={syncStatus === 'syncing' ? 'Cloud sync — syncing…' : syncStatus === 'saved' ? 'Cloud sync — everything is saved' : syncStatus === 'error' ? 'Cloud sync — needs attention' : 'Cloud sync & devices'}
-              aria-label="Open cloud sync"
-            >
-              {syncStatus === 'syncing' && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
-              {syncStatus === 'saved' && <Cloud className="w-3 h-3 text-emerald-600 dark:text-emerald-300" />}
-              {syncStatus === 'error' && <CloudOff className="w-3 h-3 text-red-600 dark:text-red-300" />}
-              {syncStatus === 'idle' && <Cloud className="w-3 h-3 text-muted-foreground" />}
-              <span className="hidden sm:inline">
-                {syncStatus === 'syncing' ? 'Syncing' : syncStatus === 'saved' ? 'Saved' : syncStatus === 'error' ? 'Error' : 'Local'}
-              </span>
-            </button>
+            {/* Unified connection + cloud status (offline / unreachable / syncing / synced) */}
+            <ConnectionStatusPill onClick={onOpenCloudData} />
             {/* Progress bar */}
             <div className="hidden md:flex items-center gap-2">
               <div className="w-16 h-1.5 rounded-full bg-muted/40 overflow-hidden">

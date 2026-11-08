@@ -164,6 +164,8 @@ function friendlyAuthError(err: unknown, fallback: string): CloudError {
 function wireAuthEvents(): void {
   if (eventsWired) return;
   eventsWired = true;
+  // Connection recovered: clear the "using your saved account" notice by re-verifying in the background.
+  window.addEventListener('rj:back-online', () => { if (getSession() && state.offlineNotice) void verifySession(); });
   getSupabase().auth.onAuthStateChange((event, sbSession) => {
     if (event === 'TOKEN_REFRESHED' && sbSession) {
       patchSession({
@@ -180,6 +182,33 @@ function wireAuthEvents(): void {
 }
 
 /* ── lifecycle ───────────────────────────────────────────────────────── */
+
+/**
+ * Instant start: put the cached account on screen synchronously (no network), so the first paint never
+ * waits on a token refresh. initializeCloudAuth() then verifies it in the background.
+ */
+export function seedCloudAuthFromCache(): void {
+  if (booted || state.status !== 'loading') return;
+  const endpoint = getCloudEndpoint();
+  const configured = isCloudConfigured();
+  const kept = getSession();
+  if (!configured) {
+    state = { ...state, status: 'signed-out', user: null, session: null, endpoint, configured };
+    emit();
+    return;
+  }
+  if (kept && kept.endpoint === endpoint) {
+    state = { ...state, status: 'signed-in', user: kept.user, session: kept, endpoint, configured };
+    emit();
+  }
+}
+
+/** Safety net: if the first check has not settled after a few seconds, never leave the app on a loading screen. */
+export function resolveAuthIfStuck(): void {
+  if (state.status !== 'loading') return;
+  state = { ...state, status: getSession() ? 'signed-in' : 'signed-out', user: getSession()?.user ?? null, session: getSession() };
+  emit();
+}
 
 /** Restore the saved session (works offline), then verify it in the background. */
 export async function initializeCloudAuth(): Promise<void> {
@@ -202,8 +231,10 @@ export async function initializeCloudAuth(): Promise<void> {
 
   wireAuthEvents();
   const kept = getSession();
+  let lastError: unknown = null;
   try {
     const { data, error } = await getSupabase().auth.getSession();
+    lastError = error;
     if (data.session) {
       const user = kept?.user ?? await toCloudUser(data.session);
       const session = mirrorSession(data.session, user);
@@ -218,10 +249,14 @@ export async function initializeCloudAuth(): Promise<void> {
       emit();
       return;
     }
-  } catch { /* fall through to signed-out unless we have a cached account */ }
+  } catch (err) { lastError = err; /* fall through to signed-out unless we have a cached account */ }
 
-  if (kept && typeof navigator !== 'undefined' && navigator.onLine === false) {
-    state = { ...state, status: 'signed-in', user: kept.user, session: kept, endpoint, configured, offlineNotice: 'Offline — using your saved account.' };
+  // A flaky network (offline, captive portal, timeout, 5xx) must never sign the student out:
+  // keep the saved account and let the background re-check settle it. Only a definitive
+  // rejection from the server (expired/revoked session) ends the session.
+  const transient = !!lastError && (() => { const c = toCloudError(lastError); return c.code === 'offline' || c.code === 'timeout' || c.status >= 500; })();
+  if (kept && ((typeof navigator !== 'undefined' && navigator.onLine === false) || transient)) {
+    state = { ...state, status: 'signed-in', user: kept.user, session: kept, endpoint, configured, offlineNotice: transient && navigator.onLine !== false ? 'Cloud unreachable — using your saved account.' : 'Offline — using your saved account.' };
     emit();
     return;
   }

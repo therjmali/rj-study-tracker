@@ -55,6 +55,7 @@ npm install
 npm run dev          # app (copy .env.example to .env.local for cloud sync)
 npm run typecheck
 npm run test:server  # API integration tests + three-way merge tests
+npm test             # connectivity/status logic + sync-merge tests
 npm run build        # typecheck + dist/ + Content-Security-Policy check
 npm run audit:prod   # production dependency audit
 ```

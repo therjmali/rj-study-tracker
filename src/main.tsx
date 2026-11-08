@@ -15,7 +15,8 @@ import { installNativeActionDrain } from './platform/nativeActions';
 import { installFocusLog } from './platform/focusLog';
 import { installNativeBridge } from './platform/native';
 import { scheduleDailySnapshot } from './platform/snapshots';
-import { initializeCloudAuth } from './platform/cloud/authStore';
+import { initializeCloudAuth, resolveAuthIfStuck, seedCloudAuthFromCache } from './platform/cloud/authStore';
+import { startConnectivity } from './platform/connectivity';
 import { applyZoom, zoomPagePoint } from './platform/zoom';
 
 const queryClient = new QueryClient();
@@ -41,12 +42,13 @@ function RuntimeErrorFallback({ error }: { error: Error }) {
   );
 }
 
-// Hydrate durable storage first so the app boots with all of the student's data,
-// then restore the cloud session (a cached session means instant offline start).
+// Hydrate durable storage first so the app boots with all of the student's data, then paint immediately:
+// the cached account is shown from local storage, and verifying it with the cloud happens AFTER first paint,
+// so the app opens instantly online, offline or on a dead network.
 bootStorage()
   .catch(() => undefined)
   .then(() => { applyZoom(); }) // durable storage may have restored the saved zoom level
-  .then(() => initializeCloudAuth().catch(() => undefined))
+  .then(() => { seedCloudAuthFromCache(); })
   .finally(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
@@ -68,4 +70,8 @@ bootStorage()
   installNativeActionDrain();
   registerServiceWorker();
   scheduleDailySnapshot();
+  // Background work — never blocks the first paint.
+  void initializeCloudAuth().catch(() => undefined);
+  startConnectivity();
+  window.setTimeout(resolveAuthIfStuck, 4000);
 });

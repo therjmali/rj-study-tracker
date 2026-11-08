@@ -1,5 +1,27 @@
 # Changelog
 
+## 18.4.0 — Instant Start, Offline Intelligence & Security Hardening
+
+**Instant, offline-first start**
+- The app now paints immediately from local data on every launch — online, offline or on a dead network. The cached account is shown at once and verified with the cloud *after* first paint, so a slow token refresh can never hold the splash screen.
+- A flaky network (offline, captive portal, timeout, server hiccup) no longer signs you out of cloud sync. The saved account is kept and re-verified automatically; only a definitive rejection from the server ends the session.
+- First install shows a one-time "Ready for offline use" confirmation.
+
+**Automatic connection awareness (works in the background)**
+- New connectivity monitor: it knows whether the device is online *and* whether the cloud really answers (browser "online" alone can lie). It re-checks the moment you open the app, return from the background, or the network changes; every 45 s while the app is in use; and with a gentle back-off (3 s → 30 s) while offline or unreachable. Nothing runs while the app is in the background, and guests (no account) generate no network traffic.
+- Sync pauses cleanly when offline and starts by itself the moment the connection is back.
+
+**Premium status pill (replaces the NET/Local badges)**
+- One adaptive pill shows the real state at a glance: **Local · Offline (saved on this device, N changes will sync) · Back online · Syncing · N to sync · Synced 2 min ago · Cloud unreachable (retrying) · Auto-sync off · Needs attention**. Tap it to open Cloud sync. Screen readers hear state changes; motion respects "reduce motion".
+- The status logic is pure and unit-tested (`tests/connectivity.test.mjs`); `npm test` now runs it together with the sync-merge tests in CI.
+
+**Security hardening (from 18.3.1)**
+- Android: `allowBackup` disabled with exclude-all data-extraction rules; cleartext HTTP forbidden; the build fails if this is not applied.
+- Content-Security-Policy with a `connect-src` allow-list, no `eval`, no remote scripts; verified after every build (`scripts/check-csp.mjs`, emergency switch `VITE_CSP=off`).
+- Native bridge file/folder names are sanitised; Markdown allows only attribute-free `<mark>`.
+- Supabase: `supabase/hardening-v18.3.1.sql` — invite-only sign-up, size limits, max 20 devices per account.
+- Supply chain: removed unused `zod`, patched `postcss-selector-parser`, Dependabot, read-only deploy workflow, `npm audit` in CI. New `SECURITY.md`; README and Supabase guide rewritten.
+
 ## 18.3.1 — Security & Reliability Hardening
 
 - **Android: no more data leaks through backups.** The Capacitor template shipped `allowBackup="true"`, which let Google Drive auto-backup, `adb backup` and phone-to-phone transfer copy the WebView profile (sign-in session, AI provider keys, all study data). It is now `false`, with exclude-all `dataExtractionRules` / `fullBackupContent`, and cleartext HTTP is forbidden. The APK build fails if these flags are not applied.
