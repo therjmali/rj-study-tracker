@@ -4,7 +4,9 @@
 1. supabase.com → **New project** (free plan). Pick the region nearest you (e.g. Mumbai `ap-south-1`) and save the database password.
 2. **SQL Editor → New query** → paste all of `supabase/schema.sql` → **Run**. (Safe to re-run.)
 3. **Authentication → Providers → Email**: keep *Email* enabled and turn **Confirm email OFF** (the free built-in mailer is rate-limited, so confirmation mails are unreliable for a private app).
-4. Create your ≤10 accounts from the app's *Create account* screen, then **Authentication → Sign In / Providers → turn "Allow new users to sign up" OFF** so nobody else can register.
+4. **SQL Editor → New query** → paste all of `supabase/hardening-v18.3.1.sql` → **Run**. It makes sign-up invite-only (the anon key is public, so otherwise anyone could register and fill your free quota), caps text sizes and limits devices per account. Your existing accounts keep working.
+   To invite someone: `insert into public.allowed_emails (email) values ('friend@example.com');` — they can then use *Create account* in the app.
+5. (Optional, belt and braces) Create your ≤10 accounts from the app's *Create account* screen, then **Authentication → Sign In / Providers → turn "Allow new users to sign up" OFF** so nobody else can register.
 5. **Project Settings → API**: copy the **Project URL** and the **anon / public key** (never the `service_role` key).
 
 ## 2. Connect the app

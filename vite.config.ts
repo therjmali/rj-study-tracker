@@ -2,8 +2,9 @@ import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { buildCsp } from './scripts/csp.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -102,28 +103,58 @@ function pwaAndPagesPlugin(): Plugin {
   };
 }
 
-export default defineConfig(() => ({
-  base: normaliseBase(process.env.VITE_BASE),
-  define: {
-    __APP_VERSION__: JSON.stringify(pkg.version),
-    __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
-  },
-  plugins: [react(), pwaAndPagesPlugin()],
-  resolve: {
-    dedupe: ['react', 'react-dom'],
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-      '@project/components': path.resolve(__dirname, 'packages/components'),
+/**
+ * Replaces the placeholder <meta http-equiv="Content-Security-Policy"> in index.html with the real policy
+ * from scripts/csp.mjs (Supabase origin taken from this build's VITE_SUPABASE_URL).
+ * Escape hatch if a future change needs it: build with VITE_CSP=off.
+ */
+function cspPlugin(supabaseUrl: string, off: boolean): Plugin {
+  return {
+    name: 'rj-csp',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        if (off) return html;
+        const policy = buildCsp({ supabaseUrl });
+        return html.replace(
+          /<meta http-equiv="Content-Security-Policy" content="[^"]*"\s*\/?>/i,
+          `<meta http-equiv="Content-Security-Policy" content="${policy}" />`,
+        );
+      },
     },
-  },
-  build: {
-    target: 'es2020',
-    sourcemap: false,
-    reportCompressedSize: false,
-    chunkSizeWarningLimit: 900,
-  },
-  // `allowedHosts: true` keeps cloud IDE / tunnel previews working (the dev
-  // server is bound to 0.0.0.0 by design). Production is static files only.
-  server: { host: true, port: 5173, allowedHosts: true, proxy: cloudProxy },
-  preview: { host: true, port: 4173, allowedHosts: true, proxy: cloudProxy },
-}));
+  };
+}
+
+export default defineConfig(({ mode }) => {
+  const env = { ...loadEnv(mode, __dirname, 'VITE_'), ...process.env };
+  return {
+    base: normaliseBase(process.env.VITE_BASE),
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version),
+      __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
+    },
+    plugins: [
+      react(),
+      pwaAndPagesPlugin(),
+      cspPlugin(env.VITE_SUPABASE_URL || '', (env.VITE_CSP || '').toLowerCase() === 'off'),
+    ],
+    resolve: {
+      dedupe: ['react', 'react-dom'],
+      alias: {
+        '@': path.resolve(__dirname, 'src'),
+        '@project/components': path.resolve(__dirname, 'packages/components'),
+      },
+    },
+    build: {
+      target: 'es2020',
+      sourcemap: false,
+      reportCompressedSize: false,
+      chunkSizeWarningLimit: 900,
+    },
+    // `allowedHosts: true` keeps cloud IDE / tunnel previews working (the dev
+    // server is bound to 0.0.0.0 by design). Production is static files only.
+    server: { host: true, port: 5173, allowedHosts: true, proxy: cloudProxy },
+    preview: { host: true, port: 4173, allowedHosts: true, proxy: cloudProxy },
+  };
+});

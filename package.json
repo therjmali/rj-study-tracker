@@ -1,6 +1,6 @@
 {
   "name": "rj-study-tracker",
-  "version": "18.3.0",
+  "version": "18.3.1",
   "private": true,
   "description": "RJ Tracker Pro — a private, offline-first study tracker for nursing exam preparation (B.Sc. Nursing, NORCET).",
   "type": "module",
@@ -12,9 +12,10 @@
     "dev:server": "node server/index.mjs",
     "test:server": "node --test server/test/api.test.mjs server/test/merge3.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "build": "tsc -p tsconfig.json --noEmit && vite build && node scripts/check-csp.mjs",
     "build:fast": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "audit:prod": "npm audit --omit=dev --audit-level=high"
   },
   "dependencies": {
     "@capacitor/core": "^8.6.0",
@@ -86,8 +87,7 @@
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7",
     "tiptap-markdown": "^0.9.0",
-    "use-debounce": "10.0.6",
-    "zod": "3.24.2"
+    "use-debounce": "10.0.6"
   },
   "devDependencies": {
     "@capacitor/android": "^8.6.0",
@@ -101,5 +101,8 @@
     "tailwindcss": "^3.4.17",
     "typescript": "~5.7.3",
     "vite": "^8.1.0"
+  },
+  "overrides": {
+    "postcss-selector-parser": "^6.1.5"
   }
 }

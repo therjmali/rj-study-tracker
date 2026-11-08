@@ -1,6 +1,6 @@
 # RJ Tracker Pro
 
-A private, **offline-first study tracker with optional encrypted-in-transit cloud sync** for
+A private, **offline-first study tracker with optional cloud sync (Supabase, TLS in transit, per-user Row-Level Security)** for
 B.Sc. Nursing, NORCET and agriculture exam preparation — syllabus tracking, spaced
 repetition, Focus Timer, analytics, reminders, gamification and an optional AI tutor.
 Runs in the browser, installs as a PWA, and ships as a fully bundled Android APK.
@@ -13,13 +13,14 @@ Runs in the browser, installs as a PWA, and ships as a fully bundled Android APK
 - **Offline is still first.** All data is written to the device before anything is uploaded.
   Sync runs in the background (debounced push, 45-second pull, on reconnect, on app resume).
   Without an account the app works exactly as before — completely local.
-- **Your own cloud.** The sync server is included in this repository (`server/`): one file,
-  zero npm dependencies, accounts hashed with scrypt, rotating refresh tokens, HTTPS-ready,
-  Docker/systemd/nginx instructions. Data is a folder of readable JSON you can back up.
-- **Never lose a write.** Every accepted sync is a restore point (last 20 kept). Pushes name the
+- **Your own free cloud.** Accounts and sync run on your own Supabase project (free tier, up to 10
+  people). Every row is owned by `auth.uid()` and protected by Row-Level Security; clients can only
+  write through the `sync_*` RPCs, which enforce version checks and size limits. Sign-up can be
+  closed to everyone except an invite list (`supabase/hardening-v18.3.1.sql`).
+- **Never lose a write.** Every accepted sync is a restore point (last 10 kept). Pushes name the
   version they merged against; a stale push gets a `409` and is merged instead of overwritten.
 - **Multi-device control.** See every signed-in device with its last activity, rename this one,
-  sign a lost phone out remotely, or end every session by changing the password.
+  and see which device wrote what.
 - **Full local backup & restore** including attachments, portable across devices and hosting
   addresses — independent of cloud sync.
 - **Bulk subject import** from several `.json` files or a `.zip` pack, with preview, duplicate
@@ -30,43 +31,32 @@ Runs in the browser, installs as a PWA, and ships as a fully bundled Android APK
 - **Optional AI tutor** — chat, MCQs, flashcards and plans using *your own* provider key, stored
   only on the device and never synced or included in backups.
 
-## Cloud sync in 60 seconds
+## Cloud sync in 5 minutes
 
-```bash
-# terminal 1 — the sync server (no npm install needed)
-npm run dev:server          # http://127.0.0.1:8787
+1. Create a free Supabase project and run `supabase/schema.sql`, then `supabase/hardening-v18.3.1.sql`
+   in the SQL Editor (both are safe to re-run).
+2. Add repository **variables** `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the anon key is public by design;
+   **never** use the `service_role` key).
+3. Re-run *Deploy to GitHub Pages* and push a `v*` tag for a new APK.
 
-# terminal 2 — the app (proxies /api to the server automatically)
-npm run dev                 # http://localhost:5173
-```
+The full walkthrough, verification steps and how to invite a new person are in
+**[`SUPABASE_SETUP.md`](SUPABASE_SETUP.md)**. Security model and key-rotation steps: **[`SECURITY.md`](SECURITY.md)**.
 
-Open the app, create an account, and repeat on a second device (or a second browser profile) —
-the same email and password gives the same data. Everything else is automatic.
+Without an account the app works exactly as before — completely local. AI provider keys, chat history,
+auto-backup settings and attachments never leave the device.
 
-Production deployment (Docker, Render/Fly/Railway, VPS + nginx, systemd) and the full API are
-documented in **[`server/README.md`](server/README.md)**. For the ready-to-deploy Render Blueprint and
-GitHub Pages account configuration, follow **[`AUTH_SETUP.md`](AUTH_SETUP.md)**.
-
-### Pointing the app at your server
-
-| Where the app runs | How the endpoint is chosen |
-| --- | --- |
-| `npm run dev` / `npm run preview` | `/api` → proxied to `http://127.0.0.1:8787` (override with `CLOUD_DEV_URL`) |
-| Static web build | `VITE_CLOUD_URL` at build time, or the **Sync server** field on the sign-in screen |
-| Android APK | The **Sync server** field (saved on the device — no rebuild). HTTPS is required. |
-
-When `VITE_CLOUD_URL` is unset the web build uses its own origin's `/api`, which is exactly
-what a reverse proxy in front of the sync server should expose.
+> `server/` is the earlier self-hosted sync server. It is no longer used by the app; it is kept only
+> because the three-way-merge tests live there (`npm run test:server`).
 
 ## Develop
 
 ```bash
 npm install
-npm run dev          # app + /api proxy
-npm run dev:server   # sync API only
+npm run dev          # app (copy .env.example to .env.local for cloud sync)
 npm run typecheck
 npm run test:server  # API integration tests + three-way merge tests
-npm run build        # outputs dist/
+npm run build        # typecheck + dist/ + Content-Security-Policy check
+npm run audit:prod   # production dependency audit
 ```
 
 ## Deploy (GitHub Pages)

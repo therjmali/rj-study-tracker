@@ -12,7 +12,8 @@ function rehypeAllowOnlyMark() {
       if (!node.children) return;
       node.children = node.children.filter((child: any) => {
         if (child.type === 'raw') {
-          return /^<\/?mark(\s[^>]*)?>$/i.test(child.value.trim());
+          // Attribute-free tags only: no style/on*/data-* can ride along on a <mark>.
+          return /^<\/?mark\s*>$/i.test(child.value.trim());
         }
         filter(child);
         return true;

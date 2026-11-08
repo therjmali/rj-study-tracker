@@ -1,5 +1,15 @@
 # Changelog
 
+## 18.3.1 — Security & Reliability Hardening
+
+- **Android: no more data leaks through backups.** The Capacitor template shipped `allowBackup="true"`, which let Google Drive auto-backup, `adb backup` and phone-to-phone transfer copy the WebView profile (sign-in session, AI provider keys, all study data). It is now `false`, with exclude-all `dataExtractionRules` / `fullBackupContent`, and cleartext HTTP is forbidden. The APK build fails if these flags are not applied.
+- **Content-Security-Policy with a `connect-src` allow-list** (Supabase + Anthropic/OpenAI/Gemini only), no `eval`, remote scripts blocked, `object-src 'none'`. Verified after every build by `scripts/check-csp.mjs`. Emergency switch: build with `VITE_CSP=off`.
+- **Markdown:** raw HTML is limited to attribute-free `<mark>` / `</mark>` (previously any attributes could ride along).
+- **Native bridge:** file and folder names sent to `saveFile` / `pruneBackups` are sanitised (no path separators, `..`, control characters or over-long names).
+- **Supabase:** new `supabase/hardening-v18.3.1.sql` — invite-only sign-up (public anon key could otherwise be used to create unlimited accounts), column size limits, max 20 devices per account.
+- **Supply chain:** removed unused `zod` (high-severity advisory), pinned patched `postcss-selector-parser`, `npm audit` is clean for production dependencies, Dependabot enabled, the Pages deploy workflow is read-only and no longer contains the `source.zip` auto-commit bootstrap.
+- **Docs:** README and Supabase guide rewritten to match the Supabase architecture (they still described the removed self-hosted server); new `SECURITY.md` with the threat model and key-rotation steps.
+
 ## 18.3.0 — Interactive Subject Mastery & Exam Countdown Widgets, Poster Quick-Resume & Breadcrumb Dropdown
 
 - **Subject Mastery & Live Unit Home Screen Widget (`SubjectWidgetProvider` 4×2):** Added a dedicated native Android AppWidget displaying the active subject's name, short name badge, completion percentage, active unit title, and unit progress. Includes a direct "⚡ Resume Unit ›" launch intent that opens the app straight into that subject's last noted active unit.

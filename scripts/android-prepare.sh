@@ -65,6 +65,16 @@ if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
   sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET" />\n    <application#' "$MANIFEST"
 fi
 
+# Security: Android must never copy the WebView profile (sign-in session, AI keys, all study data) to Google Drive
+# backups, adb backup or phone-to-phone transfer. The Capacitor template ships allowBackup="true", so replace it,
+# attach explicit exclude-all rules, and forbid cleartext HTTP. Fail the build if the result is not what we expect.
+if ! grep -q 'rj_data_extraction_rules' "$MANIFEST"; then
+  sed -i 's#android:allowBackup="true"#android:allowBackup="false"\n        android:dataExtractionRules="@xml/rj_data_extraction_rules"\n        android:fullBackupContent="@xml/rj_backup_rules"\n        android:usesCleartextTraffic="false"#' "$MANIFEST"
+fi
+grep -q 'android:allowBackup="false"' "$MANIFEST" || { echo "::error::allowBackup is not disabled in the manifest"; exit 1; }
+grep -q 'rj_data_extraction_rules' "$MANIFEST" || { echo "::error::data extraction rules are not attached"; exit 1; }
+[ -f android/app/src/main/res/xml/rj_data_extraction_rules.xml ] && [ -f android/app/src/main/res/xml/rj_backup_rules.xml ] || { echo "::error::backup rule files were not copied"; exit 1; }
+
 # Version
 GRADLE=android/app/build.gradle
 sed -i -E "s/versionCode [0-9]+/versionCode ${VERSION_CODE}/; s/versionName \"[^\"]*\"/versionName \"${VERSION_NAME}\"/" "$GRADLE"

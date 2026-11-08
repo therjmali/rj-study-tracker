@@ -24,6 +24,10 @@ jobs:
 
       - run: npm ci
 
+      - name: Dependency audit (production, high+; informational)
+        run: npm run audit:prod
+        continue-on-error: true
+
       - name: Verify (types + sync server & merge tests)
         run: |
           npm run typecheck

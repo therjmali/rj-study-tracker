@@ -179,6 +179,24 @@ public class MainActivity extends BridgeActivity {
     wv.post(() -> wv.evaluateJavascript(script, null));
   }
 
+  /**
+   * File names and folders arrive from the web layer. Never let them carry path separators or "..":
+   * on Android 8/9 the name is used to build a java.io.File, and on newer versions it becomes a MediaStore path.
+   */
+  private static String safeFileName(String name) {
+    String s = name == null ? "" : name.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_").trim();
+    while (s.startsWith(".")) s = s.substring(1);
+    if (s.isEmpty()) s = "backup.json";
+    return s.length() > 120 ? s.substring(0, 120) : s;
+  }
+
+  private static String safeFolderName(String folder) {
+    String s = folder == null ? "" : folder.replaceAll("[^A-Za-z0-9 _.-]", "_").trim();
+    while (s.startsWith(".")) s = s.substring(1);
+    if (s.isEmpty()) s = "RJ Tracker Backups";
+    return s.length() > 60 ? s.substring(0, 60) : s;
+  }
+
   private static String clean(String v) {
     return v == null ? "" : v.replaceAll("[^A-Za-z0-9_\\-]", "");
   }
@@ -466,6 +484,9 @@ public class MainActivity extends BridgeActivity {
     @JavascriptInterface
     public String saveFile(String name, String mime, String base64, String treeUri, String subFolder) {
       try {
+        name = safeFileName(name);
+        subFolder = safeFolderName(subFolder);
+        if (mime == null || mime.isEmpty()) mime = "application/octet-stream";
         byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
         ContentResolver cr = getContentResolver();
 
@@ -514,6 +535,8 @@ public class MainActivity extends BridgeActivity {
     @JavascriptInterface
     public int pruneBackups(String treeUri, String subFolder, String prefix, int keep) {
       int deleted = 0;
+      subFolder = safeFolderName(subFolder);
+      prefix = safeFileName(prefix);
       try {
         ContentResolver cr = getContentResolver();
         if (treeUri != null && !treeUri.isEmpty()) {
