@@ -18,6 +18,12 @@ export default function AiFab({ onOpenAi, onOpenQuickComplete, onOpenPomodoro, t
   onOpenAi: () => void; onOpenQuickComplete: () => void; onOpenPomodoro: () => void; timerRunning: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [hubOpen, setHubOpen] = useState(false);
+  useEffect(() => {
+    const on = (e: Event) => setHubOpen(!!(e as CustomEvent<boolean>).detail);
+    window.addEventListener('rj:hub-open', on);
+    return () => window.removeEventListener('rj:hub-open', on);
+  }, []);
   const conn = useConnectivity();
   const configured = useSyncExternalStore(subscribeAiSettings, () => isAiConfigured(getAiSettings()), () => false);
   const timer = useRef<number | null>(null);
@@ -59,7 +65,7 @@ export default function AiFab({ onOpenAi, onOpenQuickComplete, onOpenPomodoro, t
   const label = !configured ? 'AI Tutor — add a key to start' : conn.status === 'online' ? 'AI Tutor' : 'AI Tutor — offline';
 
   return (
-    <div className="fixed bottom-[6rem] right-4 z-[55] flex flex-col items-center gap-2 lg:bottom-6 lg:right-6">
+    <div className={`fixed bottom-[8.9rem] right-3 z-[55] flex flex-col items-center gap-2 transition-opacity duration-150 sm:bottom-[9.9rem] sm:right-6 ${hubOpen ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
       <AnimatePresence>
         {expanded && (
           <>

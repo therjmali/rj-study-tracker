@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { Activity, Timer, TrendingUp, Target } from 'lucide-react';
 import type { Subject, DailyLog } from '../../types';
 import { formatStudyTime, readableInk } from '../../lib/utils';
@@ -92,28 +92,39 @@ export default function PerformanceMetrics({ subjects, dailyLogs }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Avg Time per Difficulty */}
-        <GlowCard className="p-4" paper>
+        <GlowCard className="p-3 sm:p-4" paper>
           <div className="flex items-center gap-1.5 mb-3">
             <Timer className="w-3.5 h-3.5 text-primary" />
             <span className="text-xs font-bold text-foreground">Avg Time per Difficulty</span>
           </div>
-          <ResponsiveContainer width="100%" height={120}>
-            <BarChart data={timeByDifficulty} barSize={28}>
-              <XAxis dataKey="difficulty" tick={{ fontSize: 10, fontWeight: 700, fill: 'hsl(var(--foreground))' }} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} unit="m" />
-              <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 10, fontSize: 11 }}
-                formatter={(val: number) => [`${val} min`, 'Avg Time']} />
-              <Bar dataKey="avgTime" radius={[6, 6, 0, 0]}>
-                {timeByDifficulty.map((d, i) => (
-                  <Cell key={i} fill={DIFF_COLORS[d.difficulty]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {timeByDifficulty.every(d => d.avgTime === 0) ? (
+            <p className="py-8 text-center text-[11px] text-muted-foreground">Log study time on completed topics to see how long each difficulty takes.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={150}>
+              <BarChart data={timeByDifficulty} barSize={34} margin={{ top: 18, right: 8, left: 0, bottom: 0 }}>
+                <XAxis dataKey="difficulty" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: 'hsl(var(--foreground))' }} />
+                <YAxis width={38} axisLine={false} tickLine={false} allowDecimals={false} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} unit="m" />
+                {/* No grey hover band over the bars; the tooltip floats above them and the values are printed on the bars anyway */}
+                <Tooltip
+                  cursor={false}
+                  offset={16}
+                  wrapperStyle={{ outline: 'none', zIndex: 30, pointerEvents: 'none' }}
+                  contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 12, fontSize: 11, padding: '6px 10px' }}
+                  formatter={(val: number) => [`${val} min`, 'Avg time']}
+                />
+                <Bar dataKey="avgTime" radius={[8, 8, 0, 0]} isAnimationActive={false}>
+                  {timeByDifficulty.map((d, i) => (
+                    <Cell key={i} fill={DIFF_COLORS[d.difficulty]} />
+                  ))}
+                  <LabelList dataKey="avgTime" position="top" formatter={(v: number) => (v > 0 ? `${v}m` : '')} style={{ fontSize: 10, fontWeight: 800, fill: 'hsl(var(--foreground))' }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </GlowCard>
 
         {/* Consistency Score */}
-        <GlowCard className="p-4 flex flex-col items-center justify-center" paper>
+        <GlowCard className="p-3 sm:p-4 flex flex-col items-center justify-center" paper>
           <div className="flex items-center gap-1.5 mb-2">
             <Target className="w-3.5 h-3.5 text-accent" />
             <span className="text-xs font-bold text-foreground">30-Day Consistency</span>
@@ -139,7 +150,7 @@ export default function PerformanceMetrics({ subjects, dailyLogs }: Props) {
       </div>
 
       {/* Predicted Completion */}
-      <GlowCard className="p-4" paper>
+      <GlowCard className="p-3 sm:p-4" paper>
         <div className="flex items-center gap-1.5 mb-3">
           <TrendingUp className="w-3.5 h-3.5 text-primary" />
           <span className="text-xs font-bold text-foreground">Predicted Completion</span>
@@ -147,9 +158,9 @@ export default function PerformanceMetrics({ subjects, dailyLogs }: Props) {
         </div>
         <div className="space-y-2">
           {predictions.map(p => (
-            <div key={p.name} className="flex items-center gap-2.5">
+            <div key={p.name} className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <span className="text-[10px] font-bold w-10 truncate" style={{ color: readableInk(p.color) }}>{p.name}</span>
-              <div className="flex-1 h-1.5 rounded-full bg-muted/30 overflow-hidden">
+              <div className="h-1.5 min-w-[72px] flex-1 overflow-hidden rounded-full bg-muted/30">
                 <div className="h-full rounded-full transition-all" style={{
                   width: `${p.total > 0 ? (p.done / p.total) * 100 : 0}%`,
                   backgroundColor: p.color,
@@ -168,7 +179,7 @@ export default function PerformanceMetrics({ subjects, dailyLogs }: Props) {
 
       {/* Subject Efficiency */}
       {subjectEfficiency.some(s => s.hoursInvested > 0) && (
-        <GlowCard className="p-4" paper>
+        <GlowCard className="p-3 sm:p-4" paper>
           <span className="text-xs font-bold text-foreground flex items-center gap-1.5 mb-3">
             <Activity className="w-3.5 h-3.5 text-secondary" /> Subject Efficiency
             <span className="text-[8px] text-muted-foreground font-normal ml-1">(completion% per hour invested)</span>

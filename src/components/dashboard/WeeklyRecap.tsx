@@ -71,7 +71,7 @@ export default function WeeklyRecap({ subjects, dailyLogs, dbSessions }: Props) 
   ];
 
   return (
-    <GlowCard glow="purple" paper className="p-4">
+    <GlowCard glow="purple" paper className="p-3 sm:p-4">
       <div className="flex items-center gap-2 mb-3">
         <Calendar className="w-4 h-4 text-accent" />
         <h3 className="text-sm font-bold text-foreground">📅 Weekly Recap</h3>

@@ -871,15 +871,15 @@ export default function UnitDetailView({
         <div className="mt-4 relative overflow-hidden">
           <AnimatePresence>
             {hasPrev && (
-              <motion.div className="absolute left-0 top-0 bottom-0 w-10 z-10 flex items-center justify-center pointer-events-none"
-                initial={{ opacity: 0 }} animate={{ opacity: 0.4 }} exit={{ opacity: 0 }}>
-                <div className="w-1.5 h-12 rounded-full bg-accent/40" />
+              <motion.div className="absolute left-0 top-0 bottom-0 z-10 flex w-3 items-center justify-start pl-0.5 pointer-events-none"
+                initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} exit={{ opacity: 0 }}>
+                <div className="h-8 w-1 rounded-full bg-accent/50" />
               </motion.div>
             )}
             {hasNext && (
-              <motion.div className="absolute right-0 top-0 bottom-0 w-10 z-10 flex items-center justify-center pointer-events-none"
-                initial={{ opacity: 0 }} animate={{ opacity: 0.4 }} exit={{ opacity: 0 }}>
-                <div className="w-1.5 h-12 rounded-full bg-accent/40" />
+              <motion.div className="absolute right-0 top-0 bottom-0 z-10 flex w-3 items-center justify-end pr-0.5 pointer-events-none"
+                initial={{ opacity: 0 }} animate={{ opacity: 0.5 }} exit={{ opacity: 0 }}>
+                <div className="h-8 w-1 rounded-full bg-accent/50" />
               </motion.div>
             )}
           </AnimatePresence>

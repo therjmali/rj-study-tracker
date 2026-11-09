@@ -8,8 +8,8 @@
     <string name="rj_widget_study_desc">Track today\'s study hours, syllabus progress, and active streak from your home screen.</string>
     <string name="rj_widget_focus_name">RJ Study Tracker - Quick Focus Timer</string>
     <string name="rj_widget_focus_desc">Quick launch focus timer and live session tracker.</string>
-    <string name="rj_widget_subject_name">RJ Study Tracker - Subject &amp; Unit Mastery</string>
-    <string name="rj_widget_subject_desc">One-tap jump into your active subject and last noted unit.</string>
+    <string name="rj_widget_subject_name">RJ Study Tracker - Subjects (you choose)</string>
+    <string name="rj_widget_subject_desc">Choose the subjects you want and see their progress at a glance — tap one to jump straight in.</string>
     <string name="rj_widget_exam_name">RJ Study Tracker - Exam Countdown &amp; Pace</string>
     <string name="rj_widget_exam_desc">Real-time exam countdown and required daily study pace.</string>
 </resources>

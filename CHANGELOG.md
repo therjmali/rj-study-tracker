@@ -1,5 +1,24 @@
 # Changelog
 
+## 18.6.0 — Smooth & Spacious: widgets you control, zero-lag mode, cleaner analytics
+
+**Home-screen widgets**
+- **Subject widget: you choose the subjects.** Adding the widget (or long-press → reconfigure) opens a picker; tick any subjects, or leave it on *Auto* to follow the subject you are studying. The widget lists as many subjects as its height allows (up to five, each with its own progress bar and active unit) and shows "+N more" when you could resize it taller. Tap a subject to jump straight into it.
+- All four widgets now use the Vyxel look (graphite card, violet → teal progress).
+
+**Zero-lag performance**
+- New **Settings → Appearance → Performance**: *Auto* (default), *Smooth* or *Full effects*. Smooth removes backdrop blur, big shadows and looping animations — the usual cause of stutter on phones with large syllabi. Auto turns Smooth on by itself for weak devices, data-saver, reduced-motion, or if it measures real scrolling dropping frames.
+- Heavy blur blobs and the 3-D flip filter were replaced with static gradients and a flat control; off-screen analytics cards no longer cost layout or paint until you scroll to them.
+
+**Analytics & Trends — wider, calmer, no overlap**
+- Time filter is now five equal columns (All Time · Today · Weekly · Monthly · Custom) with a live sub-label each — no sideways scrolling, nothing clipped, the picked week or month stays highlighted. Subject chips wrap into a responsive grid instead of running off the edge.
+- Study Report header reorganised (title, range, then chips) so nothing is squeezed into a narrow column; cards use the full width with tighter padding; Weekly Recap and Study Velocity sit side by side on tablets and in landscape.
+- "Avg time per difficulty" chart: no grey hover band over the bars, the tooltip floats above, values are printed on the bars, and an empty state explains itself.
+
+**Live Study widget & buttons**
+- Tapping anywhere outside the open Live Study widget (or pressing Back/Esc) closes it. The AI button now sits above the timer pill instead of covering it, and hides while that panel is open.
+- Header: the PRO badge hides on narrow phones so the app name has room. The unit card's swipe hints moved to the card edges.
+
 ## 18.5.0 — Vyxel Theme, AI Partners, In-App Updates
 
 **New look: Vyxel theme**

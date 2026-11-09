@@ -59,6 +59,11 @@ if ! grep -q "StudyWidgetProvider" "$MANIFEST"; then
   sed -i 's#</application>#    <receiver android:name=".StudyWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_study_widget_info" />\n    </receiver>\n    <receiver android:name=".FocusWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_focus_widget_info" />\n    </receiver>\n    <receiver android:name=".SubjectWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_subject_widget_info" />\n    </receiver>\n    <receiver android:name=".ExamWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_exam_widget_info" />\n    </receiver>\n    </application>#' "$MANIFEST"
 fi
 
+# Subject widget configuration screen (pick which subjects the widget shows; also reachable via the launcher's "reconfigure")
+if ! grep -q "SubjectWidgetConfigActivity" "$MANIFEST"; then
+  sed -i 's#</application>#    <activity android:name=".SubjectWidgetConfigActivity" android:exported="true" android:theme="@android:style/Theme.Translucent.NoTitleBar" android:excludeFromRecents="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />\n        </intent-filter>\n    </activity>\n    </application>#' "$MANIFEST"
+fi
+
 # Cloud sync: the bundled WebView must be allowed to reach the sync server.
 # (Capacitor templates already include this; re-assert it so a template change cannot break sync.)
 # In-app updates: lets the student confirm installing the downloaded update (Android still asks each time).

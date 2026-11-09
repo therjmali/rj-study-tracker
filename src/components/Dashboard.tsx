@@ -272,10 +272,10 @@ export default function Dashboard({
 
       {/* ═══ 7. ANALYTICS & TRENDS — Collapsible ═══ */}
       {/* cv-auto enables content-visibility for off-screen perf */}
-      <div className="relative rounded-3xl border border-border/20 bg-card/45 backdrop-blur-md shadow-lg overflow-hidden">
+      <div className="cv-auto relative overflow-hidden rounded-3xl border border-border/20 bg-card/60 shadow-md">
         <button
           onClick={() => setAnalyticsOpen(p => !p)}
-          className="w-full flex items-center gap-3 p-4 text-left hover:bg-card/30 transition-colors active:scale-[0.998]"
+          className="flex w-full items-center gap-3 p-3 text-left transition-colors active:bg-card/30 sm:p-4"
         >
           <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center shrink-0">
             <BarChart3 className="w-4 h-4 text-primary" />
@@ -300,7 +300,7 @@ export default function Dashboard({
               transition={{ type: 'spring', damping: 28, stiffness: 350 }}
               className="overflow-hidden"
             >
-              <div className="px-4 pb-4 space-y-3">
+              <div className="space-y-3 px-2 pb-3 sm:px-4 sm:pb-4">
                 {/* ── INLINE FILTERS ── */}
                 <InlineFilters
                   timeFilter={timeFilter} onTimeFilterChange={onTimeFilterChange}
@@ -344,13 +344,12 @@ export default function Dashboard({
                   externalSubjectFilter={subjectFilter}
                 />
 
-                {/* Weekly Recap */}
-                <WeeklyRecap subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} />
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {/* Weekly Recap + Velocity side by side on wide screens, stacked on phones */}
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  <WeeklyRecap subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} />
                   <StudyVelocity subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} />
-                  <PerformanceMetrics subjects={subjects} dailyLogs={dailyLogs} />
                 </div>
+                <PerformanceMetrics subjects={subjects} dailyLogs={dailyLogs} />
               </div>
             </motion.div>
           )}
@@ -408,7 +407,7 @@ function InlineFilters({
   };
 
   return (
-    <div className="space-y-2 rounded-xl border border-border/15 bg-card/20 p-3">
+    <div className="space-y-2.5 rounded-2xl border border-border/15 bg-card/20 p-2 sm:p-3">
       {/* Time pills with flip animation */}
       <TimeFilterPills
         timeFilter={timeFilter}
@@ -449,7 +448,7 @@ function InlineFilters({
             {isAll ? '✓ All' : 'Select All'}
           </button>
         </div>
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide flex-nowrap pb-0.5">
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
           {subjects.map(s => {
             const active = isAll || selectedIds.has(s.id);
             const allTopics = s.units.flatMap(u => u.subTopics);
@@ -458,15 +457,15 @@ function InlineFilters({
             const hrs = Math.round(allTopics.reduce((a, t) => a + (t.timeSpent || 0), 0) / 60 * 10) / 10;
             return (
               <button key={s.id} onClick={() => toggleSubject(s.id)}
-                className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border transition-all text-left shrink-0 ${
+                className={`relative flex min-w-0 items-center gap-2 px-2.5 py-2 rounded-xl border transition-colors text-left ${
                   active
                     ? 'bg-card/60 border-border/30 shadow-sm'
                     : 'bg-card/15 border-border/10 opacity-45 hover:opacity-70'
                 }`}>
                 <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                 <div className="min-w-0">
-                  <span className={`text-[10px] font-bold block leading-tight whitespace-nowrap ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{s.shortName}</span>
-                  <span className="text-[7px] font-mono text-muted-foreground leading-none whitespace-nowrap">{pct}% · {formatStudyHours(hrs)}</span>
+                  <span className={`text-[11px] font-bold block leading-tight truncate ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{s.shortName}</span>
+                  <span className="mt-0.5 block truncate text-[9px] font-mono text-muted-foreground leading-none">{pct}% · {formatStudyHours(hrs)}</span>
                 </div>
               </button>
             );

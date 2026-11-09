@@ -1,6 +1,6 @@
 {
   "name": "rj-study-tracker",
-  "version": "18.5.0",
+  "version": "18.6.0",
   "private": true,
   "description": "RJ Tracker Pro \u2014 a private, offline-first study tracker for nursing exam preparation (B.Sc. Nursing, NORCET).",
   "type": "module",

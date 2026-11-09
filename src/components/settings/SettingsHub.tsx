@@ -12,6 +12,7 @@ import ReminderManager from '../reminders/ReminderManager';
 import OverviewTab from '../profile/OverviewTab';
 import AiDevicePanel from '../platform/AiDevicePanel';
 import UpdatePanel from '../platform/UpdatePanel';
+import PerformanceSettings from './PerformanceSettings';
 import AppIconPanel from '../platform/AppIconPanel';
 import NotificationsPanel from '../platform/NotificationsPanel';
 import AutoBackupPanel from '../platform/AutoBackupPanel';
@@ -65,7 +66,7 @@ export interface SettingsHubProps {
 
 export type ItemId =
   | 'analytics' | 'achievements'
-  | 'displayMode' | 'accent' | 'textLayout' | 'zoom'
+  | 'displayMode' | 'perfMode' | 'accent' | 'textLayout' | 'zoom'
   | 'studentMode' | 'goals' | 'exams' | 'srs'
   | 'pomodoroTool' | 'pomodoroPrefs'
   | 'reminders'
@@ -103,6 +104,7 @@ const CATEGORIES: CategoryMeta[] = [
   {
     id: 'appearance', icon: '🎨', title: 'Appearance & Display', subtitle: 'Theme, accent colour, text size and layout',
     items: [
+      { id: 'perfMode', icon: '⚡', title: 'Performance', description: 'Smooth mode for zero lag — Auto, Smooth or Full effects', keywords: ['performance', 'lag', 'smooth', 'fast', 'slow', 'blur', 'battery', 'fps', 'jank', 'speed'] },
       { id: 'displayMode', icon: '🌗', title: 'Display Mode', description: 'Vyxel, Vyxel Dark, Parchment, Ink or Papyrus — light and dark themes', keywords: ['theme', 'dark', 'light', 'mode', 'amoled', 'night', 'parchment', 'ink', 'papyrus', 'sepia', 'ancient'] },
       { id: 'accent', icon: '🎨', title: 'Accent Colour', description: 'The highlight colour used across the app', keywords: ['color', 'colour', 'accent', 'palette', 'tint', 'highlight'] },
       { id: 'zoom', icon: '🔍', title: 'Zoom', description: 'Zoom the whole app in or out, with a live preview', keywords: ['zoom', 'scale', 'magnify', 'bigger', 'smaller', 'larger', 'enlarge', 'shrink', 'size', 'tablet', 'landscape', 'display', 'percent', 'fit', 'whole app', 'everything', 'preview', 'pinch', 'in', 'out'] },
@@ -294,6 +296,7 @@ export default function SettingsHub(props: SettingsHubProps) {
     switch (id) {
       case 'analytics': return <OverviewTab subjects={subjects} dailyLogs={dailyLogs} stats={stats} dbSessions={dbSessions} />;
       case 'achievements': return <GamificationPanel subjects={subjects} dailyLogs={dailyLogs} onPomodoroComplete={props.onPomodoroComplete} pomodoroSettings={settings.pomodoroSettings} initialTab={initialSection === 'achievements' ? 'overview' : 'achievements'} dbSessions={dbSessions} />;
+      case 'perfMode': return <PerformanceSettings />;
       case 'displayMode': return <DisplayModeSettings settings={settings} onUpdate={onUpdateSettings} />;
       case 'accent': return <AccentColorSettings settings={settings} onUpdate={onUpdateSettings} />;
       case 'textLayout': return <TextLayoutSettings settings={settings} onUpdate={onUpdateSettings} />;

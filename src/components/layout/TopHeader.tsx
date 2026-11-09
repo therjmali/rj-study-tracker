@@ -66,7 +66,7 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
             <button onClick={onNavigateHome} className="font-heading text-foreground text-[15px] sm:text-[16px] font-black tracking-tight hover:text-primary transition-colors truncate min-w-[3.25rem]">
               {appName}
             </button>
-            <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-black leading-none border border-primary/15 shrink-0 tracking-widest uppercase">PRO</span>
+            <span className="hidden min-[430px]:inline-block text-[8px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-black leading-none border border-primary/15 shrink-0 tracking-widest uppercase">PRO</span>
           </div>
 
           {/* Center: Sync + Net + Progress */}

@@ -1425,6 +1425,21 @@ function AppInner() {
       }
     }
 
+    // Every subject, compactly — the Subject widget's picker lets the student choose which ones to show.
+    const widgetSubjects: import('./platform/widgetSync').ActiveSubjectWidgetData[] = appState.subjects.map(sub => {
+      let done = 0, tot = 0;
+      sub.units.forEach(u => u.subTopics.forEach(t => { tot++; if (t.completed) done++; }));
+      const unit = getLastActiveUnit(sub);
+      let uDone = 0, uTot = 0;
+      if (unit) { uTot = unit.subTopics.length; uDone = unit.subTopics.filter(t => t.completed).length; }
+      return {
+        id: sub.id, name: sub.name, shortName: sub.shortName, icon: sub.icon, color: sub.color,
+        percent: tot > 0 ? Math.round((done / tot) * 100) : 0, completedTopics: done, totalTopics: tot,
+        activeUnitId: unit?.id, activeUnitName: unit ? unit.name.replace(/^Unit\s+\d+\s*:\s*/i, '') : undefined,
+        activeUnitPercent: uTot > 0 ? Math.round((uDone / uTot) * 100) : 0,
+      };
+    });
+
     // Pick upcoming exam target for the Exam Countdown widget
     let examData: import('./platform/widgetSync').ExamWidgetData | undefined;
     const exams = appState.semesterConfig?.exams || [];
@@ -1454,6 +1469,7 @@ function AppInner() {
       activeTimer: timerState.active,
       timerDisplay: timerState.active ? (timerState.appMode === 'stopwatch' ? '⏱ Running' : '⏳ Running') : '25:00',
       activeSubject: activeSubjectData,
+      subjects: widgetSubjects,
       examTarget: examData,
     });
   }, [appState.subjects, appState.dailyLogs, appState.semesterConfig?.exams, dbSessions, stats.streak, stats.pct, settings.studyGoals, timerState.active, timerState.appMode]);

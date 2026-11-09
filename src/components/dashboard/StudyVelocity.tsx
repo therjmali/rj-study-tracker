@@ -47,7 +47,7 @@ export default function StudyVelocity({ subjects, dailyLogs, dbSessions }: Props
   }, [subjects, dailyLogs, today, dbSessions]);
 
   return (
-    <GlowCard glow="cyan" paper className="p-4">
+    <GlowCard glow="cyan" paper className="p-3 sm:p-4">
       <div className="flex items-center gap-2 mb-3">
         <Zap className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-bold text-foreground">⚡ Study Velocity</h3>

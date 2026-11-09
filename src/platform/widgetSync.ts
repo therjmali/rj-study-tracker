@@ -35,6 +35,8 @@ export interface WidgetStats {
   activeTimer: boolean;
   timerDisplay?: string;
   activeSubject?: ActiveSubjectWidgetData;
+  /** Every subject, so the Subject widget's picker can offer them. */
+  subjects?: ActiveSubjectWidgetData[];
   examTarget?: ExamWidgetData;
 }
 

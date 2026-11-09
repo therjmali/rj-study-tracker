@@ -1618,3 +1618,28 @@ html.vyxel-mode.light-mode .gradient-multi {
 @media (prefers-reduced-motion: reduce) {
   html.vyxel-mode button:active { transition-timing-function: linear; }
 }
+
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Performance mode ("Smooth"): removes the effects that cost the most GPU time on phones —
+   backdrop blur, big blurred blobs, large shadows and looping animations. Turned on from
+   Settings → Performance, or automatically on weak devices / when scrolling is measured to stutter.
+   ════════════════════════════════════════════════════════════════════════════ */
+html.perf-lite *,
+html.perf-lite *::before,
+html.perf-lite *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html.perf-lite [class*="blur-"]:not([class*="backdrop-blur"]) { filter: none !important; }
+html.perf-lite .animate-pulse,
+html.perf-lite .animate-ping,
+html.perf-lite .animate-bounce { animation: none !important; }
+html.perf-lite .shadow-2xl, html.perf-lite .shadow-xl, html.perf-lite .shadow-lg,
+html.perf-lite .glass-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16) !important; }
+html.perf-lite body::before { display: none !important; }
+html.perf-lite .glass-card, html.perf-lite .glass-subtle, html.perf-lite .glass-nav, html.perf-lite .glass-header { will-change: auto !important; }
+html.perf-lite * { scroll-behavior: auto !important; }
+
+/* Big data: off-screen cards skip layout/paint until they scroll near the viewport (any mode). */
+.cv-auto { content-visibility: auto; contain-intrinsic-size: auto 320px; }

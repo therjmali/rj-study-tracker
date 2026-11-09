@@ -4,46 +4,29 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/rj_widget_bg"
-    android:padding="13dp">
+    android:padding="12dp">
 
-    <!-- Header: Subject Short Name Badge + Subject Name + Completion Pill -->
+    <!-- Header: title + average completion of the chosen subjects -->
     <LinearLayout
-        android:id="@+id/rj_widget_subj_header"
+        android:id="@+id/rj_subj_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
         <TextView
-            android:id="@+id/rj_widget_subject_badge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/rj_widget_pill"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="2dp"
-            android:paddingBottom="2dp"
-            android:text="FON"
-            android:textColor="#38BDF8"
-            android:textSize="11sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/rj_widget_subject_name"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:text="Foundations of Nursing"
-            android:textColor="#F1F5F9"
-            android:textSize="12sp"
-            android:textStyle="bold"
+            android:letterSpacing="0.08"
             android:singleLine="true"
-            android:ellipsize="end" />
+            android:text="SUBJECT MASTERY"
+            android:textColor="#CAC4CF"
+            android:textSize="9sp"
+            android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/rj_widget_subject_percent"
+            android:id="@+id/rj_subj_summary"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@drawable/rj_widget_pill"
@@ -51,92 +34,446 @@
             android:paddingEnd="8dp"
             android:paddingTop="2dp"
             android:paddingBottom="2dp"
-            android:text="0%"
-            android:textColor="#34D399"
-            android:textSize="11sp"
+            android:text="—"
+            android:textColor="#4EDBD4"
+            android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Middle: Active Unit & Stats -->
+    <!-- Up to five subject rows; the provider shows as many as the widget is tall enough for -->
     <LinearLayout
-        android:id="@+id/rj_widget_subj_middle"
+        android:id="@+id/rj_subj_rows"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/rj_widget_subj_header"
-        android:layout_marginTop="8dp"
+        android:layout_below="@id/rj_subj_header"
+        android:layout_marginTop="4dp"
         android:orientation="vertical">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="LAST ACTIVE UNIT"
-            android:textColor="#94A3B8"
-            android:textSize="9sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.06" />
-
-        <TextView
-            android:id="@+id/rj_widget_subject_unit_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="1dp"
-            android:text="Unit 1: Introduction to Health &amp; Illness"
-            android:textColor="#FFFFFF"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:singleLine="true"
-            android:ellipsize="end" />
-
-        <TextView
-            android:id="@+id/rj_widget_subject_unit_stats"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="1dp"
-            android:text="0 / 0 Topics (0%)"
-            android:textColor="#64748B"
-            android:textSize="10sp"
-            android:textStyle="normal"
-            android:singleLine="true" />
-    </LinearLayout>
-
-    <!-- Bottom: Progress Bar + Action CTA -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:orientation="vertical">
-
-        <ProgressBar
-            android:id="@+id/rj_widget_subject_progress"
-            style="@android:style/Widget.ProgressBar.Horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="5dp"
-            android:progress="0"
-            android:max="100"
-            android:progressDrawable="@drawable/rj_progress" />
 
         <LinearLayout
+            android:id="@+id/rj_subj_row1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:orientation="horizontal">
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:visibility="gone">
 
             <TextView
-                android:layout_width="0dp"
+                android:id="@+id/rj_subj_badge1"
+                android:layout_width="44dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Tap to resume active unit"
-                android:textColor="#64748B"
-                android:textSize="9sp"
-                android:singleLine="true" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="⚡ Resume Unit ›"
-                android:textColor="#E0764F"
+                android:background="@drawable/rj_widget_pill"
+                android:gravity="center"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:singleLine="true"
+                android:text="SUBJ"
+                android:textColor="#CBBEFF"
                 android:textSize="10sp"
                 android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="9dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/rj_subj_name1"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:singleLine="true"
+                        android:text="Subject"
+                        android:textColor="#E4E1E9"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/rj_subj_pct1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="0%"
+                        android:textColor="#4EDBD4"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/rj_subj_meta1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="0 / 0 topics"
+                    android:textColor="#CAC4CF"
+                    android:textSize="9sp" />
+
+                <ProgressBar
+                    android:id="@+id/rj_subj_bar1"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:layout_marginTop="3dp"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressDrawable="@drawable/rj_progress" />
+            </LinearLayout>
         </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rj_subj_row2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/rj_subj_badge2"
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/rj_widget_pill"
+                android:gravity="center"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:singleLine="true"
+                android:text="SUBJ"
+                android:textColor="#CBBEFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="9dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/rj_subj_name2"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:singleLine="true"
+                        android:text="Subject"
+                        android:textColor="#E4E1E9"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/rj_subj_pct2"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="0%"
+                        android:textColor="#4EDBD4"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/rj_subj_meta2"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="0 / 0 topics"
+                    android:textColor="#CAC4CF"
+                    android:textSize="9sp" />
+
+                <ProgressBar
+                    android:id="@+id/rj_subj_bar2"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:layout_marginTop="3dp"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressDrawable="@drawable/rj_progress" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rj_subj_row3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/rj_subj_badge3"
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/rj_widget_pill"
+                android:gravity="center"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:singleLine="true"
+                android:text="SUBJ"
+                android:textColor="#CBBEFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="9dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/rj_subj_name3"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:singleLine="true"
+                        android:text="Subject"
+                        android:textColor="#E4E1E9"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/rj_subj_pct3"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="0%"
+                        android:textColor="#4EDBD4"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/rj_subj_meta3"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="0 / 0 topics"
+                    android:textColor="#CAC4CF"
+                    android:textSize="9sp" />
+
+                <ProgressBar
+                    android:id="@+id/rj_subj_bar3"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:layout_marginTop="3dp"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressDrawable="@drawable/rj_progress" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rj_subj_row4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/rj_subj_badge4"
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/rj_widget_pill"
+                android:gravity="center"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:singleLine="true"
+                android:text="SUBJ"
+                android:textColor="#CBBEFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="9dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/rj_subj_name4"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:singleLine="true"
+                        android:text="Subject"
+                        android:textColor="#E4E1E9"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/rj_subj_pct4"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="0%"
+                        android:textColor="#4EDBD4"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/rj_subj_meta4"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="0 / 0 topics"
+                    android:textColor="#CAC4CF"
+                    android:textSize="9sp" />
+
+                <ProgressBar
+                    android:id="@+id/rj_subj_bar4"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:layout_marginTop="3dp"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressDrawable="@drawable/rj_progress" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/rj_subj_row5"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/rj_subj_badge5"
+                android:layout_width="44dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/rj_widget_pill"
+                android:gravity="center"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:singleLine="true"
+                android:text="SUBJ"
+                android:textColor="#CBBEFF"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="9dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/rj_subj_name5"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:singleLine="true"
+                        android:text="Subject"
+                        android:textColor="#E4E1E9"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/rj_subj_pct5"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="0%"
+                        android:textColor="#4EDBD4"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/rj_subj_meta5"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:text="0 / 0 topics"
+                    android:textColor="#CAC4CF"
+                    android:textSize="9sp" />
+
+                <ProgressBar
+                    android:id="@+id/rj_subj_bar5"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:layout_marginTop="3dp"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressDrawable="@drawable/rj_progress" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/rj_subj_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Open RJ Tracker once to load your subjects"
+            android:textColor="#CAC4CF"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/rj_subj_more"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:gravity="end"
+            android:text="+1 more"
+            android:textColor="#CBBEFF"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
     </LinearLayout>
 </RelativeLayout>

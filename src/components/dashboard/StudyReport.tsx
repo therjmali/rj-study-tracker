@@ -42,13 +42,13 @@ function LiveTimeBadge() {
   const h12 = h % 12 || 12;
 
   return (
-    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-card/60 border border-border/20 backdrop-blur-sm">
+    <div className="flex items-center gap-1.5 rounded-full border border-border/20 bg-card/60 px-2.5 py-1">
       <Timer className="w-3 h-3 text-primary" />
       <span className="font-mono text-xs font-black tracking-tight">
         <span className="text-primary">{String(h12).padStart(2, '0')}</span>
-        <span className="text-muted-foreground animate-pulse">:</span>
+        <span className="text-muted-foreground">:</span>
         <span className="text-foreground">{String(m).padStart(2, '0')}</span>
-        <span className="text-muted-foreground animate-pulse">:</span>
+        <span className="text-muted-foreground">:</span>
         <span className="text-secondary">{String(s).padStart(2, '0')}</span>
       </span>
       <span className="text-[8px] font-bold text-muted-foreground tracking-wider">{ampm}</span>
@@ -178,45 +178,43 @@ export default function StudyReport({ subjects, dailyLogs, dbSessions, timeFilte
 
   return (
     <GlowCard paper className="overflow-hidden">
-      <div className="p-4 space-y-3 relative">
+      <div className="relative space-y-3 p-3 sm:p-4">
         <BgBlobs />
 
-        {/* ── Toggle Header ── */}
+        {/* ── Toggle Header: title row, range, then chips — nothing is squeezed between siblings ── */}
         <div
           onClick={toggleReportOpen}
           role="button"
           tabIndex={0}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleReportOpen(); } }}
-          className="flex items-center justify-between flex-wrap gap-2 relative z-10 cursor-pointer select-none group"
+          className="relative z-10 cursor-pointer select-none group"
           aria-expanded={reportOpen}
         >
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-foreground flex items-center gap-1.5 group-hover:text-primary transition-colors">
-                📊 Study Report
-              </h3>
-              {!reportOpen && (
-                <span className="text-[10px] font-bold text-primary px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
-                  {formatStudyHours(totalHours)} · {cardData.topicsDone} topics
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground font-medium">{rangeLabel}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <LiveTimeBadge />
-            {streakData.current > 0 && (
-              <span className="text-xs font-bold px-2 py-1 rounded-full bg-chart-4/15 text-chart-4 border border-chart-4/20 flex items-center gap-1">
-                <Flame className="w-3 h-3" /> {streakData.current}d
-              </span>
-            )}
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="min-w-0 truncate text-base font-bold text-foreground transition-colors group-active:text-primary">
+              📊 Study Report
+            </h3>
             <motion.div
               animate={{ rotate: reportOpen ? 180 : 0 }}
-              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-              className="w-7 h-7 rounded-full bg-card/60 border border-border/20 flex items-center justify-center shrink-0 group-hover:bg-card/90 transition-colors"
+              transition={{ duration: 0.2 }}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/20 bg-card/60"
             >
-              <ChevronDown className="w-4 h-4 text-foreground" />
+              <ChevronDown className="h-4 w-4 text-foreground" />
             </motion.div>
+          </div>
+          <p className="mt-0.5 break-words text-xs font-medium text-muted-foreground">{rangeLabel}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {!reportOpen && (
+              <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+                {formatStudyHours(totalHours)} · {cardData.topicsDone} topics
+              </span>
+            )}
+            {streakData.current > 0 && (
+              <span className="flex items-center gap-1 rounded-full border border-chart-4/20 bg-chart-4/15 px-2.5 py-1 text-xs font-bold text-chart-4">
+                <Flame className="h-3 w-3" /> {streakData.current}d streak
+              </span>
+            )}
+            <LiveTimeBadge />
           </div>
         </div>
 
@@ -341,12 +339,8 @@ export default function StudyReport({ subjects, dailyLogs, dbSessions, timeFilte
 // ─── Sub-components ───
 
 function BgBlobs() {
-  return (
-    <>
-      <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-primary/5 blur-3xl -mr-10 -mt-10 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-accent/5 blur-2xl -ml-8 -mb-8 pointer-events-none" />
-    </>
-  );
+  // Static gradient instead of blur-3xl blobs: same look, no GPU blur cost while scrolling.
+  return <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(60% 45% at 100% 0%, hsl(var(--primary) / 0.07), transparent 70%), radial-gradient(45% 35% at 0% 100%, hsl(var(--accent) / 0.06), transparent 70%)' }} />;
 }
 
 /* ─── Consolidated Stat Card ─── */

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, X, ChevronUp, ChevronDown, Clock, Target, Flame, Sparkles, Maximize2, Smartphone } from 'lucide-react';
 import { useTimerTick } from '../../hooks/useGlobalTimer';
@@ -41,6 +41,15 @@ export default function FloatingWidgetHub({
   const [minimized, setMinimized] = useState(false);
   const { timeLeft, swTime } = useTimerTick();
 
+  // Tapping anywhere outside the open panel (or pressing Esc / Back) closes it; the AI button hides while it is open.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('rj:hub-open', { detail: isOpen }));
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen]);
+
   const today = getLocalDateStr();
 
   // Compute today's topics and minutes
@@ -81,6 +90,8 @@ export default function FloatingWidgetHub({
   }
 
   return (
+    <>
+      {isOpen && <div className="fixed inset-0 z-[39]" onPointerDown={() => setIsOpen(false)} aria-hidden="true" />}
     <div className="fixed bottom-20 sm:bottom-24 right-3 sm:right-6 z-40 select-none">
       <AnimatePresence>
         {isOpen ? (
@@ -89,7 +100,7 @@ export default function FloatingWidgetHub({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.85, y: 20 }}
             transition={{ type: 'spring', damping: 24, stiffness: 300 }}
-            className="w-72 sm:w-80 rounded-3xl border border-white/15 bg-card/90 backdrop-blur-2xl shadow-2xl overflow-hidden p-4 space-y-3"
+            className="w-[min(20rem,calc(100vw-1.5rem))] rounded-3xl border border-border/40 bg-card shadow-2xl overflow-hidden p-4 space-y-3"
             style={{
               background: 'radial-gradient(120% 120% at 100% 0%, hsl(var(--card) / 0.95), hsl(var(--card) / 0.88))',
               boxShadow: '0 20px 50px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08)',
@@ -208,7 +219,7 @@ export default function FloatingWidgetHub({
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.94 }}
             onClick={() => setIsOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-full border border-white/15 bg-card/85 backdrop-blur-xl shadow-xl active:cursor-grabbing cursor-grab"
+            className="flex items-center gap-2 px-3 py-2 rounded-full border border-border/40 bg-card shadow-xl active:cursor-grabbing cursor-grab"
             style={{
               boxShadow: '0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1)',
             }}
@@ -242,5 +253,6 @@ export default function FloatingWidgetHub({
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }
