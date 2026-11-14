@@ -23,6 +23,20 @@ Local dev: copy `.env.example` → `.env.local`, fill both values, `npm run dev`
 3. Airplane mode → edit → reconnect → it uploads on its own.
 4. A second account never sees the first account's data (enforced by Row-Level Security).
 
+## 4. Password reset (one-time dashboard setup)
+The app has a full "Forgot password?" flow (e-mail → 6-digit code or link → new password → signed in). Supabase must be told where the e-mailed link may lead — until then it falls back to `http://localhost:3000`, which is why old reset links "did nothing".
+
+1. **Authentication → URL Configuration**
+   - **Site URL**: `https://therjmali.github.io/rj-study-tracker/`
+   - **Redirect URLs** (add): `https://therjmali.github.io/rj-study-tracker/**` and, for local dev, `http://localhost:5173/**`
+2. **Authentication → Email Templates → Reset Password**: paste `supabase/email-templates/recovery.html` and set the subject shown at its top. (This adds the typed code, which is the path the Android app uses.)
+3. **Authentication → SMTP Settings**: Supabase's built-in mailer only delivers to your own project-team addresses and allows ~2 e-mails/hour. Add any SMTP sender (Brevo, Resend, Gmail app-password…) so every account can receive reset e-mails.
+4. Optional: **Authentication → Sign In / Providers → Email**: minimum password length 8 (the app already enforces 8+ with a letter and a number).
+
+Test: sign-in screen → *Forgot password?* → e-mail → code (or link) → new password → you are signed in, other devices are signed out.
+A reset link works once and expires after an hour; the app tells you when one is dead and offers a fresh e-mail.
+Manual links copied from the dashboard (`/auth/v1/verify?...&redirect_to=http://localhost:3000`) cannot work: they redirect to localhost.
+
 ## Keep the free project awake
 Free projects **pause after 7 days of no activity**. Daily use keeps it alive; if it ever pauses, press *Restore* in the dashboard (data is kept).
 

@@ -43,7 +43,9 @@ function promoteHeadings(text) {
     .replace(/\n{3,}/g, '\n\n');
 }
 
-const body = section(changelog, version);
+// A version may ship its notes as release-notes/<version>.md until they are merged into CHANGELOG.md.
+const extra = await fs.readFile(path.join(root, 'release-notes', `${version}.md`), 'utf8').catch(() => '');
+const body = section(changelog, version) ?? (extra.trim() || null);
 
 if (!body) {
   console.error(`release-notes: CHANGELOG.md has no "## ${version}" section.`);

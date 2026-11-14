@@ -24,6 +24,8 @@ import { isCloudConfigured } from '../../platform/cloud/config';
 import { useCloudAuth } from '../../platform/cloud/authStore';
 import { useAuth, type AuthMode } from '../../platform/auth';
 import { setEphemeralSession } from '../../platform/cloud/session';
+import { openPasswordReset } from '../../platform/cloud/passwordReset';
+import { passwordScore } from '../../platform/cloud/recoveryLogic.mjs';
 
 interface Props {
   mode?: AuthMode;
@@ -37,16 +39,9 @@ const TRUST_POINTS = [
   { icon: Wifi, title: 'Offline is still first', copy: 'Study on a train; changes sync when you reconnect.' },
 ];
 
-function passwordScore(password: string): { score: number; label: string; tone: string } {
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (password.length >= 12) score++;
-  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
-  if (/\d/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-  const labels = ['Too short', 'Weak', 'Fair', 'Good', 'Strong', 'Excellent'];
+function passwordTone(score: number): string {
   const tones = ['bg-destructive', 'bg-destructive', 'bg-chart-4', 'bg-chart-4', 'bg-secondary', 'bg-secondary'];
-  return { score, label: labels[Math.min(score, 5)], tone: tones[Math.min(score, 5)] };
+  return tones[Math.min(score, 5)];
 }
 
 export default function AuthScreen({ mode: initialMode = 'signin', onContinueOffline, onClose }: Props) {
@@ -299,7 +294,7 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
                   <div className="mt-1.5">
                     <div className="flex gap-1">
                       {[0, 1, 2, 3, 4].map(i => (
-                        <span key={i} className={`h-1 flex-1 rounded-full ${i < score.score ? score.tone : 'bg-muted/40'}`} />
+                        <span key={i} className={`h-1 flex-1 rounded-full ${i < score.score ? passwordTone(score.score) : 'bg-muted/40'}`} />
                       ))}
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-1">Password strength: <strong className="text-foreground">{score.label}</strong></p>
@@ -342,7 +337,7 @@ export default function AuthScreen({ mode: initialMode = 'signin', onContinueOff
                 {!isSignup && (
                   <button
                     type="button"
-                    onClick={() => toast.info('Open Supabase → Authentication → Users, pick your account and set a new password.')}
+                    onClick={() => openPasswordReset({ email: email.trim() })}
                     className="text-[11px] font-semibold text-primary hover:underline underline-offset-2"
                   >
                     Forgot password?

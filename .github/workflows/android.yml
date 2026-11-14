@@ -1,9 +1,12 @@
 name: Build Android APK
 
 # Local-first APK: the web app is bundled inside the package, so it runs fully offline.
-# Trigger: push a tag like v12.1.0, or run manually (Actions → Build Android APK → Run workflow).
+# Trigger: push a tag like v12.1.0, run manually (Actions → Build Android APK → Run workflow),
+# or merge a version bump to main (package.json changes and v<version> has no release yet → build + release it).
 on:
   push:
+    branches: [main]
+    paths: [package.json]
     tags: ['v*']
   workflow_dispatch:
 
@@ -11,7 +14,28 @@ permissions:
   contents: write
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.g.outputs.build }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: g
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" != "push" ] || [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          VERSION=$(node -p "require('./package.json').version")
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" > /dev/null 2>&1; then
+            echo "::notice::v${VERSION} is already released — nothing to build."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
   apk:
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -108,7 +132,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${GITHUB_REF_NAME}"
-          [ "${GITHUB_REF_TYPE}" = "tag" ] || TAG="apk-build-${{ github.run_number }}"
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+            if [ "${GITHUB_EVENT_NAME}" = "push" ]; then TAG="v$(node -p "require('./package.json').version")"; else TAG="apk-build-${{ github.run_number }}"; fi
+          fi
           NOTES_FILE=release-notes.md
           if ! node scripts/release-notes.mjs > "$NOTES_FILE"; then
             printf 'Local-first Android APK with cloud sync — the whole app is bundled and works fully offline.\n' > "$NOTES_FILE"
@@ -121,5 +147,5 @@ jobs:
             gh release edit "$TAG" --notes-file "$NOTES_FILE"
             gh release upload "$TAG" "$APK_FILE"
           else
-            gh release create "$TAG" "$APK_FILE" --title "RJ Tracker Pro ${TAG}" --notes-file "$NOTES_FILE"
+            gh release create "$TAG" "$APK_FILE" --title "RJ Tracker Pro ${TAG}" --notes-file "$NOTES_FILE" --target "$GITHUB_SHA"
           fi

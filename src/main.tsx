@@ -8,6 +8,7 @@ import './index.css';
 import './liquid-glass.css';
 import App from './App';
 import PlatformHost from './components/platform/PlatformHost';
+import PasswordResetHost from './components/auth/PasswordResetHost';
 import { bootStorage } from './platform/storage';
 import { registerServiceWorker } from './platform/pwa';
 import { applyAppIcon, syncNativeIconOnBoot } from './platform/appIcon';
@@ -16,12 +17,17 @@ import { installFocusLog } from './platform/focusLog';
 import { installNativeBridge } from './platform/native';
 import { scheduleDailySnapshot } from './platform/snapshots';
 import { initializeCloudAuth, resolveAuthIfStuck, seedCloudAuthFromCache } from './platform/cloud/authStore';
+import { captureRecoveryFromLocation } from './platform/cloud/passwordReset';
 import { startConnectivity } from './platform/connectivity';
 import { scheduleUpdateCheck } from './platform/updater';
 import { initPerformance } from './platform/perf';
 import { applyZoom, zoomPagePoint } from './platform/zoom';
 
 const queryClient = new QueryClient();
+
+// A password-reset e-mail link opens the app with credentials in the address. Take them out of the URL before anything
+// (router, history, screenshots) can see them; <PasswordResetHost /> then shows the reset screen.
+captureRecoveryFromLocation();
 
 function RuntimeErrorFallback({ error }: { error: Error }) {
   return (
@@ -59,6 +65,7 @@ bootStorage()
           <MotionConfig transformPagePoint={zoomPagePoint}>
             <App />
             <PlatformHost />
+            <PasswordResetHost />
           </MotionConfig>
         </QueryClientProvider>
       </ErrorBoundary>
