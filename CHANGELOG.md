@@ -1,5 +1,20 @@
 # Changelog
 
+## 18.8.0 — One ⏱️, Growth Comparison, Today-first Calendar
+
+**⏱️ One study-time card (topic sheet)**
+- The separate *Study timer* panel and *Log time* card are now a single **⏱️ Study time** card. A two-sided switch puts the **Stopwatch on the left and the Countdown on the right**; below it sit the clock, Start / Pause / Resume, Reset and Save, then manual quick-add (+10m, +30m, +1h, Custom, date, start time) and the full entry list with edit, delete, override and reset — all in the same place.
+- It now works in **every status — To do, Studying and Done**. Time logged on a completed topic is kept and counted as revision time, exactly like before; the status card keeps only the R1–R4 revision launcher.
+- Live status pill (Ready · Running · Paused · Busy elsewhere). If the timer is running for another topic, one tap on *Save & switch* saves that time and moves the timer here.
+
+**⚖️ Growth comparison**
+- New comparison of *this period vs the period right before it*, with the same length: Today vs yesterday, 7 days, this month vs the same days last month, 30 days, or any custom range.
+- Shows study time, topics done, active days, average per active day, best day and consistency, each with a green / red change badge, a plain-language verdict, a paired daily bar chart and **growth by subject**.
+- Appears in **Analytics & Trends**, the **Daily Trend**, the **Study Report** (Dashboard) and under the **Progress Calendar**. Each remembers its own period.
+
+**Progress Calendar**
+- Opens with **today already selected**, so today's detail panel is ready immediately. Tap the selected day again to close it.
+
 ## 18.6.0 — Smooth & Spacious: widgets you control, zero-lag mode, cleaner analytics
 
 **Home-screen widgets**

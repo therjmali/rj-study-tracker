@@ -6,6 +6,7 @@ import GlowCard from '../shared/GlowCard';
 import AnimatedStreakNumber from '../shared/AnimatedStreakNumber';
 import ExamPosterCard, { computeExamPosterData } from '../shared/ExamPosterCard';
 import CalendarAnalysis from './CalendarAnalysis';
+import GrowthComparison from '../shared/GrowthComparison';
 import DayByDayTimeline from '../dashboard/DayByDayTimeline';
 import DayDetailPanel from './DayDetailPanel';
 import type { CalendarTopicInfo } from './DayDetailPanel';
@@ -45,7 +46,7 @@ export default function ProgressCalendar({ subjects, dailyLogs, onUpdateMood, on
   const [calendarSync, setCalendarSync] = useState(() => {
     try { return localStorage.getItem('nursetrack-calendar-sync') === 'true'; } catch { return false; }
   });
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(() => getLocalDateStr());
   const { excludedSubjects, toggleExclude, setAll: setExcludedSubjects } = useExcludedSubjects();
   const [showSubjectSettings, setShowSubjectSettings] = useState(false);
 
@@ -692,6 +693,9 @@ export default function ProgressCalendar({ subjects, dailyLogs, onUpdateMood, on
         <CalendarAnalysis subjects={filteredSubjects} dailyLogs={dailyLogs} dbSessions={dbSessions} dateMap={dateMap as any}
           rangeFrom={rangeFrom} rangeTo={rangeTo} year={year} month={month} />
       )}
+
+      {/* ⚖️ Month-to-date vs the same days last month */}
+      <GrowthComparison subjects={filteredSubjects} dailyLogs={dailyLogs || []} dbSessions={dbSessions} variant="compact" title="Month growth" persistKey="growth-compare-calendar" defaultPeriod="month" />
 
       {/* ── EXAM POSTER for selected date ── */}
       {selectedDate && examDateMap[selectedDate] && (

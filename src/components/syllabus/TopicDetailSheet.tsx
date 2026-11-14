@@ -11,8 +11,6 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@project/components/ui/alert-dialog';
 import BottomSheet from '../shared/BottomSheet';
-import { useTimer } from '../../contexts/TimerContext';
-import { useTimerTick } from '../../hooks/useGlobalTimer';
 import type { SubTopic, TopicStatus, ResourceLink, UserSettings, TimeEntry, Subject } from '../../types';
 import TopicAttachments from './TopicAttachments';
 import { formatDate, formatDateRelative, formatStudyTime, getLocalDateStr, getCleanName } from '../../lib/utils';
@@ -22,7 +20,7 @@ import type { RevisionMap } from './RevisionSheet';
 import { REVISION_KEYS } from '../../types';
 import { toast } from 'sonner';
 import { DifficultyDots, SectionRow, CompactStatus } from './topicSheet/CompactParts';
-import CompactTimeLog from './topicSheet/CompactTimeLog';
+import StudyTimeCard from './topicSheet/StudyTimeCard';
 import ResourceManager from './topicSheet/ResourceManager';
 
 interface Props {
@@ -94,48 +92,6 @@ function getExamLabel(): string {
   } catch { return 'NORCET'; }
 }
 
-/* ===== Flip-clock digit renderer ===== */
-function FlipDigit({ value }: { value: string }) {
-  return (
-    <div className="relative w-[38px] h-[52px] rounded-xl overflow-hidden" style={{
-      background: 'linear-gradient(180deg, hsl(var(--foreground) / 0.95) 0%, hsl(var(--foreground) / 0.85) 49.5%, hsl(var(--foreground) / 0.75) 50.5%, hsl(var(--foreground) / 0.8) 100%)',
-      boxShadow: '0 4px 12px hsl(var(--foreground) / 0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
-    }}>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-2xl font-black text-background font-mono tracking-tighter" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
-          {value}
-        </span>
-      </div>
-      {/* Center line */}
-      <div className="absolute left-0 right-0 top-1/2 h-[1px] bg-background/10" />
-    </div>
-  );
-}
-
-function FlipClock({ display }: { display: string }) {
-  // display is "MM:SS" or "HH:MM:SS"
-  const parts = display.split(':');
-  const min = parts.length === 3 ? parts[0] + parts[1] : parts[0];
-  const sec = parts.length === 3 ? parts[2] : parts[1];
-  const m1 = (min || '00').padStart(2, '0')[0];
-  const m2 = (min || '00').padStart(2, '0')[1];
-  const s1 = (sec || '00').padStart(2, '0')[0];
-  const s2 = (sec || '00').padStart(2, '0')[1];
-
-  return (
-    <div className="flex items-center gap-1.5 justify-center py-3">
-      <FlipDigit value={m1} />
-      <FlipDigit value={m2} />
-      <div className="flex flex-col gap-2 px-0.5">
-        <div className="w-2 h-2 rounded-full bg-foreground/70" />
-        <div className="w-2 h-2 rounded-full bg-foreground/70" />
-      </div>
-      <FlipDigit value={s1} />
-      <FlipDigit value={s2} />
-    </div>
-  );
-}
-
 /** Start time (HH:mm) for a block of `mins` that just finished — only for today's date */
 function nowStartTime(mins: number, date?: string): string | undefined {
   const now = new Date();
@@ -145,7 +101,6 @@ function nowStartTime(mins: number, date?: string): string | undefined {
 }
 
 export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelete, canUndo, canRedo, onUndo, onRedo, onOpenPomodoro, subjectId, unitId, subjectName, subjectShortName, unitName, onNavigatePrev, onNavigateNext, hasPrev, hasNext, topicIndex, totalTopics, availableSubjects = [], onMoveToSubject, onRenameTopic, onNavigateToTopic, sheetZIndex, onCreateSession }: Props) {
-  const { state: timer, actions: timerActions } = useTimer();
   const [draft, setDraft] = useState<SubTopic | null>(null);
   const [newTag, setNewTag] = useState('');
   const [editingName, setEditingName] = useState(false);
@@ -367,7 +322,6 @@ export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelet
   }, [topic, subjectId, unitId, resyncTick]);
 
   // Compact-sheet UI state (must stay above the early return)
-  const [timerOpen, setTimerOpen] = useState(false);
   const [openSections, setOpenSections] = useState<string[]>(() => {
     try { const v = JSON.parse(localStorage.getItem('topic-sheet-sections-v1') || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
   });
@@ -376,9 +330,6 @@ export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelet
     try { localStorage.setItem('topic-sheet-sections-v1', JSON.stringify(next)); } catch { /* ignore */ }
     return next;
   }), []);
-  const timerActive = timer.running || timer.swRunning;
-  useEffect(() => { setTimerOpen(timerActive); }, [topic?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (timerActive) setTimerOpen(true); }, [timerActive]);
 
   // "Complete & next": mark complete, then move on once the draft has updated
   const pendingNextRef = useRef(false);
@@ -504,56 +455,29 @@ export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelet
   );
 
   // Footer of the status card: total time + revision rounds (done topics) or the study timer toggle (open topics)
-  const sessionBar = (
-    <div className="flex items-center gap-2 pt-2.5 border-t border-border/10" onPointerDown={e => e.stopPropagation()}>
-      <span className="shrink-0 inline-flex items-center gap-1 h-8 px-2.5 rounded-xl bg-chart-5/8 border border-chart-5/15 text-chart-5">
-        <Clock className="w-3 h-3" /><span className="text-[12px] font-bold font-mono">{formatStudyTime(draft.timeSpent)}</span>
-      </span>
-      {draft.completed ? (
-        <button type="button" onClick={() => { navigator.vibrate?.(10); setRevisionOpen(true); }} aria-label="Open revision window"
-          className="flex-1 min-w-0 h-8 flex items-center gap-2 px-2.5 rounded-xl border border-border/15 bg-muted/15 hover:bg-muted/30 active:scale-[0.98] transition text-left">
-          <span className="text-[13px] leading-none">🔁</span>
-          <span className="flex gap-1">
-            {REVISION_KEYS.map(k => {
-              const st = revs[k]?.status || 'pending';
-              return (
-                <span key={k} className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border ${
-                  st === 'complete' ? 'bg-secondary/15 border-secondary/35 text-secondary'
-                    : st === 'in_process' ? 'bg-chart-4/15 border-chart-4/35 text-chart-4'
-                    : 'bg-muted/25 border-border/15 text-muted-foreground/60'
-                }`}>{st === 'complete' ? '✓' : ''}{k}</span>
-              );
-            })}
-          </span>
-          <span className="ml-auto text-[10px] font-semibold text-muted-foreground">{revDone}/4</span>
-          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-        </button>
-      ) : subjectId && unitId ? (
-        <button type="button" onClick={() => setTimerOpen(o => !o)} aria-expanded={timerOpen}
-          className="flex-1 min-w-0 h-8 flex items-center gap-1.5 px-2.5 rounded-xl border border-border/15 bg-muted/15 hover:bg-muted/30 active:scale-[0.98] transition text-left">
-          <Timer className="w-3.5 h-3.5 text-primary shrink-0" />
-          <span className="text-[11px] font-bold text-foreground/80">Study timer</span>
-          {timerActive && <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse shrink-0" />}
-          <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground/60 ml-auto shrink-0 transition-transform duration-200 ${timerOpen ? 'rotate-180' : ''}`} />
-        </button>
-      ) : <span className="flex-1" />}
-      {onOpenPomodoro && !draft.completed && (
-        <button type="button" onClick={onOpenPomodoro} aria-label="Open the Focus Timer" title="Focus Timer"
-          className="shrink-0 w-8 h-8 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-sm active:scale-90 transition-transform">⏱️</button>
-      )}
+  // Footer of the status card: revision rounds, only for completed topics (the ⏱️ card below handles all time)
+  const sessionBar = draft.completed ? (
+    <div className="pt-2.5 border-t border-border/10" onPointerDown={e => e.stopPropagation()}>
+      <button type="button" onClick={() => { navigator.vibrate?.(10); setRevisionOpen(true); }} aria-label="Open revision window"
+        className="w-full h-8 flex items-center gap-2 px-2.5 rounded-xl border border-border/15 bg-muted/15 hover:bg-muted/30 active:scale-[0.98] transition text-left">
+        <span className="text-[13px] leading-none">🔁</span>
+        <span className="flex gap-1">
+          {REVISION_KEYS.map(k => {
+            const st = revs[k]?.status || 'pending';
+            return (
+              <span key={k} className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border ${
+                st === 'complete' ? 'bg-secondary/15 border-secondary/35 text-secondary'
+                  : st === 'in_process' ? 'bg-chart-4/15 border-chart-4/35 text-chart-4'
+                  : 'bg-muted/25 border-border/15 text-muted-foreground/60'
+              }`}>{st === 'complete' ? '✓' : ''}{k}</span>
+            );
+          })}
+        </span>
+        <span className="ml-auto text-[10px] font-semibold text-muted-foreground">{revDone}/4</span>
+        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+      </button>
     </div>
-  );
-
-  const showTimerPanel = !!(subjectId && unitId) && ((!draft.completed && timerOpen) || (timer.topicId === draft.id && timerActive));
-  const timerPanel = showTimerPanel ? (
-    <PremiumStudyTimer
-      timer={timer} actions={timerActions} topicId={draft.id} topicName={draft.name}
-      subjectId={subjectId!} unitId={unitId!} subjectName={subjectName || ''} isCompleted={!!draft.completed}
-      onSaveTime={(mins, date, note) => addTime(mins, date, note, nowStartTime(mins, date))}
-      onOpenFull={onOpenPomodoro}
-      revisions={draft.revisions} onOpenRevision={() => { navigator.vibrate?.(10); setRevisionOpen(true); }}
-    />
-  ) : null;
+  ) : undefined;
 
   return (
     <>
@@ -743,10 +667,9 @@ export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelet
           footer={sessionBar}
         />
 
-        {timerPanel}
-
-        {/* ═══ LOG TIME ═══ */}
-        <CompactTimeLog draft={draft} addTime={addTime} deleteTimeEntry={deleteTimeEntry} editTimeEntry={editTimeEntry} setField={setField} />
+        {/* ═══ ⏱️ STUDY TIME — stopwatch · countdown · manual log, in every status ═══ */}
+        <StudyTimeCard draft={draft} addTime={addTime} deleteTimeEntry={deleteTimeEntry} editTimeEntry={editTimeEntry} setField={setField}
+          subjectId={subjectId} unitId={unitId} subjectName={subjectName} onOpenFull={onOpenPomodoro} />
 
         {/* ═══ RESOURCES — expandable ═══ */}
         <div className="rounded-2xl bg-card/80 border border-border/12 overflow-hidden" style={{ boxShadow: '0 2px 12px hsl(var(--foreground) / 0.03)' }}>
@@ -1237,182 +1160,6 @@ function UnifiedContextShelf({
         {quickControls}
       </div>
     </div>
-  );
-}
-
-/* ===== Focus Timer card (flip clock) — the SAME engine, modes and names as the global Focus Timer ===== */
-const FOCUS_MODES = [
-  { id: 'countdown', icon: '⏳', label: 'Countdown' },
-  { id: 'stopwatch', icon: '⏱️', label: 'Stopwatch' },
-] as const;
-const FOCUS_PRESETS = [25, 30, 45, 60];
-
-function PremiumStudyTimer({ timer, actions, topicId, topicName, subjectId, unitId, subjectName, isCompleted, revisions, onOpenRevision, onOpenFull }: {
-  timer: import('../../hooks/useGlobalTimer').GlobalTimerState;
-  actions: import('../../hooks/useGlobalTimer').GlobalTimerActions;
-  topicId: string; topicName: string; subjectId: string; unitId: string; subjectName: string; isCompleted: boolean;
-  /** Kept for call-site compatibility — saving now goes through the shared Focus Timer engine. */
-  onSaveTime?: (minutes: number, date: string, note?: string) => void;
-  revisions?: RevisionMap;
-  onOpenRevision?: () => void;
-  onOpenFull?: () => void;
-}) {
-  const { timeLeft, swTime } = useTimerTick();
-  const isThisTopic = timer.topicId === topicId;
-  const busy = timer.active || timer.hasProgress;
-  const isRunningOther = busy && !isThisTopic;
-  const isRunningThis = busy && isThisTopic;
-  const isStopwatch = timer.appMode === 'stopwatch';
-  const isBreak = timer.cycle && timer.phase !== 'focus';
-
-  const fmt = (sec: number) => {
-    const h = Math.floor(sec / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-    const sc = sec % 60;
-    const mm = String(m).padStart(2, '0');
-    const ss = String(sc).padStart(2, '0');
-    return h > 0 ? `${String(h).padStart(2, '0')}:${mm}:${ss}` : `${mm}:${ss}`;
-  };
-
-  if (isRunningOther) {
-    return (
-      <PremiumCard className="border-amber-500/15 bg-amber-500/5">
-        <div className="flex items-center gap-2">
-          <Timer className="w-4 h-4 text-amber-500" />
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] text-amber-500 font-bold">Focus Timer is running for another topic</p>
-            <p className="text-xs text-foreground/60 truncate font-medium">{timer.topicName || timer.subjectName || 'Free study'}</p>
-          </div>
-          <button onClick={() => { actions.stopAndSave(); actions.linkTopic(subjectId, unitId, topicId, topicName, subjectName); }}
-            className="text-[10px] px-3 py-1.5 rounded-xl bg-amber-500/12 text-amber-500 font-bold border border-amber-500/20 hover:bg-amber-500/20 transition-all">Save & switch</button>
-        </div>
-      </PremiumCard>
-    );
-  }
-
-  // Completed topics: the old "Revision Timer" is replaced by the Revision launcher (opens the R1–R4 window)
-  if (isCompleted && !isRunningThis) {
-    const revs = revisions || {};
-    const doneCount = REVISION_KEYS.filter(k => revs[k]?.status === 'complete').length;
-    return (
-      <PremiumCard className="!p-0 overflow-hidden">
-        <motion.button whileTap={{ scale: 0.98 }} onClick={() => onOpenRevision?.()}
-          className="w-full flex items-center gap-3 p-4 text-left" aria-label="Open revision window">
-          <span className="text-xl shrink-0">🔁</span>
-          <div className="flex-1 min-w-0 space-y-1.5">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-[12px] font-black text-foreground">Revision</span>
-              <span className="text-[9px] text-muted-foreground font-semibold">{doneCount}/4 rounds done</span>
-            </div>
-            <div className="flex gap-1.5">
-              {REVISION_KEYS.map(k => {
-                const st = revs[k]?.status || 'pending';
-                return (
-                  <span key={k} className={`text-[10px] font-black px-2.5 py-1 rounded-lg border ${
-                    st === 'complete' ? 'bg-secondary/15 border-secondary/35 text-secondary'
-                      : st === 'in_process' ? 'bg-chart-4/15 border-chart-4/35 text-chart-4'
-                      : 'bg-muted/25 border-border/15 text-muted-foreground/60'
-                  }`}>
-                    {st === 'complete' ? '✓ ' : ''}{k}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" />
-        </motion.button>
-      </PremiumCard>
-    );
-  }
-
-  const handlePrimary = () => {
-    if (!isThisTopic) actions.linkTopic(subjectId, unitId, topicId, topicName, subjectName);
-    actions.toggle();
-  };
-  const elapsedSec = isStopwatch ? swTime : Math.max(0, (!timer.cycle || timer.phase === 'focus' ? timer.focusDuration * 60 : 0) - timeLeft);
-  const canSave = isThisTopic && busy && !isBreak && elapsedSec >= 30;
-  const display = fmt(isStopwatch ? swTime : timeLeft);
-  const primary = timer.active ? 'Pause' : timer.hasProgress ? 'Resume' : 'Start';
-
-  return (
-    <PremiumCard>
-      <div className="space-y-3" onPointerDown={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between gap-2">
-          <Label className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] flex items-center gap-1.5 shrink-0">
-            <Timer className="w-3.5 h-3.5 text-primary" /> Focus Timer
-          </Label>
-          {onOpenFull && (
-            <button onClick={onOpenFull} className="text-[10px] font-bold text-primary flex items-center gap-1">
-              Full screen <ExternalLink className="w-3 h-3" />
-            </button>
-          )}
-        </div>
-
-        {/* Same two modes, same names, same icons as everywhere else */}
-        <div className="grid grid-cols-2 gap-1 rounded-2xl border border-border/20 bg-muted/20 p-0.5">
-          {FOCUS_MODES.map(m => (
-            <button key={m.id} onClick={() => actions.setAppMode(m.id)}
-              className={`py-1.5 rounded-xl text-[10px] font-bold transition-all flex items-center justify-center gap-1 ${
-                timer.appMode === m.id ? 'bg-primary text-primary-foreground shadow-sm' : busy ? 'text-muted-foreground/50' : 'text-muted-foreground hover:text-foreground'}`}>
-              <span>{m.icon}</span> {m.label}
-            </button>
-          ))}
-        </div>
-
-        {!isStopwatch && !isBreak && !busy && (
-          <div className="flex gap-1.5 items-center">
-            {FOCUS_PRESETS.map(m => (
-              <button key={m} onClick={() => actions.selectPreset(m)}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
-                  timer.focusDuration === m ? 'bg-primary/12 text-primary border-primary/30' : 'bg-card/30 text-foreground/60 border-border/15'}`}>
-                {m}m
-              </button>
-            ))}
-          </div>
-        )}
-
-        {!isStopwatch && !busy && (
-          <button type="button" role="switch" aria-checked={timer.cycle} onClick={() => actions.setCycle(!timer.cycle)}
-            className={`w-full flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors ${timer.cycle ? 'border-primary/40 bg-primary/8' : 'border-border/15 bg-card/30'}`}>
-            <span className="text-sm">🍅</span>
-            <span className="flex-1 text-[11px] font-bold text-foreground">Auto breaks</span>
-            <span className={`relative w-8 h-[18px] rounded-full shrink-0 transition-colors ${timer.cycle ? 'bg-primary' : 'bg-muted-foreground/30'}`}>
-              <span className={`absolute top-[2px] left-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-transform ${timer.cycle ? 'translate-x-[14px]' : ''}`} />
-            </span>
-          </button>
-        )}
-
-        {timer.cycle && (
-          <p className="text-center text-[10px] font-bold text-muted-foreground">
-            {timer.phase === 'focus' ? '🍅 Focus' : timer.phase === 'short' ? '☕ Short break' : '🌿 Long break'}
-            {timer.sessions > 0 ? ` · ${timer.sessions} done today` : ''}
-          </p>
-        )}
-
-        <FlipClock display={display} />
-
-        <div className="flex justify-center gap-2.5">
-          {busy && (
-            <motion.button whileTap={{ scale: 0.9 }} onClick={() => actions.reset()} aria-label="Reset timer"
-              className="w-10 h-10 rounded-xl bg-muted/30 border border-border/15 flex items-center justify-center">
-              <RotateCcw className="w-4 h-4 text-muted-foreground" />
-            </motion.button>
-          )}
-          <motion.button whileTap={{ scale: 0.93 }} onClick={handlePrimary}
-            className="h-11 px-8 rounded-full bg-primary text-primary-foreground text-sm font-bold flex items-center gap-2"
-            style={{ boxShadow: '0 4px 16px hsl(var(--primary) / 0.35)' }}>
-            {timer.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" fill="currentColor" />} {primary}
-          </motion.button>
-          {canSave && (
-            <motion.button whileTap={{ scale: 0.93 }} onClick={() => actions.stopAndSave()}
-              className="h-11 px-5 rounded-full bg-secondary text-secondary-foreground text-sm font-bold flex items-center gap-2"
-              style={{ boxShadow: '0 4px 16px hsl(var(--secondary) / 0.3)' }}>
-              <Save className="w-4 h-4" /> Save {Math.max(1, Math.round(elapsedSec / 60))}m
-            </motion.button>
-          )}
-        </div>
-      </div>
-    </PremiumCard>
   );
 }
 

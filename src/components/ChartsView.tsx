@@ -17,6 +17,7 @@ import ProgressCalendar from './charts/ProgressCalendar';
 import type { DbStudySession } from '../types';
 import SubjectLink from './shared/SubjectLink';
 import TrendAnalysis from './dashboard/TrendAnalysis';
+import GrowthComparison from './shared/GrowthComparison';
 import { formatDate, getLocalDateStr, formatStudyHours, getEffectiveStudyMinutes, getUnifiedTotalMinutes, getEffectiveDayMinutes, getMergedAllSessionMinutesBySubject, getMergedOverlappingSessionMinutesBySubject } from '../lib/utils';
 import { lazy, Suspense } from 'react';
 import SubjectReport from './charts/SubjectReport';
@@ -325,6 +326,9 @@ export default function ChartsView({
         <SummaryCard icon={<Target className="w-4 h-4 text-destructive" />}
           label="Completion" value={`${summary.pct}%`} sub="overall" />
       </div>
+
+      {/* ═══ ⚖️ GROWTH COMPARISON — this period vs the one before ═══ */}
+      <GrowthComparison subjects={filteredSubjects} dailyLogs={dailyLogs} dbSessions={dbSessions} persistKey="growth-compare-analytics" defaultPeriod="week" />
 
       {/* ═══════════════════════════════════════════
           DAILY TREND — collapsible with own filter
@@ -876,6 +880,8 @@ function DailyTrendSection({ subjects, filteredSubjects, dailyLogs, dbSessions, 
               <p className="text-[9px] text-primary font-semibold text-center">
                 📊 {effectiveRange.from === effectiveRange.to ? effectiveRange.from : `${effectiveRange.from} — ${effectiveRange.to}`}
               </p>
+
+              <GrowthComparison subjects={filteredSubjects} dailyLogs={dailyLogs} dbSessions={dbSessions} variant="compact" title="Growth vs previous" persistKey="growth-compare-daily-trend" defaultPeriod="week" />
 
               <TrendAnalysis
                 subjects={filteredSubjects}

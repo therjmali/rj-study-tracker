@@ -14,6 +14,7 @@ import StatCardsGrid from './dashboard/StatCardsGrid';
 import TodaysFocus from './dashboard/TodaysFocus';
 import WhatToStudyNext from './dashboard/WhatToStudyNext';
 import StudyReport from './dashboard/StudyReport';
+import GrowthComparison from './shared/GrowthComparison';
 import WeeklyRecap from './dashboard/WeeklyRecap';
 import StudyVelocity from './dashboard/StudyVelocity';
 import AIStudyPlan from './dashboard/AIStudyPlan';
@@ -333,6 +334,9 @@ export default function Dashboard({
                   onOpenTopicDetail={onOpenTopicDetail}
                   onNavigate={onNavigate}
                 />
+
+                {/* Growth vs the previous period, right under the report */}
+                <GrowthComparison subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} variant="compact" title="Study report growth" persistKey="growth-compare-report" defaultPeriod="week" />
 
                 {/* Day-by-Day Timeline — above Exam Countdown */}
                 <DayByDayTimeline
