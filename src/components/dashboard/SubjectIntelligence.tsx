@@ -74,7 +74,7 @@ export default function SubjectIntelligence({
             transition={{ type: 'spring', damping: 28, stiffness: 350 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 space-y-3">
+            <div className="px-2 pb-3 space-y-3 sm:px-4 sm:pb-4">
               {/* Unified: Exam Readiness + Progress & Distribution */}
               <UnifiedReadiness
                 subjects={subjects}

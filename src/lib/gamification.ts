@@ -1,5 +1,6 @@
 import type { Subject, DailyLog, Level, Achievement, WeeklyRank, DbStudySession } from '../types';
 import { getLocalDateStr, getUnifiedTotalMinutes } from './utils';
+import { computeStreak as computeStreakInfo, getActiveDates } from '../hooks/useStreak';
 
 export const LEVELS: Level[] = [
   { level: 1,  title: 'Nursing Novice',        minXP: 0,     maxXP: 100,   minProgress: 0,   color: '#6B7280', icon: '🌱' },
@@ -118,33 +119,14 @@ export function getXPToNextLevel(xp: number, syllabusProgress: number = 0): numb
    STREAK
    ═══════════════════════════════════════════════ */
 
+/**
+ * The ONE streak. Profile, header banner, widgets, XP, achievements and AI context all call this, and it
+ * delegates to the same engine the Home / Stats / Calendar cards use (hooks/useStreak), where a day counts
+ * when getEffectiveDayMinutes > 0 — so topic & unit time entries count too, not just completions.
+ * (Before 18.9 this was a second, narrower implementation, which is why Profile showed 5d while Home showed 42d.)
+ */
 export function computeStreak(subjects: Subject[], dailyLogs?: DailyLog[], dbSessions?: DbStudySession[]): number {
-  const activeDates = new Set<string>();
-  subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-    if (t.completed && t.completedDate) activeDates.add(t.completedDate);
-  })));
-  dailyLogs?.forEach(l => {
-    if (l.topicsCompleted > 0 || l.hoursStudied > 0) activeDates.add(l.date);
-    // Legacy sessions embedded in dailyLogs
-    (l.sessions || []).forEach((s: any) => {
-      if ((s.durationMinutes || s.minutes || 0) > 0) activeDates.add(l.date);
-    });
-  });
-  dbSessions?.forEach(s => {
-    if (s.minutes > 0) activeDates.add(s.date);
-  });
-  let streak = 0;
-  const today = new Date();
-  const todayStr = getLocalDateStr(today);
-  const startOffset = activeDates.has(todayStr) ? 0 : 1;
-  for (let i = startOffset; i <= 365; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateStr = getLocalDateStr(d);
-    if (activeDates.has(dateStr)) streak++;
-    else break;
-  }
-  return streak;
+  return computeStreakInfo(subjects as any, (dailyLogs || []) as any, getLocalDateStr(), dbSessions as any).current;
 }
 
 /* ═══════════════════════════════════════════════
@@ -159,19 +141,7 @@ export function getStats(subjects: Subject[], dailyLogs: DailyLog[], dbSessions?
     if (t.important) { impTotal++; if (t.completed) impDone++; }
   })));
   const totalHours = getUnifiedTotalMinutes(subjects, dbSessions, dailyLogs) / 60;
-  const studiedDatesSet = new Set<string>();
-  dailyLogs.forEach(d => {
-    if (d.hoursStudied > 0 || d.topicsCompleted > 0) studiedDatesSet.add(d.date);
-    // Legacy sessions
-    (d.sessions || []).forEach((s: any) => {
-      if ((s.durationMinutes || s.minutes || 0) > 0) studiedDatesSet.add(d.date);
-    });
-  });
-  subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-    if (t.completed && t.completedDate) studiedDatesSet.add(t.completedDate);
-  })));
-  dbSessions?.forEach(s => { if (s.minutes > 0) studiedDatesSet.add(s.date); });
-  const studiedDays = studiedDatesSet.size;
+  const studiedDays = getActiveDates(subjects as any, dailyLogs as any, getLocalDateStr(), dbSessions as any).size;
   const streak = computeStreak(subjects, dailyLogs, dbSessions);
   const xp = computeXP(subjects, dailyLogs, dbSessions, achievements);
   const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;

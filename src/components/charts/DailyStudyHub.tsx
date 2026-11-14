@@ -1,3 +1,4 @@
+import FitText from '../shared/FitText';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -162,10 +163,10 @@ export default function DailyStudyHub({ subjects, dailyLogs, studyGoals, dbSessi
   const rhythmTopics = rhythm.topics.morning + rhythm.topics.afternoon + rhythm.topics.evening + rhythm.topics.night;
 
   const Kpi = ({ label, value, sub, tone }: { label: string; value: ReactNode; sub: string; tone?: string }) => (
-    <div className="rounded-xl border border-border/10 bg-card/35 px-2 py-2 min-w-0">
-      <p className="text-[8px] font-black uppercase tracking-[0.12em] text-muted-foreground/70 truncate">{label}</p>
-      <p className={`text-[17px] leading-tight font-black font-mono truncate ${tone || 'text-foreground'}`}>{value}</p>
-      <p className="text-[9px] font-semibold text-muted-foreground truncate">{sub}</p>
+    <div className="rounded-xl border border-border/10 bg-card/35 px-2.5 py-2.5 min-w-0">
+      <FitText max={9} min={7} className="font-black uppercase tracking-[0.12em] text-muted-foreground/70">{label}</FitText>
+      <FitText max={22} min={11} className={`leading-tight font-black font-mono ${tone || 'text-foreground'}`}>{value}</FitText>
+      <FitText max={10} min={7.5} className="font-semibold text-muted-foreground">{sub}</FitText>
     </div>
   );
 
@@ -238,7 +239,7 @@ export default function DailyStudyHub({ subjects, dailyLogs, studyGoals, dbSessi
               </AnimatePresence>
 
               {/* ── KPI strip ── */}
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 min-[480px]:grid-cols-4 gap-2">
                 <Kpi label={`Streak ${milestone ? milestone.emoji : '🔥'}`} value={`${stats.current}d`} sub={`Overall · best ${stats.best}d`} tone="text-primary" />
                 <Kpi label="Consistency" value={`${stats.consistency}%`} sub={`${stats.active}/${totalDays} days`}
                   tone={stats.consistency >= 60 ? 'text-secondary' : 'text-destructive'} />
@@ -262,13 +263,13 @@ export default function DailyStudyHub({ subjects, dailyLogs, studyGoals, dbSessi
                       return (
                         <div key={t.label} className="rounded-xl border border-border/10 bg-card/35 px-2 py-1.5">
                           <div className="flex items-center justify-between gap-1">
-                            <span className="text-[10px] font-bold text-foreground truncate">{t.icon} {t.label}</span>
+                            <span className="min-w-0 flex-1"><FitText max={11} min={8} className="font-bold text-foreground">{t.icon} {t.label}</FitText></span>
                             <span className={`text-[10px] font-black font-mono ${pct >= 100 ? 'text-secondary' : pct >= 50 ? 'text-primary' : 'text-destructive'}`}>{pct}%</span>
                           </div>
                           <div className="h-1.5 rounded-full bg-muted/30 overflow-hidden my-1">
                             <div className={`h-full rounded-full transition-all duration-700 ${pct >= 100 ? 'bg-secondary' : 'bg-primary'}`} style={{ width: `${pct}%` }} />
                           </div>
-                          <p className="text-[9px] font-mono font-bold text-muted-foreground">{goalTxt}</p>
+                          <FitText max={11} min={8} className="font-mono font-bold text-muted-foreground">{goalTxt}</FitText>
                         </div>
                       );
                     })}
@@ -294,7 +295,7 @@ export default function DailyStudyHub({ subjects, dailyLogs, studyGoals, dbSessi
                   </div>
                 )}
 
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-2 min-[460px]:grid-cols-4 gap-2">
                   {DAY_PERIOD_LABELS.map(p => {
                     const m = rhythm.minutes[p.key];
                     const n = rhythm.topics[p.key];
@@ -304,7 +305,7 @@ export default function DailyStudyHub({ subjects, dailyLogs, studyGoals, dbSessi
                       <div key={p.key} title={p.timeRange}
                         className={`relative text-center px-1 py-1.5 rounded-xl border ${isPeak ? 'bg-primary/8 border-primary/30' : 'bg-card/35 border-border/10'}`}>
                         <p className="text-[10px] font-bold text-foreground leading-none">{p.emoji} {p.label}</p>
-                        <p className="text-[12px] font-black font-mono text-foreground leading-tight mt-1">{m > 0 ? formatStudyTime(m) : '—'}</p>
+                        <FitText max={13} min={8} className="font-black font-mono text-foreground leading-tight mt-1 text-center">{m > 0 ? formatStudyTime(m) : '—'}</FitText>
                         <p className="text-[9px] font-bold text-muted-foreground leading-tight">{n} {n === 1 ? 'topic' : 'topics'}</p>
                         <div className="h-1 rounded-full bg-muted/25 mt-1 overflow-hidden">
                           <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(m / maxShift) * 100}%`, background: SHIFT_STYLE[p.key].bar }} />

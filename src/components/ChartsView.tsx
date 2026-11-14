@@ -846,7 +846,7 @@ function DailyTrendSection({ subjects, filteredSubjects, dailyLogs, dbSessions, 
             transition={{ type: 'spring', damping: 28, stiffness: 350 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-4 space-y-3">
+            <div className="px-2 pb-3 space-y-3 sm:px-4 sm:pb-4">
               {/* Compact filter */}
               <div className="rounded-xl border border-border/15 bg-card/20 p-2.5">
                 <TimeFilterPills

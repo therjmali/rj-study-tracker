@@ -25,6 +25,8 @@ interface Props {
   onOpenCloudData?: () => void;
   streakDays?: number;
   todayTopicsDone?: number;
+  /** Minutes studied today (any source). The streak is only at risk when this AND topics-done are both 0. */
+  todayMinutes?: number;
   onLevelClick?: () => void;
 }
 
@@ -36,7 +38,7 @@ function AppIcon({ mode, suppressCustom = false }: { mode?: StudentMode; suppres
   return <GraduationCap className="w-4 h-4 text-primary-foreground" />;
 }
 
-function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, level, xpProgress = 0, onOpenSearch, syncStatus = 'idle', dueReminders = 0, onOpenReminders, studentMode, onNavigateHome, onOpenCloudData, streakDays = 0, todayTopicsDone = 0, onLevelClick }: Props) {
+function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, level, xpProgress = 0, onOpenSearch, syncStatus = 'idle', dueReminders = 0, onOpenReminders, studentMode, onNavigateHome, onOpenCloudData, streakDays = 0, todayTopicsDone = 0, todayMinutes = 0, onLevelClick }: Props) {
   const isLight = themeMode === 'light' || themeMode === 'vyxel';
   // If the custom app logo is the same picture as the profile photo, show the stock mark on the left so the
   // same face never appears twice in the header (the photo stays on the right, where the profile opens).
@@ -48,7 +50,7 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
   const appName = getAppName(studentMode);
   const [streakBannerDismissed, setStreakBannerDismissed] = useState(false);
   const hour = new Date().getHours();
-  const showStreakWarning = !streakBannerDismissed && hour >= 18 && todayTopicsDone === 0 && streakDays > 2;
+  const showStreakWarning = !streakBannerDismissed && hour >= 18 && todayTopicsDone === 0 && todayMinutes <= 0 && streakDays > 2;
 
   return (
     <>
@@ -151,7 +153,7 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
         <div className="flex items-center justify-center gap-2 px-4 py-2 max-w-6xl mx-auto">
           <Flame className="w-3.5 h-3.5 text-chart-4 animate-pulse shrink-0" />
           <span className="text-[11px] font-bold text-chart-4">
-            🔥 Your {streakDays}-day streak will break at midnight! Study 1 topic to keep it alive.
+            🔥 Your {streakDays}-day streak ends at midnight — study for even a few minutes to keep it alive.
           </span>
           <button onClick={() => setStreakBannerDismissed(true)} className="w-5 h-5 rounded-md flex items-center justify-center hover:bg-chart-4/15 transition-colors shrink-0 ml-1">
             <X className="w-3 h-3 text-chart-4/60" />

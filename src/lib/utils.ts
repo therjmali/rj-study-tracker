@@ -621,3 +621,19 @@ export function getLastActiveUnit(subj: import('../types').Subject | undefined):
   const incomp = subj.units.find(u => u.subTopics.some(t => !t.completed));
   return incomp || subj.units[0];
 }
+
+
+/**
+ * Total study minutes of ONE subject — the single formula behind every per-subject time figure
+ * (Subject Intelligence rows, Subject Report, analytics chips): merged sessions + whatever topic/unit time
+ * is not already covered by those sessions. Pass the two maps from getMerged*SessionMinutesBySubject.
+ */
+export function getSubjectStudyMinutes(
+  subject: { id: string; units: { timeSpent?: number; subTopics: { timeSpent?: number }[] }[] },
+  allSessMins: Map<string, number>,
+  overlapSessMins: Map<string, number>,
+): number {
+  let topicUnit = 0;
+  subject.units.forEach(u => { topicUnit += u.timeSpent || 0; u.subTopics.forEach(t => { topicUnit += t.timeSpent || 0; }); });
+  return (allSessMins.get(subject.id) || 0) + Math.max(0, topicUnit - (overlapSessMins.get(subject.id) || 0));
+}

@@ -21,7 +21,7 @@ import { DEFAULT_SEMESTER, generateDefaultLogs } from './data/syllabus';
 import { getStats, getLevel, getLevelProgress } from './lib/gamification';
 import { countDueTopics } from './lib/srs';
 import type { AppTab, Subject, DailyLog, AppState, HistoryEntry, UserSettings, ExamConfig, TrashItem, StoreState, Folder, Reminder, StudentMode, DbStudySession } from './types';
-import { getLocalDateStr, normalizeSubjectId, getLastActiveUnit } from './lib/utils';
+import { getLocalDateStr, normalizeSubjectId, getLastActiveUnit, getEffectiveDayMinutes } from './lib/utils';
 import { DEFAULT_SETTINGS } from './types';
 import { getDueReminders, getTodayStr } from './lib/reminderUtils';
 import { getBrandConfig, getAppName } from './lib/brandConfig';
@@ -1586,27 +1586,11 @@ function AppInner() {
     return n;
   }, [appState.subjects]);
 
-  const todayStudyMinutes = useMemo(() => {
-    const today = getLocalDateStr();
-    let mins = 0;
-    for (const s of appState.subjects) {
-      for (const u of s.units) {
-        for (const t of u.subTopics) {
-          if (t.timeEntries) {
-            for (const e of t.timeEntries) {
-              if (e.date === today) mins += e.minutes;
-            }
-          }
-        }
-      }
-    }
-    if (dbSessions && Array.isArray(dbSessions)) {
-      for (const ds of dbSessions) {
-        if (ds.date === today && ds.minutes) mins += ds.minutes;
-      }
-    }
-    return mins;
-  }, [appState.subjects, dbSessions]);
+  // Same engine as the streak, calendar and Home cards (no private re-implementation → no drift)
+  const todayStudyMinutes = useMemo(
+    () => Math.round(getEffectiveDayMinutes(appState.subjects as any, appState.dailyLogs as any, getLocalDateStr(), dbSessions as any)),
+    [appState.subjects, appState.dailyLogs, dbSessions],
+  );
 
   const handleImport = useCallback((state: AppState) => { setAppState(state); }, [setAppState]);
 
@@ -2171,6 +2155,7 @@ function AppInner() {
         themeMode={settings.themeMode ?? 'light'}
         streakDays={stats.streak}
         todayTopicsDone={todayTopicsDone}
+        todayMinutes={todayStudyMinutes}
         onToggleTheme={handleThemeToggle}
         level={xpLevel}
         xpProgress={xpLevelProgress}
@@ -2199,7 +2184,7 @@ function AppInner() {
       )}
 
       <div className="flex max-w-full bg-background min-h-[calc(100vh-3.5rem)]">
-        <main className="flex-1 px-3 sm:px-6 py-4 pb-36 max-w-7xl mx-auto w-full">
+        <main className="flex-1 px-2 sm:px-6 py-4 pb-36 max-w-7xl mx-auto w-full">
           <div key={activeTab} className="animate-page-enter min-h-[50vh]">
               {renderContent()}
           </div>

@@ -1,5 +1,26 @@
 # Changelog
 
+## 18.9.0 — One streak, fits-everywhere numbers, simpler Settings
+
+**🔥 One streak everywhere (bug fix)**
+- The Profile badge, the "streak ends at midnight" banner, widgets, XP and the AI tutor used a second, narrower streak counter that ignored time logged on topics and units — so they showed **5d** while Home and Stats showed **42d**. They now all use the same engine as Home, Stats and the Calendar.
+- "Days studied" on the Home streak card uses that engine too, so it can never disagree with the streak.
+- The midnight banner no longer appears on a day you already studied (it only checked completed topics before) and now says "study for even a few minutes".
+- "Today's minutes" (Home, widgets, banner) now come from the same engine instead of a private re-count that missed unit time.
+
+**⏱️ Numbers that always fit**
+- New auto-fit text: values such as `17h 50m`, `20/42` or `100%` shrink to fit instead of ending in "…", and grow back when there is room (Daily Study Hub, Targets, Study Rhythm, Study Report tiles).
+- Daily Study Hub tiles are 2 × 2 on narrow phones and 4 across on wider screens; the Subject Breakdown keeps the subject name and the time readable (the progress bar yields first).
+- Subject chips in Analytics & Trends no longer round hours to one decimal (58h 42m vs 58h 43m) — they use the same per-subject formula as Subject Intelligence.
+
+**📐 Wider cards**
+- Less side padding on phones: page gutter, Analytics & Trends, Subject Intelligence, Study Report and Stats cards now use nearly the full width. Tablets keep the roomier layout.
+
+**⚙️ Settings, simplified**
+- 12 categories → 9, under four headings (Account · Study · App & look · Data & support).
+- **Profile & Cloud** (profile, password, devices, sync) · **Reminders & Notifications** (pop reminders + daily/timer alerts) · **Data & Backup** (automatic backups + download / restore / trash / reset) · **Updates & Help**.
+- Clear parent → child look: bold category cards, children on a connected rail. Search and deep links keep working.
+
 ## 18.8.0 — One ⏱️, Growth Comparison, Today-first Calendar
 
 **⏱️ One study-time card (topic sheet)**

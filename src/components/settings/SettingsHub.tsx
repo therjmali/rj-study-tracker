@@ -79,30 +79,34 @@ export type ItemId =
   | 'shortcuts' | 'help';
 
 interface ItemMeta { id: ItemId; icon: string; title: string; description: string; keywords: string[] }
-interface CategoryMeta { id: string; icon: string; title: string; subtitle: string; items: ItemMeta[] }
+type GroupId = 'account' | 'study' | 'app' | 'data';
+interface CategoryMeta { id: string; group: GroupId; icon: string; title: string; subtitle: string; items: ItemMeta[] }
+
+/** Parent headings that organise the category cards (category → setting is the child level) */
+const GROUPS: { id: GroupId; label: string }[] = [
+  { id: 'account', label: 'Account' },
+  { id: 'study', label: 'Study' },
+  { id: 'app', label: 'App & look' },
+  { id: 'data', label: 'Data & support' },
+];
 
 const CATEGORIES: CategoryMeta[] = [
   {
-    id: 'account', icon: '👤', title: 'Profile & Account', subtitle: 'Your name, photo, password and log out',
+    id: 'account', group: 'account', icon: '👤', title: 'Profile & Cloud', subtitle: 'Your profile, password, log out, devices and sync',
     items: [
       { id: 'profile', icon: '✏️', title: 'Edit Profile', description: 'Change your name, photo and cover, update your password, or log out', keywords: ['profile', 'name', 'photo', 'avatar', 'picture', 'cover', 'email', 'password', 'account', 'logout', 'log out', 'sign out', 'signout', 'edit', 'personal', 'information', 'delete account'] },
-    ],
-  },
-  {
-    id: 'cloud', icon: '☁️', title: 'Cloud & Sync', subtitle: 'Your account, devices and multi-device sync',
-    items: [
       { id: 'cloudSync', icon: '☁️', title: 'Account & Devices', description: 'Sign in, sync now, see every device, restore points and conflicts', keywords: ['cloud', 'sync', 'account', 'login', 'sign in', 'sign up', 'password', 'device', 'devices', 'multi device', 'restore point', 'backup', 'online', 'server', 'merge', 'conflict', 'email'] },
     ],
   },
   {
-    id: 'insights', icon: '📊', title: 'Progress & Rewards', subtitle: 'Your stats, streaks, badges and XP',
+    id: 'insights', group: 'study', icon: '📊', title: 'Progress & Rewards', subtitle: 'Your stats, streaks, badges and XP',
     items: [
       { id: 'analytics', icon: '📈', title: 'Study Analytics', description: 'Lifetime stats, difficulty breakdown, calendar and subject progress', keywords: ['stats', 'statistics', 'progress', 'breakdown', 'chart', 'heatmap', 'lifetime', 'time'] },
       { id: 'achievements', icon: '🏆', title: 'Achievements & Rewards', description: 'Badges, XP, levels, coins and the reward store', keywords: ['badge', 'xp', 'level', 'milestone', 'gamification', 'coins', 'store', 'streak'] },
     ],
   },
   {
-    id: 'appearance', icon: '🎨', title: 'Appearance & Display', subtitle: 'Theme, accent colour, text size and layout',
+    id: 'appearance', group: 'app', icon: '🎨', title: 'Appearance & Display', subtitle: 'Theme, accent colour, text size and layout',
     items: [
       { id: 'perfMode', icon: '⚡', title: 'Performance', description: 'Smooth mode for zero lag — Auto, Smooth or Full effects', keywords: ['performance', 'lag', 'smooth', 'fast', 'slow', 'blur', 'battery', 'fps', 'jank', 'speed'] },
       { id: 'displayMode', icon: '🌗', title: 'Display Mode', description: 'Vyxel, Vyxel Dark, Parchment, Ink or Papyrus — light and dark themes', keywords: ['theme', 'dark', 'light', 'mode', 'amoled', 'night', 'parchment', 'ink', 'papyrus', 'sepia', 'ancient'] },
@@ -112,7 +116,7 @@ const CATEGORIES: CategoryMeta[] = [
     ],
   },
   {
-    id: 'study', icon: '🎓', title: 'Study Setup', subtitle: 'Your exam, goals, exam dates and revision plan',
+    id: 'study', group: 'study', icon: '🎓', title: 'Study Setup', subtitle: 'Your exam, goals, exam dates and revision plan',
     items: [
       { id: 'studentMode', icon: '🩺', title: 'Student Mode & Exam Labels', description: 'Nursing or Agriculture mode and the exam names shown in the app', keywords: ['mode', 'nursing', 'agriculture', 'student', 'agro', 'nurse', 'norcet', 'exam', 'label', 'branding'] },
       { id: 'goals', icon: '🎯', title: 'Study Goals & Targets', description: 'Daily, weekly and monthly hours and topic targets', keywords: ['goal', 'target', 'daily', 'weekly', 'monthly', 'hours', 'topics', 'plan'] },
@@ -121,47 +125,37 @@ const CATEGORIES: CategoryMeta[] = [
     ],
   },
   {
-    id: 'focus', icon: '⏱️', title: 'Focus & Productivity', subtitle: 'Focus Timer and session preferences',
+    id: 'focus', group: 'study', icon: '⏱️', title: 'Focus & Productivity', subtitle: 'Focus Timer and session preferences',
     items: [
       { id: 'pomodoroTool', icon: '⏱️', title: 'Focus Timer', description: 'Countdown (with auto breaks) or Stopwatch — start a session right here', keywords: ['pomodoro', 'countdown', 'auto breaks', 'timer', 'focus', 'session', 'stopwatch', 'start', 'productivity'] },
       { id: 'pomodoroPrefs', icon: '⚙️', title: 'Countdown & Break Preferences', description: 'Default length, auto-break lengths, auto-start and sound', keywords: ['pomodoro', 'timer', 'break', 'duration', 'minutes', 'sound', 'beep', 'auto start', 'focus'] },
     ],
   },
   {
-    id: 'notifications', icon: '🔔', title: 'Reminders & Alerts', subtitle: 'Pop-up reminders and sticky notes',
+    id: 'notifications', group: 'app', icon: '🔔', title: 'Reminders & Notifications', subtitle: 'Pop-up reminders, daily study alerts and timer alerts',
     items: [
       { id: 'reminders', icon: '⏰', title: 'Pop Reminders', description: 'Create, edit and schedule reminders and sticky notes', keywords: ['reminder', 'notification', 'alert', 'pop', 'bell', 'sticky', 'note', 'notify', 'schedule'] },
-    ],
-  },
-  {
-    id: 'auto', icon: '🔔', title: 'Notifications & Auto-backup', subtitle: 'Daily reminders, live timer alerts and automatic backups',
-    items: [
       { id: 'notifications', icon: '🔔', title: 'Notifications', description: 'Daily study reminders and timer / stopwatch alerts with quick actions', keywords: ['notification', 'reminder', 'alert', 'timer', 'pomodoro', 'stopwatch', 'daily', 'time', 'push'] },
-      { id: 'autoBackup', icon: '💾', title: 'Automatic Backups', description: 'Daily backup on first open, custom times, chosen folder', keywords: ['backup', 'auto', 'download', 'folder', 'daily', 'schedule', 'export', 'storage'] },
     ],
   },
   {
-    id: 'ai', icon: '✨', title: 'AI, Icon & Device', subtitle: 'AI tutor key, custom app icon, storage and offline status',
+    id: 'ai', group: 'app', icon: '✨', title: 'AI, Icon & Device', subtitle: 'AI tutor key, custom app icon, storage and offline status',
     items: [
       { id: 'appIcon', icon: '🖼️', title: 'Custom App Icon', description: 'Upload your own icon (JPG/PNG/WebP, max 2 MB)', keywords: ['icon', 'logo', 'app icon', 'upload', 'image', 'launcher', 'home screen', 'custom'] },
       { id: 'aiDevice', icon: '🔑', title: 'AI Tutor & Device Storage', description: 'Add your own AI key, check storage protection and offline mode', keywords: ['ai', 'api', 'key', 'gemini', 'claude', 'openai', 'tutor', 'chat', 'mcq', 'storage', 'offline', 'persistent', 'device', 'model'] },
     ],
   },
   {
-    id: 'data', icon: '💾', title: 'Backup, Data & Trash', subtitle: 'Download, restore, recover and reset your data',
+    id: 'data', group: 'data', icon: '💾', title: 'Data & Backup', subtitle: 'Backups, automatic backup, restore, trash and reset',
     items: [
+      { id: 'autoBackup', icon: '💾', title: 'Automatic Backups', description: 'Daily backup on first open, custom times, chosen folder', keywords: ['backup', 'auto', 'download', 'folder', 'daily', 'schedule', 'export', 'storage'] },
       { id: 'dataHub', icon: '🗄️', title: 'Backup, Data & Trash', description: 'Download and verify everything, restore or reset, and recover deleted subjects — all in one place', keywords: ['data', 'download', 'export', 'backup', 'cloud copy', 'verify', 'self test', 'inventory', 'a-z', 'az', 'all data', 'all settings', 'checksum', 'integrity', 'compare', 'sync status', 'size', 'storage', 'import', 'restore', 'json', 'reset', 'clear', 'history', 'delete', 'merge', 'upload', 'file', 'recover', 'trash', 'bin', 'deleted', 'remove', 'empty'] },
     ],
   },
   {
-    id: 'updates', icon: '🚀', title: 'App Updates', subtitle: 'Get the latest version without leaving the app',
+    id: 'help', group: 'data', icon: '❓', title: 'Updates & Help', subtitle: 'App updates, guides and keyboard shortcuts',
     items: [
       { id: 'appUpdate', icon: '⬆️', title: 'Check for updates', description: 'See what is new, download and install the latest version in one tap', keywords: ['update', 'upgrade', 'version', 'install', 'apk', 'release', 'new'] },
-    ],
-  },
-  {
-    id: 'help', icon: '❓', title: 'Help & Shortcuts', subtitle: 'Guides and keyboard shortcuts',
-    items: [
       { id: 'shortcuts', icon: '⌨️', title: 'Keyboard Shortcuts', description: 'Shortcuts for search, undo, redo and closing dialogs', keywords: ['keyboard', 'shortcut', 'hotkey', 'ctrl', 'undo', 'redo', 'key'] },
       { id: 'help', icon: '📖', title: 'Help & Onboarding Guide', description: 'A tour of every feature in the app', keywords: ['help', 'guide', 'tutorial', 'onboarding', 'faq', 'tour', 'how to', 'support'] },
     ],
@@ -412,38 +406,46 @@ export default function SettingsHub(props: SettingsHubProps) {
         </div>
       ) : (
         /* ── Category browser ── */
-        <div className="space-y-2.5">
-          {categories.map(cat => {
+        <div className="space-y-4">
+          {GROUPS.map(g => {
+            const cats = categories.filter(c => c.group === g.id);
+            if (!cats.length) return null;
+            return (
+              <div key={g.id} role="group" aria-label={g.label} className="space-y-2">
+                <p className="flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/70">
+                  {g.label}<span className="h-px flex-1 bg-border/20" />
+                </p>
+                {cats.map(cat => {
             const open = openCat === cat.id;
             const badge = catBadge(cat.id);
             return (
-              <section key={cat.id} className="rounded-2xl border border-border/15 bg-card/20 overflow-hidden">
+              <section key={cat.id} className={`rounded-2xl border overflow-hidden transition-colors ${open ? 'border-primary/35 bg-card/55 shadow-sm' : 'border-border/20 bg-card/35'}`}>
                 <button onClick={() => toggleCat(cat.id)} aria-expanded={open}
                   className="w-full flex items-center gap-3 p-3.5 text-left hover:bg-muted/5 active:bg-muted/10 transition-colors">
                   <span className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/15 to-accent/10 border border-primary/15 flex items-center justify-center text-[22px] shrink-0">{cat.icon}</span>
                   <span className="flex-1 min-w-0">
                     <span className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-foreground truncate">{cat.title}</span>
+                      <span className="text-[15px] font-extrabold tracking-tight text-foreground truncate">{cat.title}</span>
                       {badge && <span className="min-w-5 h-5 px-1 rounded-full bg-destructive text-[9px] text-destructive-foreground font-bold flex items-center justify-center">{badge}</span>}
                     </span>
                     <span className="block text-[11px] text-muted-foreground mt-0.5 truncate">{cat.subtitle}</span>
                   </span>
-                  <span className="text-[10px] font-mono font-bold text-muted-foreground/70 px-1.5 py-0.5 rounded-md bg-muted/25 shrink-0">{cat.items.length}</span>
+                  <span className="text-[10px] font-mono font-bold text-muted-foreground/70 px-1.5 py-0.5 rounded-md bg-muted/25 shrink-0" title={`${cat.items.length} settings`}>{cat.items.length}</span>
                   <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
                 </button>
 
                 {open && (
-                  <div className="px-3 pb-3 space-y-2 animate-fade-in">
+                  <div className="mx-3.5 mb-3 ml-[34px] pl-3 border-l-2 border-primary/25 space-y-1.5 animate-fade-in">
                     {cat.items.map(item => {
                       const itemOpen = openItems.has(item.id);
                       return (
                         <div key={item.id} id={`setting-${item.id}`} style={{ scrollMarginTop: 'calc(var(--settings-header-h, 56px) + 76px)' }}
-                          className="rounded-xl border border-border/15 bg-background/40 overflow-hidden">
+                          className="relative rounded-xl border border-border/10 bg-background/50 overflow-hidden before:absolute before:-left-3 before:top-6 before:w-3 before:h-0.5 before:bg-primary/25 before:content-['']">
                           <button onClick={() => toggleItem(item.id)} aria-expanded={itemOpen}
-                            className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-muted/5 active:bg-muted/10 transition-colors">
-                            <span className="text-lg w-7 text-center shrink-0">{item.icon}</span>
+                            className="w-full flex items-center gap-2.5 px-2.5 py-2.5 text-left hover:bg-muted/5 active:bg-muted/10 transition-colors">
+                            <span className="text-base w-6 text-center shrink-0">{item.icon}</span>
                             <span className="flex-1 min-w-0">
-                              <span className="block text-[13px] font-semibold text-foreground">{item.title}</span>
+                              <span className="block text-[12.5px] font-semibold text-foreground">{item.title}</span>
                               <span className="block text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{item.description}</span>
                             </span>
                             {itemOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
@@ -459,6 +461,9 @@ export default function SettingsHub(props: SettingsHubProps) {
                   </div>
                 )}
               </section>
+            );
+                })}
+              </div>
             );
           })}
           <p className="text-center text-[10px] text-muted-foreground/60 pt-1">Changes save automatically</p>

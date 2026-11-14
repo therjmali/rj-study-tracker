@@ -7,7 +7,7 @@ import { Input } from '@project/components/ui/input';
 import type { Subject, DailyLog, StudyGoals, TrackingMode, SemesterConfig, UserSettings, SubTopic, DbStudySession } from '../types';
 import type { DifficultyFilter } from '../lib/studySuggestion';
 import TodaySessions from './dashboard/TodaySessions';
-import { getLocalDateStr, formatStudyHours, getEffectiveStudyMinutes, getUnifiedTotalMinutes } from '../lib/utils';
+import { getLocalDateStr, formatStudyHours, formatStudyTime, getEffectiveStudyMinutes, getUnifiedTotalMinutes, getMergedAllSessionMinutesBySubject, getMergedOverlappingSessionMinutesBySubject, getSubjectStudyMinutes } from '../lib/utils';
 import EmptyState from './shared/EmptyState';
 import DashboardHeader from './dashboard/DashboardHeader';
 import StatCardsGrid from './dashboard/StatCardsGrid';
@@ -301,7 +301,7 @@ export default function Dashboard({
               transition={{ type: 'spring', damping: 28, stiffness: 350 }}
               className="overflow-hidden"
             >
-              <div className="space-y-3 px-2 pb-3 sm:px-4 sm:pb-4">
+              <div className="space-y-3 px-1.5 pb-3 sm:px-4 sm:pb-4">
                 {/* ── INLINE FILTERS ── */}
                 <InlineFilters
                   timeFilter={timeFilter} onTimeFilterChange={onTimeFilterChange}
@@ -309,6 +309,7 @@ export default function Dashboard({
                   onCustomFromChange={onCustomFromChange} onCustomToChange={onCustomToChange}
                   subjectFilter={subjectFilter} onSubjectFilterChange={handleAnalyticsSubjectChange}
                   subjects={subjects}
+                  dailyLogs={dailyLogs} dbSessions={dbSessions}
                   dataStartDate={dataStartDate}
                 />
 
@@ -376,15 +377,18 @@ function InlineFilters({
   timeFilter, onTimeFilterChange,
   customFrom, customTo, onCustomFromChange, onCustomToChange,
   subjectFilter, onSubjectFilterChange, subjects,
-  dataStartDate,
+  dailyLogs, dbSessions, dataStartDate,
 }: {
   timeFilter: TimeFilter; onTimeFilterChange: (t: TimeFilter) => void;
   customFrom: string; customTo: string;
   onCustomFromChange: (v: string) => void; onCustomToChange: (v: string) => void;
   subjectFilter: string; onSubjectFilterChange: (v: string) => void;
   subjects: Subject[];
+  dailyLogs?: DailyLog[]; dbSessions?: DbStudySession[];
   dataStartDate?: string;
 }) {
+  const allSess = useMemo(() => dbSessions ? getMergedAllSessionMinutesBySubject(dbSessions, dailyLogs || []) : new Map<string, number>(), [dbSessions, dailyLogs]);
+  const overlapSess = useMemo(() => dbSessions ? getMergedOverlappingSessionMinutesBySubject(dbSessions, dailyLogs || []) : new Map<string, number>(), [dbSessions, dailyLogs]);
   const selectedIds = useMemo(() => {
     if (subjectFilter === 'all') return new Set(subjects.map(s => s.id));
     return new Set(subjectFilter.split(','));
@@ -458,7 +462,7 @@ function InlineFilters({
             const allTopics = s.units.flatMap(u => u.subTopics);
             const done = allTopics.filter(t => t.completed).length;
             const pct = allTopics.length > 0 ? Math.round((done / allTopics.length) * 100) : 0;
-            const hrs = Math.round(allTopics.reduce((a, t) => a + (t.timeSpent || 0), 0) / 60 * 10) / 10;
+            const mins = getSubjectStudyMinutes(s, allSess, overlapSess);
             return (
               <button key={s.id} onClick={() => toggleSubject(s.id)}
                 className={`relative flex min-w-0 items-center gap-2 px-2.5 py-2 rounded-xl border transition-colors text-left ${
@@ -469,7 +473,7 @@ function InlineFilters({
                 <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                 <div className="min-w-0">
                   <span className={`text-[11px] font-bold block leading-tight truncate ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{s.shortName}</span>
-                  <span className="mt-0.5 block truncate text-[9px] font-mono text-muted-foreground leading-none">{pct}% · {formatStudyHours(hrs)}</span>
+                  <span className="mt-0.5 block truncate text-[9px] font-mono text-muted-foreground leading-none">{pct}% · {formatStudyTime(mins)}</span>
                 </div>
               </button>
             );

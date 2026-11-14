@@ -9,7 +9,7 @@ import CircularProgress from '../shared/CircularProgress';
 import AnimatedStreakNumber from '../shared/AnimatedStreakNumber';
 import { getLocalDateStr, formatStudyTime, formatStudyHours, getEffectiveDayMinutes, getUnifiedTotalMinutes, getMergedAllSessionMinutesBySubject, getMergedOverlappingSessionMinutesBySubject, normalizeSubjectId, readableInk } from '../../lib/utils';
 import { useToday } from '../../hooks/useToday';
-import { useStreak } from '../../hooks/useStreak';
+import { useStreak, getActiveDates } from '../../hooks/useStreak';
 import { getExamCountdown } from '../../lib/examUtils';
 import { useCountUp } from '../../hooks/useCountUp';
 
@@ -96,14 +96,8 @@ export default function StatCardsGrid({ subjects, dailyLogs, semesterConfig, dif
         if (t.status === 'in_process') inProcess++;
       });
     }));
-    // Count unique studied days from dailyLogs + topic completions + dbSessions
-    const studiedDatesSet = new Set<string>();
-    dailyLogs.forEach(d => { if (d.hoursStudied > 0 || d.topicsCompleted > 0) studiedDatesSet.add(d.date); });
-    visibleSubjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (t.completed && t.completedDate) studiedDatesSet.add(t.completedDate);
-    })));
-    dbSessions?.forEach(s => { if (s.minutes > 0) studiedDatesSet.add(s.date); });
-    const studiedDays = studiedDatesSet.size;
+    // Unique studied days — same engine as the streak, so "123d studied" and "42d streak" can never disagree
+    const studiedDays = getActiveDates(visibleSubjects as any, dailyLogs as any, today, dbSessions as any).size;
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
     const impPct = impTotal > 0 ? Math.round((impDone / impTotal) * 100) : 0;
     // Unified total = topic+unit time + manually-logged 'Other' sessions

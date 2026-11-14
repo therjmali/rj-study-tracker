@@ -1,3 +1,4 @@
+import FitText from '../shared/FitText';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, parseISO } from 'date-fns';
@@ -178,7 +179,7 @@ export default function StudyReport({ subjects, dailyLogs, dbSessions, timeFilte
 
   return (
     <GlowCard paper className="overflow-hidden">
-      <div className="relative space-y-3 p-3 sm:p-4">
+      <div className="relative space-y-3 p-2.5 sm:p-4">
         <BgBlobs />
 
         {/* ── Toggle Header: title row, range, then chips — nothing is squeezed between siblings ── */}
@@ -309,7 +310,7 @@ export default function StudyReport({ subjects, dailyLogs, dbSessions, timeFilte
               {/* Collapsible: Trend Chart */}
               <CollapsibleSection title="📈 Trend" subtitle={`${cardData.topicsDone} topics · ${formatStudyHours(totalHours)}`}
                 open={chartOpen} onToggle={() => setChartOpen(p => !p)}>
-                <div className="px-4 pb-4">
+                <div className="px-2 pb-3 sm:px-4 sm:pb-4">
                   <TrendAnalysis
                     subjects={filteredSubjects}
                     dailyLogs={dailyLogs}
@@ -364,17 +365,17 @@ function ConsolidatedCard({ id, icon, label, value, sub, color, diff, hasDetail,
     >
       <div className={`w-10 h-10 rounded-lg bg-${color}/10 flex items-center justify-center shrink-0`}>{icon}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-xl font-black text-foreground font-mono leading-none">{value}</p>
-        <div className="flex items-center gap-1.5 mt-0.5">
+        <FitText max={22} min={12} className="font-black text-foreground font-mono leading-none">{value}</FitText>
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 mt-0.5">
           <p className="text-[10px] text-muted-foreground font-semibold">{label}</p>
           {showDiff && (
-            <span className={`text-[8px] font-bold flex items-center gap-0.5 ${isUp ? 'text-secondary' : 'text-destructive'}`}>
+            <span className={`text-[9px] font-bold flex items-center gap-0.5 whitespace-nowrap ${isUp ? 'text-secondary' : 'text-destructive'}`}>
               {isUp ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
               {isUp ? '+' : ''}{typeof diff === 'number' ? formatStudyHours(Math.abs(diff)) : diff}
             </span>
           )}
         </div>
-        {sub && <p className="text-[8px] text-muted-foreground/60 font-medium mt-0.5 truncate">{sub}</p>}
+        {sub && <p className="text-[9px] text-muted-foreground/70 font-medium mt-0.5 leading-tight line-clamp-2">{sub}</p>}
       </div>
       {hasDetail && (
         <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground/40 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />

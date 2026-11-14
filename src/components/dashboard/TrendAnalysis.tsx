@@ -368,13 +368,13 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
                   >
                     <div className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: s.color, boxShadow: `0 0 6px ${s.color}30` }} />
                     <span className="text-[10px]">{(s as any).emoji || '📘'}</span>
-                    <span className="text-[11px] font-bold text-foreground flex-1 text-left truncate">{s.shortName}</span>
-                    {/* Progress bar */}
-                    <div className="w-16 h-1.5 rounded-full bg-muted/25 overflow-hidden shrink-0">
+                    <span className="text-[11px] font-bold text-foreground flex-1 min-w-[2.75rem] text-left truncate">{s.shortName}</span>
+                    {/* Progress bar — gives its room to the numbers on narrow phones */}
+                    <div className="hidden min-[400px]:block w-14 h-1.5 rounded-full bg-muted/25 overflow-hidden shrink-0">
                       <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: s.color }} />
                     </div>
-                    <span className="text-[9px] font-mono text-muted-foreground shrink-0 w-10 text-right">{topicsDone}/{total}</span>
-                    <span className="text-[8px] font-mono font-bold shrink-0 w-12 text-right" style={{ color: readableInk(s.color) }}>{formatStudyTime(timeMins)}</span>
+                    <span className="text-[10px] font-mono text-muted-foreground shrink-0 whitespace-nowrap text-right">{topicsDone}/{total}</span>
+                    <span className="text-[10px] font-mono font-bold shrink-0 whitespace-nowrap text-right min-w-[3.4rem]" style={{ color: readableInk(s.color) }}>{formatStudyTime(timeMins)}</span>
                     <ChevronDown className={`w-3 h-3 text-muted-foreground/40 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                   </button>
 

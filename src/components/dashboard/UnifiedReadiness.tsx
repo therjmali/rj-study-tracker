@@ -81,7 +81,7 @@ function UnifiedReadinessInner({ subjects, studyGoals, difficultyFilter, onNavig
   if (subjects.length === 0) return null;
 
   return (
-    <div className="glass-card p-4 relative overflow-hidden">
+    <div className="glass-card p-3 sm:p-4 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-primary/[0.04] blur-[60px] pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-accent/[0.04] blur-[50px] pointer-events-none" />
 
