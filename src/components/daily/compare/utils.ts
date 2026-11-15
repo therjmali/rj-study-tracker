@@ -1,3 +1,4 @@
+import { getActiveDates } from '../../../hooks/useStreak';
 import { getEffectiveDayMinutes } from '../../../lib/utils';
 import type { Subject, DailyLog, DbStudySession } from '../../../types';
 
@@ -243,11 +244,8 @@ export interface StreakData {
 }
 
 export function computeStreakData(subjects: Subject[], dailyLogs: DailyLog[], dbSessions?: DbStudySession[]): StreakData {
-  const activeSet = new Set<string>();
-  subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-    if (t.completed && t.completedDate) activeSet.add(t.completedDate);
-  })));
-  dailyLogs.forEach(l => { if (l.hoursStudied > 0 || l.topicsCompleted > 0) activeSet.add(l.date); });
+  // Same "active day" definition as the Home / Stats / Profile streak (topic & unit time, sessions, logs, completions)
+  const activeSet = new Set<string>(getActiveDates(subjects as any, dailyLogs as any, localDate(new Date()), dbSessions as any));
 
   let current = 0;
   const d = new Date();

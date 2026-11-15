@@ -15,6 +15,7 @@ import TodaysFocus from './dashboard/TodaysFocus';
 import WhatToStudyNext from './dashboard/WhatToStudyNext';
 import StudyReport from './dashboard/StudyReport';
 import GrowthComparison from './shared/GrowthComparison';
+import GrowthToggle from './shared/GrowthToggle';
 import WeeklyRecap from './dashboard/WeeklyRecap';
 import StudyVelocity from './dashboard/StudyVelocity';
 import AIStudyPlan from './dashboard/AIStudyPlan';
@@ -274,9 +275,11 @@ export default function Dashboard({
       {/* ═══ 7. ANALYTICS & TRENDS — Collapsible ═══ */}
       {/* cv-auto enables content-visibility for off-screen perf */}
       <div className="cv-auto relative overflow-hidden rounded-3xl border border-border/20 bg-card/60 shadow-md">
+        <div className="flex w-full items-center pr-2 sm:pr-3">
         <button
           onClick={() => setAnalyticsOpen(p => !p)}
-          className="flex w-full items-center gap-3 p-3 text-left transition-colors active:bg-card/30 sm:p-4"
+          aria-expanded={analyticsOpen}
+          className="flex min-w-0 flex-1 items-center gap-3 p-3 text-left transition-colors active:bg-card/30 sm:p-4"
         >
           <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/15 flex items-center justify-center shrink-0">
             <BarChart3 className="w-4 h-4 text-primary" />
@@ -287,10 +290,14 @@ export default function Dashboard({
               📊 {timeFilter === 'all' ? 'All Time' : timeFilter === 'today' ? 'Today' : timeFilter === 'weekly' ? 'Weekly' : timeFilter === 'monthly' ? 'Monthly' : 'Custom'}: {analyticsSummary.weekTopics} topics · {formatStudyHours(analyticsSummary.weekHours)} | Consistency: {analyticsSummary.consistency}%
             </p>
           </div>
+        </button>
+        <GrowthToggle />
+        <button onClick={() => setAnalyticsOpen(p => !p)} aria-label={analyticsOpen ? 'Collapse analytics' : 'Expand analytics'} className="w-11 h-11 shrink-0 flex items-center justify-center rounded-full active:bg-card/40">
           <motion.div animate={{ rotate: analyticsOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
             <ChevronDown className="w-4 h-4 text-muted-foreground" />
           </motion.div>
         </button>
+        </div>
 
         <AnimatePresence>
           {analyticsOpen && (
@@ -337,7 +344,7 @@ export default function Dashboard({
                 />
 
                 {/* Growth vs the previous period, right under the report */}
-                <GrowthComparison subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} variant="compact" title="Study report growth" persistKey="growth-compare-report" defaultPeriod="week" />
+<GrowthComparison subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} title="Month growth" persistKey="growth-compare-home" defaultPeriod="month" />
 
                 {/* Day-by-Day Timeline — above Exam Countdown */}
                 <DayByDayTimeline

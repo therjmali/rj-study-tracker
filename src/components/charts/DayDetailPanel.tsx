@@ -1,3 +1,4 @@
+import FitText from '../shared/FitText';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -258,7 +259,7 @@ export default function DayDetailPanel({
   const dateLabel = (() => {
     const d = new Date(selectedDate + 'T12:00:00');
     const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
-    const dateStr = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
     const isToday = selectedDate === today;
     const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
     const isYesterday = selectedDate === getLocalDateStr(yesterday);
@@ -286,10 +287,10 @@ export default function DayDetailPanel({
         const isToday = selectedDate === today;
         const isFuture = selectedDate > today;
         return (
-          <div className="flex items-center gap-2 rounded-2xl border border-border/15 bg-gradient-to-r from-primary/8 via-card/40 to-card/20 p-2.5">
+          <div className="flex items-center gap-1.5 rounded-2xl border border-border/15 bg-gradient-to-r from-primary/8 via-card/40 to-card/20 p-2">
             {onChangeDate && (
               <button onClick={() => shiftDay(-1)} aria-label="Previous day"
-                className="w-9 h-9 shrink-0 rounded-xl bg-muted/25 flex items-center justify-center active:scale-90 transition-transform">
+                className="w-10 h-10 shrink-0 rounded-xl bg-muted/25 flex items-center justify-center active:scale-90 transition-transform">
                 <ChevronLeft className="w-4 h-4 text-muted-foreground" />
               </button>
             )}
@@ -300,14 +301,15 @@ export default function DayDetailPanel({
               <p className="text-[17px] font-black font-mono leading-tight py-0.5 text-foreground">{d.getDate()}</p>
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-[15px] font-bold text-foreground tracking-tight leading-tight truncate">{dateLabel}</h3>
-              <p className="text-[10px] text-muted-foreground/70 font-semibold truncate">
-                {d.toLocaleDateString('en-US', { weekday: 'long' })}{isFuture ? ' · upcoming' : ''}
-              </p>
+              {/* Shrinks to fit instead of "Thursday, Nove…" — the full date is always readable */}
+              <FitText as="h3" max={15} min={11} className="font-bold text-foreground tracking-tight leading-tight" title={dateLabel}>{dateLabel}</FitText>
+              <FitText max={10} min={8} className="text-muted-foreground/70 font-semibold">
+                {d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{isFuture ? ' · upcoming' : ''}
+              </FitText>
             </div>
             {onChangeDate && (
               <button onClick={() => shiftDay(1)} aria-label="Next day"
-                className="w-9 h-9 shrink-0 rounded-xl bg-muted/25 flex items-center justify-center active:scale-90 transition-transform">
+                className="w-10 h-10 shrink-0 rounded-xl bg-muted/25 flex items-center justify-center active:scale-90 transition-transform">
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
             )}

@@ -1,3 +1,4 @@
+import { useChartPin, ChartPinPanel } from '../shared/chartPin';
 import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { Subject } from '../../types';
@@ -8,6 +9,7 @@ const TT = { contentStyle: { background: 'hsl(var(--card))', border: '1px solid 
 interface Props { subjects: Subject[]; difficultyFilter?: DifficultyFilter; }
 
 export default function DoneVsRemaining({ subjects, difficultyFilter = 'all' }: Props) {
+  const pin = useChartPin();
   const data = useMemo(() =>
     subjects.map(s => {
       const all = s.units.flatMap(u => u.subTopics).filter(t => difficultyFilter === 'all' || t.difficulty === difficultyFilter);
@@ -21,8 +23,13 @@ export default function DoneVsRemaining({ subjects, difficultyFilter = 'all' }: 
     <div className="glass-card p-4 relative overflow-hidden">
       <h3 className="text-sm font-bold text-foreground mb-3">✅ Done vs Remaining{difficultyFilter !== 'all' ? ` (${difficultyFilter})` : ''}</h3>
       <div className="absolute top-0 right-0 w-20 h-20 rounded-full bg-secondary/5 blur-2xl -mr-6 -mt-6 pointer-events-none" />
+      <ChartPinPanel pin={pin} className="mb-1.5" hint="Tap a subject for its numbers" describe={(d) => ({ title: d.name, rows: [
+        { label: 'Done', value: `${d.Done}`, color: 'hsl(var(--secondary))' },
+        { label: 'Remaining', value: `${d.Remaining}` },
+        { label: 'Complete', value: `${d.Done + d.Remaining > 0 ? Math.round((d.Done / (d.Done + d.Remaining)) * 100) : 0}%` },
+      ] })} />
       <ResponsiveContainer width="100%" height={180}>
-        <BarChart data={data} barSize={20}>
+        <BarChart data={data} barSize={20} onClick={pin.onChartClick} style={{ cursor: 'pointer' }}>
           <XAxis dataKey="name" tick={{ fill: 'hsl(var(--foreground))', fontSize: 12, fontWeight: 600 }} />
           <YAxis tick={{ fill: 'hsl(var(--foreground))', fontSize: 11, fontWeight: 600 }} />
           <Tooltip {...TT} />

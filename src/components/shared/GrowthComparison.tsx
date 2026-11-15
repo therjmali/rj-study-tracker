@@ -2,6 +2,9 @@ import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { Subject, DailyLog, DbStudySession } from '../../types';
+import { useGrowthVisible } from '../../lib/growthVisibility';
+import GrowthToggle from './GrowthToggle';
+import { ChartPinPanel, type ChartPin } from './chartPin';
 import { getEffectiveDayMinutes, getEffectiveStudyMinutes, getLocalDateStr, formatStudyTime } from '../../lib/utils';
 
 /**
@@ -57,7 +60,7 @@ function buildFrame(period: GrowthPeriod, from: string, to: string): Frame | nul
   return { cur: { from, to }, prev: { from: addDays(from, -len), to: addDays(from, -1) }, curLabel: 'Selected range', prevLabel: 'Range before it' };
 }
 
-interface Stats { total: number; days: number[]; active: number; avg: number; best: number; done: number; consistency: number }
+interface Stats { total: number; days: number[]; dates: string[]; topicsByDay: number[]; active: number; avg: number; best: number; done: number; consistency: number }
 
 function computeStats(r: Range, subjects: Subject[], dailyLogs: DailyLog[], dbSessions?: DbStudySession[]): Stats {
   const dates = listDays(r);
@@ -65,8 +68,12 @@ function computeStats(r: Range, subjects: Subject[], dailyLogs: DailyLog[], dbSe
   const total = Math.round(getEffectiveStudyMinutes(subjects as any, dailyLogs as any, r.from, r.to, dbSessions as any));
   const active = days.filter(m => m > 0).length;
   let done = 0;
-  subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => { if (t.completed && t.completedDate && t.completedDate >= r.from && t.completedDate <= r.to) done++; })));
-  return { total, days, active, avg: active ? Math.round(total / active) : 0, best: Math.max(0, ...days), done, consistency: dates.length ? Math.round((active / dates.length) * 100) : 0 };
+  const perDay = new Map<string, number>();
+  subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
+    if (t.completed && t.completedDate && t.completedDate >= r.from && t.completedDate <= r.to) { done++; perDay.set(t.completedDate, (perDay.get(t.completedDate) || 0) + 1); }
+  })));
+  const topicsByDay = dates.map(d => perDay.get(d) || 0);
+  return { total, days, dates, topicsByDay, active, avg: active ? Math.round(total / active) : 0, best: Math.max(0, ...days), done, consistency: dates.length ? Math.round((active / dates.length) * 100) : 0 };
 }
 
 function delta(cur: number, prev: number) {
@@ -105,29 +112,38 @@ function Metric({ label, cur, prev, fmt, unit, invert }: { label: string; cur: n
   );
 }
 
-/** Two aligned series: previous (muted) behind, current (solid) in front. */
-function PairedBars({ cur, prev }: { cur: number[]; prev: number[] }) {
-  const n = Math.max(cur.length, prev.length);
-  const max = Math.max(1, ...cur, ...prev);
+interface GPoint { label: string; curRange: string; prevRange: string; curMins: number; prevMins: number; curTopics: number; prevTopics: number }
+
+/** Two aligned series: previous (muted) behind, current (solid) in front. Tap anywhere in a column to inspect it. */
+function PairedBars({ points, selected, onSelect }: { points: GPoint[]; selected: number | null; onSelect: (i: number | null) => void }) {
+  const n = points.length;
+  const m = Math.max(1, ...points.map(p => Math.max(p.curMins, p.prevMins)));
   if (n === 0) return null;
-  // Long ranges: bucket so bars never get thinner than ~4px
-  const bucket = Math.max(1, Math.ceil(n / 40));
-  const agg = (a: number[]) => { const o: number[] = []; for (let i = 0; i < n; i += bucket) o.push(a.slice(i, i + bucket).reduce((x, y) => x + y, 0)); return o; };
-  const c = agg(cur), p = agg(prev), m = Math.max(1, ...c, ...p);
-  void max;
+  const pick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const i = Math.min(n - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * n)));
+    onSelect(selected === i ? null : i);
+  };
   return (
-    <div className="flex items-end gap-[3px] h-20" role="img" aria-label="Daily study time, current period against the previous one">
-      {c.map((v, i) => (
-        <div key={i} className="relative flex-1 min-w-[3px] h-full flex items-end">
-          <div className="absolute inset-x-0 bottom-0 rounded-t-sm bg-muted-foreground/25" style={{ height: `${Math.max(2, ((p[i] || 0) / m) * 100)}%` }} />
-          <motion.div className="relative w-full rounded-t-sm bg-primary" initial={{ height: 0 }} animate={{ height: `${Math.max(2, (v / m) * 100)}%` }} transition={{ duration: 0.45, delay: Math.min(i * 0.012, 0.4) }} style={{ opacity: v > 0 ? 1 : 0.35 }} />
+    <div role="group" aria-label="Study time, current period against the previous one. Tap a column for details."
+      className="flex items-end gap-[3px] h-28 cursor-pointer select-none" onClick={pick}>
+      {points.map((p, i) => (
+        <div key={i} className={`relative flex-1 min-w-[3px] h-full flex items-end rounded-md transition-colors ${selected === i ? 'bg-primary/12 ring-1 ring-primary/40' : ''}`}>
+          <div className="absolute inset-x-0 bottom-0 rounded-t-sm bg-muted-foreground/25" style={{ height: `${Math.max(2, (p.prevMins / m) * 100)}%` }} />
+          <motion.div className="relative w-full rounded-t-sm bg-primary" initial={{ height: 0 }} animate={{ height: `${Math.max(2, (p.curMins / m) * 100)}%` }}
+            transition={{ duration: 0.45, delay: Math.min(i * 0.012, 0.4) }} style={{ opacity: p.curMins > 0 ? 1 : 0.35 }} />
         </div>
       ))}
     </div>
   );
 }
 
-export default function GrowthComparison({ subjects, dailyLogs, dbSessions, variant = 'full', defaultPeriod = 'week', title = 'Growth comparison', persistKey = LS_KEY }: {
+export default function GrowthComparison(props: GrowthProps) {
+  const { visible } = useGrowthVisible();
+  return visible ? <GrowthComparisonCard {...props} /> : null;
+}
+
+interface GrowthProps {
   subjects: Subject[];
   dailyLogs: DailyLog[];
   dbSessions?: DbStudySession[];
@@ -136,7 +152,9 @@ export default function GrowthComparison({ subjects, dailyLogs, dbSessions, vari
   title?: string;
   /** Each screen remembers its own period */
   persistKey?: string;
-}) {
+}
+
+function GrowthComparisonCard({ subjects, dailyLogs, dbSessions, variant = 'full', defaultPeriod = 'week', title = 'Growth comparison', persistKey = LS_KEY }: GrowthProps) {
   const [period, setPeriod] = useState<GrowthPeriod>(() => {
     try { const v = localStorage.getItem(persistKey) as GrowthPeriod | null; if (v && PERIODS.some(p => p.id === v)) return v; } catch { /* ignore */ }
     return defaultPeriod;
@@ -144,13 +162,33 @@ export default function GrowthComparison({ subjects, dailyLogs, dbSessions, vari
   const [from, setFrom] = useState(() => addDays(getLocalDateStr(), -6));
   const [to, setTo] = useState(() => getLocalDateStr());
   const [showSubjects, setShowSubjects] = useState(false);
-  const pick = (p: GrowthPeriod) => { setPeriod(p); try { localStorage.setItem(persistKey, p); } catch { /* ignore */ } };
+  const pick = (p: GrowthPeriod) => { setPeriod(p); setSel(null); try { localStorage.setItem(persistKey, p); } catch { /* ignore */ } };
 
   const frame = useMemo(() => buildFrame(period, from, to), [period, from, to]);
   const stats = useMemo(() => {
     if (!frame) return null;
     return { cur: computeStats(frame.cur, subjects, dailyLogs, dbSessions), prev: computeStats(frame.prev, subjects, dailyLogs, dbSessions) };
   }, [frame, subjects, dailyLogs, dbSessions]);
+
+  // Chart points (bucketed on long ranges so bars stay tappable) + the tapped one
+  const [sel, setSel] = useState<number | null>(null);
+  const points = useMemo<GPoint[]>(() => {
+    if (!stats || !frame) return [];
+    const n = stats.cur.days.length;
+    const bucket = Math.max(1, Math.ceil(n / 40));
+    const out: GPoint[] = [];
+    const sum = (a: number[], i: number) => a.slice(i, i + bucket).reduce((x, y) => x + y, 0);
+    const rng = (dates: string[], i: number) => { const d = dates.slice(i, i + bucket); return d.length ? (d.length > 1 ? `${short(d[0])} – ${short(d[d.length - 1])}` : short(d[0])) : '—'; };
+    for (let i = 0; i < n; i += bucket) {
+      out.push({
+        label: rng(stats.cur.dates, i), curRange: rng(stats.cur.dates, i), prevRange: rng(stats.prev.dates, i),
+        curMins: Math.round(sum(stats.cur.days, i)), prevMins: Math.round(sum(stats.prev.days, i)),
+        curTopics: sum(stats.cur.topicsByDay, i), prevTopics: sum(stats.prev.topicsByDay, i),
+      });
+    }
+    return out;
+  }, [stats, frame]);
+  const pinLike: ChartPin = { row: sel != null ? points[sel] ?? null : null, label: null, onChartClick: () => {}, onItemClick: () => {}, clear: () => setSel(null) };
 
   const perSubject = useMemo(() => {
     if (!frame || variant !== 'full' || !showSubjects) return [];
@@ -180,7 +218,7 @@ export default function GrowthComparison({ subjects, dailyLogs, dbSessions, vari
   return (
     <section className="rounded-2xl bg-card/80 border border-border/12 overflow-hidden" style={{ boxShadow: '0 2px 12px hsl(var(--foreground) / 0.03)' }} aria-label={title}>
       <div className="px-3.5 pt-3 pb-2 flex items-center gap-2">
-        <span className="text-base leading-none" aria-hidden>⚖️</span>
+        <GrowthToggle className="!w-9 !h-9 -ml-1.5 text-base" />
         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{title}</h3>
         {frame && <span className="ml-auto text-[9px] font-mono text-muted-foreground/70 truncate">{span(frame.cur)} <span className="opacity-60">vs</span> {span(frame.prev)}</span>}
       </div>
@@ -226,7 +264,12 @@ export default function GrowthComparison({ subjects, dailyLogs, dbSessions, vari
 
           {stats.cur.days.length > 1 && (
             <div className="space-y-1.5">
-              <PairedBars cur={stats.cur.days} prev={stats.prev.days} />
+              <ChartPinPanel pin={pinLike} hint="Tap a bar to compare that day" describe={(d: GPoint) => ({ title: `📅 ${d.curRange}  ·  vs ${d.prevRange}`, rows: [
+                { label: 'Study time', value: formatStudyTime(d.curMins), color: 'hsl(var(--primary))' },
+                { label: 'Topics', value: `${d.curTopics}`, color: 'hsl(var(--primary))' },
+                { label: 'Before', value: `${formatStudyTime(d.prevMins)} · ${d.prevTopics} topics` },
+              ] })} />
+              <PairedBars points={points} selected={sel} onSelect={setSel} />
               <div className="flex items-center justify-center gap-4 text-[9px] font-bold text-muted-foreground">
                 <span className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-primary" />{frame.curLabel}</span>
                 <span className="flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-muted-foreground/30" />{frame.prevLabel}</span>

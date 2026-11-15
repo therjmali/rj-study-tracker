@@ -1,3 +1,4 @@
+import { useChartPin, ChartPinPanel } from './shared/chartPin';
 import { useMemo, useState, useEffect } from 'react';
 import {
   BarChart, Bar, PieChart, Pie, Cell,
@@ -18,6 +19,7 @@ import type { DbStudySession } from '../types';
 import SubjectLink from './shared/SubjectLink';
 import TrendAnalysis from './dashboard/TrendAnalysis';
 import GrowthComparison from './shared/GrowthComparison';
+import GrowthToggle from './shared/GrowthToggle';
 import { formatDate, getLocalDateStr, formatStudyHours, getEffectiveStudyMinutes, getUnifiedTotalMinutes, getEffectiveDayMinutes, getMergedAllSessionMinutesBySubject, getMergedOverlappingSessionMinutesBySubject } from '../lib/utils';
 import { lazy, Suspense } from 'react';
 import SubjectReport from './charts/SubjectReport';
@@ -120,6 +122,8 @@ export default function ChartsView({
   settings, onUpdateSettings, dbSessions, exams,
 }: ChartsViewProps) {
   const [subTab, setSubTab] = useState<'charts' | 'daily'>('charts');
+  const pinDiff = useChartPin();
+  const pinTime = useChartPin();
   const [mounted, setMounted] = useState(false);
   useEffect(() => { const t = setTimeout(() => setMounted(true), 100); return () => clearTimeout(t); }, []);
 
@@ -262,7 +266,10 @@ export default function ChartsView({
         <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-primary" /> Statistics
         </h2>
-        <PdfExportButton subjects={subjects} dailyLogs={dailyLogs} />
+        <div className="flex items-center gap-2">
+          <GrowthToggle />
+          <PdfExportButton subjects={subjects} dailyLogs={dailyLogs} />
+        </div>
       </div>
 
       {/* Sub-tab bar */}
@@ -366,10 +373,14 @@ export default function ChartsView({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Difficulty Distribution */}
         <GlowCard className="p-4" paper>
-          <h3 className="text-xs font-semibold text-foreground mb-3">🎯 Difficulty Distribution</h3>
+          <h3 className="text-xs font-semibold text-foreground mb-2">🎯 Difficulty Distribution</h3>
+          <ChartPinPanel pin={pinDiff} className="mb-1" hint="Tap a slice for its numbers" describe={(d) => ({ title: `${d.name} topics`, rows: [
+            { label: 'Topics', value: `${d.value}`, color: d.color },
+            { label: 'Share', value: `${diffDist.reduce((a, x) => a + x.value, 0) > 0 ? Math.round((d.value / diffDist.reduce((a, x) => a + x.value, 0)) * 100) : 0}%` },
+          ] })} />
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={diffDist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} innerRadius={30}
+              <Pie data={diffDist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} innerRadius={30} onClick={pinDiff.onItemClick} style={{ cursor: 'pointer' }}
                 isAnimationActive={mounted} animationBegin={0} animationDuration={600}
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}>
@@ -383,10 +394,14 @@ export default function ChartsView({
         {/* Time Distribution */}
         {timeDistData.length > 0 && (
           <GlowCard className="p-4" paper>
-            <h3 className="text-xs font-semibold text-foreground mb-3">⏱️ Time Distribution</h3>
+            <h3 className="text-xs font-semibold text-foreground mb-2">⏱️ Time Distribution</h3>
+            <ChartPinPanel pin={pinTime} className="mb-1" hint="Tap a slice for its numbers" describe={(d) => ({ title: d.name, rows: [
+              { label: 'Study time', value: formatStudyHours(d.value), color: d.color },
+              { label: 'Share', value: `${timeDistData.reduce((a, x) => a + x.value, 0) > 0 ? Math.round((d.value / timeDistData.reduce((a, x) => a + x.value, 0)) * 100) : 0}%` },
+            ] })} />
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={timeDistData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} innerRadius={30}
+                <Pie data={timeDistData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} innerRadius={30} onClick={pinTime.onItemClick} style={{ cursor: 'pointer' }}
                   isAnimationActive={mounted} animationBegin={0} animationDuration={600}
                   label={({ name, value }) => `${name} ${formatStudyHours(value)}`}
                   labelLine={{ stroke: 'hsl(var(--muted-foreground))' }}>
@@ -607,6 +622,7 @@ function MyReportSection({ subjects, dailyLogs, range, mounted, allSubjects, onN
   onNavigate?: (tab: string, filter?: Record<string, string>) => void;
   dbSessions?: import('../types').DbStudySession[];
 }) {
+  const pinSubj = useChartPin();
   // Subject filter within report is now handled by the shared filter — use subjects directly
   const filteredSubjects = subjects;
 
@@ -709,8 +725,12 @@ function MyReportSection({ subjects, dailyLogs, range, mounted, allSubjects, onN
           {report.perSubject.length > 1 && (
             <div>
               <p className="text-[10px] font-semibold text-muted-foreground mb-2 flex items-center gap-1">📊 Topics & Hours by Subject</p>
-              <ResponsiveContainer width="100%" height={Math.max(160, report.perSubject.length * 28)}>
-                <BarChart data={report.perSubject} layout="vertical" margin={{ left: 0, right: 8 }}>
+              <ChartPinPanel pin={pinSubj} className="mb-1.5" hint="Tap a subject's bars for its numbers" describe={(d) => ({ title: d.name, rows: [
+                { label: 'Study time', value: formatStudyHours(d.Hours), color: 'hsl(var(--primary))' },
+                { label: 'Topics', value: `${d.Topics}`, color: 'hsl(var(--secondary))' },
+              ] })} />
+              <ResponsiveContainer width="100%" height={Math.max(160, report.perSubject.length * 34)}>
+                <BarChart data={report.perSubject} layout="vertical" margin={{ left: 0, right: 8 }} onClick={pinSubj.onChartClick} style={{ cursor: 'pointer' }}>
                   <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} />
                   <YAxis type="category" dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} width={42} />
                   <Tooltip {...TT} />

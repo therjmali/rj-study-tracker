@@ -1,3 +1,5 @@
+import { useChartPin, ChartPinPanel } from '../shared/chartPin';
+import { formatStudyTime } from '../../lib/utils';
 import { useState, useMemo, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -26,7 +28,7 @@ import { Calendar as CalendarUI } from '@project/components/ui/calendar';
 import { Button } from '@project/components/ui/button';
 import CircularProgress from '../shared/CircularProgress';
 import GlowCard from '../shared/GlowCard';
-import type { Subject, DailyLog } from '../../types';
+import type { Subject, DailyLog, DbStudySession } from '../../types';
 import type { PeriodStats } from './compare/utils';
 
 const TT: React.CSSProperties = {
@@ -37,9 +39,9 @@ const TT: React.CSSProperties = {
 
 type Tab = 'compare' | 'analysis' | 'records' | 'habits';
 
-interface Props { subjects: Subject[]; dailyLogs: DailyLog[] }
+interface Props { subjects: Subject[]; dailyLogs: DailyLog[]; dbSessions?: DbStudySession[] }
 
-export default function ComparePeriods({ subjects, dailyLogs }: Props) {
+export default function ComparePeriods({ subjects, dailyLogs, dbSessions }: Props) {
   const [tab, setTab] = useState<Tab>('compare');
   const [compareView, setCompareView] = useState<'today' | 'week' | 'month' | 'custom'>('week');
 
@@ -83,22 +85,22 @@ export default function ComparePeriods({ subjects, dailyLogs }: Props) {
   const tmEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
   // ── Period Stats ──
-  const todayS = useMemo(() => computePeriod(subjects, dailyLogs, todayStr, todayStr), [subjects, dailyLogs, todayStr]);
-  const yesterdayS = useMemo(() => computePeriod(subjects, dailyLogs, yesterdayStr, yesterdayStr), [subjects, dailyLogs, yesterdayStr]);
-  const twStats = useMemo(() => computePeriod(subjects, dailyLogs, localDate(twS), todayStr), [subjects, dailyLogs, todayStr]);
-  const lwStats = useMemo(() => computePeriod(subjects, dailyLogs, localDate(lwS), localDate(lwE)), [subjects, dailyLogs]);
-  const tmStats = useMemo(() => computePeriod(subjects, dailyLogs, localDate(tmS), localDate(tmEnd)), [subjects, dailyLogs, todayStr]);
-  const lmStats = useMemo(() => computePeriod(subjects, dailyLogs, localDate(lmS), localDate(lmE)), [subjects, dailyLogs]);
+  const todayS = useMemo(() => computePeriod(subjects, dailyLogs, todayStr, todayStr, dbSessions), [subjects, dailyLogs, dbSessions, todayStr]);
+  const yesterdayS = useMemo(() => computePeriod(subjects, dailyLogs, yesterdayStr, yesterdayStr, dbSessions), [subjects, dailyLogs, dbSessions, yesterdayStr]);
+  const twStats = useMemo(() => computePeriod(subjects, dailyLogs, localDate(twS), todayStr, dbSessions), [subjects, dailyLogs, dbSessions, todayStr]);
+  const lwStats = useMemo(() => computePeriod(subjects, dailyLogs, localDate(lwS), localDate(lwE), dbSessions), [subjects, dailyLogs, dbSessions]);
+  const tmStats = useMemo(() => computePeriod(subjects, dailyLogs, localDate(tmS), localDate(tmEnd), dbSessions), [subjects, dailyLogs, dbSessions, todayStr]);
+  const lmStats = useMemo(() => computePeriod(subjects, dailyLogs, localDate(lmS), localDate(lmE), dbSessions), [subjects, dailyLogs, dbSessions]);
 
   // Custom period stats
   const customCurStats = useMemo(() => {
-    if (!customCurFrom || !customCurTo) return computePeriod(subjects, dailyLogs, todayStr, todayStr);
-    return computePeriod(subjects, dailyLogs, localDate(customCurFrom), localDate(customCurTo));
-  }, [subjects, dailyLogs, customCurFrom, customCurTo, todayStr]);
+    if (!customCurFrom || !customCurTo) return computePeriod(subjects, dailyLogs, todayStr, todayStr, dbSessions);
+    return computePeriod(subjects, dailyLogs, localDate(customCurFrom), localDate(customCurTo), dbSessions);
+  }, [subjects, dailyLogs, dbSessions, customCurFrom, customCurTo, todayStr]);
   const customPrevStats = useMemo(() => {
-    if (!customPrevFrom || !customPrevTo) return computePeriod(subjects, dailyLogs, yesterdayStr, yesterdayStr);
-    return computePeriod(subjects, dailyLogs, localDate(customPrevFrom), localDate(customPrevTo));
-  }, [subjects, dailyLogs, customPrevFrom, customPrevTo, yesterdayStr]);
+    if (!customPrevFrom || !customPrevTo) return computePeriod(subjects, dailyLogs, yesterdayStr, yesterdayStr, dbSessions);
+    return computePeriod(subjects, dailyLogs, localDate(customPrevFrom), localDate(customPrevTo), dbSessions);
+  }, [subjects, dailyLogs, dbSessions, customPrevFrom, customPrevTo, yesterdayStr]);
 
   // All-time hourly
   const allHourly = useMemo(() => {
@@ -225,17 +227,17 @@ export default function ComparePeriods({ subjects, dailyLogs }: Props) {
                     powerIndex={powerIndex}
                     twStats={twStats} lwStats={lwStats}
                     tmStats={tmStats} lmStats={lmStats}
-                    subjects={subjects} dailyLogs={dailyLogs}
+                    subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions}
                     expanded={expanded} toggle={toggle}
                   />
                 )}
 
                 {tab === 'records' && (
-                  <RecordsTab subjects={subjects} dailyLogs={dailyLogs} expanded={expanded} toggle={toggle} />
+                  <RecordsTab subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} expanded={expanded} toggle={toggle} />
                 )}
 
                 {tab === 'habits' && (
-                  <HabitsTab subjects={subjects} dailyLogs={dailyLogs} expanded={expanded} toggle={toggle} />
+                  <HabitsTab subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} expanded={expanded} toggle={toggle} />
                 )}
               </motion.div>
             </AnimatePresence>
@@ -437,13 +439,15 @@ function CompareTab({ compareView, setCompareView, active, todayS, yesterdayS, t
 /* ════════════════════════════════════════════════════════════
    ANALYSIS TAB
    ════════════════════════════════════════════════════════════ */
-function AnalysisTab({ allHourly, peakH, powerIndex, twStats, lwStats, tmStats, lmStats, subjects, dailyLogs, expanded, toggle }: {
+function AnalysisTab({ allHourly, peakH, powerIndex, twStats, lwStats, tmStats, lmStats, subjects, dailyLogs, dbSessions, expanded, toggle }: {
+  dbSessions?: DbStudySession[];
   allHourly: number[]; peakH: number; powerIndex: number;
   twStats: PeriodStats; lwStats: PeriodStats; tmStats: PeriodStats; lmStats: PeriodStats;
   subjects: Subject[]; dailyLogs: DailyLog[];
   expanded: Record<string, boolean>; toggle: (k: string) => void;
 }) {
   const gId = useId().replace(/:/g, '');
+  const pin = useChartPin();
   const fmtHour = (h: number) => `${h % 12 || 12}${h >= 12 ? 'PM' : 'AM'}`;
   const piColor = powerIndex >= 70 ? 'secondary' : powerIndex >= 40 ? 'primary' : 'destructive';
   const piLabel = powerIndex >= 70 ? 'Elite' : powerIndex >= 50 ? 'Strong' : powerIndex >= 30 ? 'Building' : 'Getting Started';
@@ -454,10 +458,10 @@ function AnalysisTab({ allHourly, peakH, powerIndex, twStats, lwStats, tmStats, 
     return Array.from({ length: 4 }, (_, wi) => {
       const end = new Date(now); end.setDate(end.getDate() - wi * 7);
       const start = new Date(end); start.setDate(start.getDate() - 6);
-      const p = computePeriod(subjects, dailyLogs, localDate(start), localDate(end));
-      return { week: `W${4 - wi}`, tph: Math.round(p.topicsPerHour * 10) / 10 };
+      const p = computePeriod(subjects, dailyLogs, localDate(start), localDate(end), dbSessions);
+      return { week: `W${4 - wi}`, tph: Math.round(p.topicsPerHour * 10) / 10, range: `${localDate(start)} → ${localDate(end)}`, mins: Math.round(p.totalMinutes), topics: p.topicsDone };
     }).reverse();
-  }, [subjects, dailyLogs]);
+  }, [subjects, dailyLogs, dbSessions]);
 
   return (
     <div className="space-y-2.5">
@@ -489,8 +493,13 @@ function AnalysisTab({ allHourly, peakH, powerIndex, twStats, lwStats, tmStats, 
       {/* 4-Week Sparkline */}
       <GlowCard paper className="p-3">
         <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Efficiency Trend (4 Weeks)</p>
-        <ResponsiveContainer width="100%" height={70}>
-          <AreaChart data={effSparkline} margin={{ left: -10, top: 4, right: 4, bottom: 0 }}>
+        <ChartPinPanel pin={pin} className="mb-1" hint="Tap a week for its numbers" describe={(d) => ({ title: `${d.week} · ${d.range}`, rows: [
+          { label: 'Study time', value: formatStudyTime(d.mins), color: 'hsl(var(--accent))' },
+          { label: 'Topics', value: `${d.topics}` },
+          { label: 'Efficiency', value: `${d.tph}/hr` },
+        ] })} />
+        <ResponsiveContainer width="100%" height={84}>
+          <AreaChart data={effSparkline} margin={{ left: -10, top: 4, right: 4, bottom: 0 }} onClick={pin.onChartClick} style={{ cursor: 'pointer' }}>
             <defs>
               <linearGradient id={`ef_${gId}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity={0.3} />
@@ -548,14 +557,15 @@ function AnalysisTab({ allHourly, peakH, powerIndex, twStats, lwStats, tmStats, 
 /* ════════════════════════════════════════════════════════════
    RECORDS TAB
    ════════════════════════════════════════════════════════════ */
-function RecordsTab({ subjects, dailyLogs, expanded, toggle }: {
+function RecordsTab({ subjects, dailyLogs, dbSessions, expanded, toggle }: {
+  dbSessions?: DbStudySession[];
   subjects: Subject[]; dailyLogs: DailyLog[];
   expanded: Record<string, boolean>; toggle: (k: string) => void;
 }) {
   return (
     <div className="space-y-2.5">
       <PersonalRecordsSection subjects={subjects} dailyLogs={dailyLogs} open={!!expanded.records} onToggle={() => toggle('records')} />
-      <CumulativeProgressSection subjects={subjects} open={!!expanded.cumulative} onToggle={() => toggle('cumulative')} />
+      <CumulativeProgressSection subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} open={!!expanded.cumulative} onToggle={() => toggle('cumulative')} />
       <PeriodLeaderboardSection subjects={subjects} dailyLogs={dailyLogs} open={!!expanded.leaderboard} onToggle={() => toggle('leaderboard')} />
     </div>
   );
@@ -564,14 +574,15 @@ function RecordsTab({ subjects, dailyLogs, expanded, toggle }: {
 /* ════════════════════════════════════════════════════════════
    HABITS TAB
    ════════════════════════════════════════════════════════════ */
-function HabitsTab({ subjects, dailyLogs, expanded, toggle }: {
+function HabitsTab({ subjects, dailyLogs, dbSessions, expanded, toggle }: {
+  dbSessions?: DbStudySession[];
   subjects: Subject[]; dailyLogs: DailyLog[];
   expanded: Record<string, boolean>; toggle: (k: string) => void;
 }) {
   return (
     <div className="space-y-2.5">
-      <StreakConsistencySection subjects={subjects} dailyLogs={dailyLogs} open={!!expanded.streak} onToggle={() => toggle('streak')} />
-      <MomentumSection subjects={subjects} open={!!expanded.momentum} onToggle={() => toggle('momentum')} />
+      <StreakConsistencySection subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} open={!!expanded.streak} onToggle={() => toggle('streak')} />
+      <MomentumSection subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} open={!!expanded.momentum} onToggle={() => toggle('momentum')} />
       <SubjectComparisonSection subjects={subjects} open={!!expanded.subjects} onToggle={() => toggle('subjects')} />
     </div>
   );

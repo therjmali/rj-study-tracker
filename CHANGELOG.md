@@ -1,25 +1,34 @@
 # Changelog
 
-## 18.9.0 — One streak, fits-everywhere numbers, simpler Settings
+## 19.0.0 — Tap any chart, ⚖️ on demand, one streak, numbers that fit
+
+**👆 Tap any chart to see its numbers**
+- Every chart in the app is now interactive: tap a bar, point, slice or column and a readout above the chart shows that exact point — **date, study time and topics** (for category charts: the name and its values). The selection stays until you tap another point, and the point is marked on the chart. The whole column is the tap target, not just the thin bar.
+- Covers the Study Report trend, Last 7 Days, Study Velocity, the comparison charts (overlay, momentum, cumulative, weekday radar, difficulty radar, efficiency), Statistics pies and subject bars, Done vs Remaining, Topic Distribution, Avg Time per Difficulty and the growth bars.
+
+**⚖️ Growth comparison moves to Home — hidden until you want it**
+- *Month Growth* now lives on **Home**, inside **Analytics & Trends** (it left the Stats page).
+- All growth cards are **hidden by default**. Tap the **⚖️** button (Home → Analytics & Trends header, or the Stats header) to show or hide them everywhere; the choice is remembered across navigation and restarts.
+
+**🗓️ Stats page**
+- **Day-by-Day** now sits below the day card (Today · To-do · Study time · Mood & Notes).
+- The date bar shows the full date ("Thursday, 12 Nov") instead of "Thursday, Nove…", with bigger 40 px buttons.
 
 **🔥 One streak everywhere (bug fix)**
-- The Profile badge, the "streak ends at midnight" banner, widgets, XP and the AI tutor used a second, narrower streak counter that ignored time logged on topics and units — so they showed **5d** while Home and Stats showed **42d**. They now all use the same engine as Home, Stats and the Calendar.
-- "Days studied" on the Home streak card uses that engine too, so it can never disagree with the streak.
-- The midnight banner no longer appears on a day you already studied (it only checked completed topics before) and now says "study for even a few minutes".
-- "Today's minutes" (Home, widgets, banner) now come from the same engine instead of a private re-count that missed unit time.
+- The Profile badge, the "streak ends at midnight" banner, widgets, XP, the AI tutor **and the Compare Periods streak** used narrower streak counters that ignored time logged on topics and units — so they showed **5d** while Home showed **42d**. They now all use the same engine as Home, Stats and the Calendar.
+- "Days studied" and "today's minutes" use that engine too; Compare Periods now also counts study sessions, so its totals match the rest of the app.
+- The midnight banner no longer appears on a day you already studied and now says "study for even a few minutes".
 
-**⏱️ Numbers that always fit**
-- New auto-fit text: values such as `17h 50m`, `20/42` or `100%` shrink to fit instead of ending in "…", and grow back when there is room (Daily Study Hub, Targets, Study Rhythm, Study Report tiles).
-- Daily Study Hub tiles are 2 × 2 on narrow phones and 4 across on wider screens; the Subject Breakdown keeps the subject name and the time readable (the progress bar yields first).
-- Subject chips in Analytics & Trends no longer round hours to one decimal (58h 42m vs 58h 43m) — they use the same per-subject formula as Subject Intelligence.
+**🔢 Numbers that always fit**
+- Auto-fit text: values such as `17h 50m`, `20/42` or `100%` shrink to fit instead of ending in "…" (Daily Study Hub, Targets, Study Rhythm, Study Report tiles, date bar).
+- Daily Study Hub tiles are 2 × 2 on narrow phones; the Subject Breakdown keeps the subject name and time readable.
+- Subject chips in Analytics & Trends use the same per-subject formula as Subject Intelligence (no more 58h 42m vs 58h 43m).
 
 **📐 Wider cards**
-- Less side padding on phones: page gutter, Analytics & Trends, Subject Intelligence, Study Report and Stats cards now use nearly the full width. Tablets keep the roomier layout.
+- Less side padding on phones across Analytics & Trends, Subject Intelligence, Study Report and Stats; tablets keep the roomier layout.
 
 **⚙️ Settings, simplified**
-- 12 categories → 9, under four headings (Account · Study · App & look · Data & support).
-- **Profile & Cloud** (profile, password, devices, sync) · **Reminders & Notifications** (pop reminders + daily/timer alerts) · **Data & Backup** (automatic backups + download / restore / trash / reset) · **Updates & Help**.
-- Clear parent → child look: bold category cards, children on a connected rail. Search and deep links keep working.
+- 12 categories → 9 under four headings (Account · Study · App & look · Data & support): **Profile & Cloud**, **Reminders & Notifications**, **Data & Backup** (automatic backups + restore/trash/reset), **Updates & Help**. Clear parent → child look; search and deep links keep working.
 
 ## 18.8.0 — One ⏱️, Growth Comparison, Today-first Calendar
 

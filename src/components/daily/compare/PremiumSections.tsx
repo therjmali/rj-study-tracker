@@ -1,3 +1,5 @@
+import { useChartPin, ChartPinPanel } from '../../shared/chartPin';
+import { formatStudyTime, getDayStudyStats } from '../../../lib/utils';
 import { useMemo, useId } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -112,10 +114,11 @@ function fmtHour(h: number) {
 /* ══════════════════════════════════════════════════════════
    2. MOMENTUM TRACKER
    ══════════════════════════════════════════════════════════ */
-export function MomentumSection({ subjects, open, onToggle }: {
-  subjects: Subject[]; open: boolean; onToggle: () => void;
+export function MomentumSection({ subjects, dailyLogs, dbSessions, open, onToggle }: {
+  subjects: Subject[]; dailyLogs?: DailyLog[]; dbSessions?: DbStudySession[]; open: boolean; onToggle: () => void;
 }) {
   const data = useMemo(() => computeMomentum(subjects), [subjects]);
+  const pin = useChartPin();
   const gId = useId().replace(/:/g, '');
 
   const dirIcon = data.direction === 'accelerating' ? '🚀' : data.direction === 'decelerating' ? '📉' : '➡️';
@@ -147,8 +150,13 @@ export function MomentumSection({ subjects, open, onToggle }: {
       {/* 30-Day Line Chart with Rolling Avg */}
       <div className="rounded-xl bg-card/30 border border-border/15 p-3">
         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Last 30 Days — Topics + 7-Day Avg</p>
-        <ResponsiveContainer width="100%" height={150}>
-          <AreaChart data={data.points.map(p => ({ ...p, date: fmtDD(p.date) }))} margin={{ left: -10, top: 4, right: 4, bottom: 0 }}>
+        <ChartPinPanel pin={pin} className="mb-1.5" hint="Tap a day for its numbers" describe={(d) => ({ title: `📅 ${d.date}`, rows: [
+          { label: 'Study time', value: formatStudyTime(getDayStudyStats(subjects, dailyLogs || [], d.iso, dbSessions).mins), color: 'hsl(var(--secondary))' },
+          { label: 'Topics', value: `${d.topics}`, color: 'hsl(var(--secondary))' },
+          { label: '7-day avg', value: `${d.avg7}`, color: 'hsl(var(--primary))' },
+        ] })} />
+        <ResponsiveContainer width="100%" height={160}>
+          <AreaChart data={data.points.map(p => ({ ...p, iso: p.date, date: fmtDD(p.date) }))} margin={{ left: -10, top: 4, right: 4, bottom: 0 }} onClick={pin.onChartClick} style={{ cursor: 'pointer' }}>
             <defs>
               <linearGradient id={`mg_${gId}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="hsl(var(--secondary))" stopOpacity={0.25} />
@@ -251,6 +259,7 @@ export function StreakConsistencySection({ subjects, dailyLogs, dbSessions, open
   subjects: Subject[]; dailyLogs: DailyLog[]; dbSessions?: DbStudySession[]; open: boolean; onToggle: () => void;
 }) {
   const data = useMemo(() => computeStreakData(subjects, dailyLogs, dbSessions), [subjects, dailyLogs, dbSessions]);
+  const pin = useChartPin();
   const dowLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const levelColors = ['hsl(var(--muted)/0.15)', 'hsl(var(--secondary)/0.3)', 'hsl(var(--secondary)/0.6)', 'hsl(var(--secondary)/0.95)'];
 
@@ -306,8 +315,9 @@ export function StreakConsistencySection({ subjects, dailyLogs, dbSessions, open
       {/* DOW Radar */}
       <div className="rounded-xl bg-card/30 border border-border/15 p-3">
         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider text-center mb-1">Day-of-Week Distribution</p>
+        <ChartPinPanel pin={pin} className="mb-1" hint="Tap a weekday for its total" describe={(d) => ({ title: `${d.day}s`, rows: [{ label: 'Topics completed', value: `${d.topics}`, color: 'hsl(var(--primary))' }] })} />
         <ResponsiveContainer width="100%" height={140}>
-          <RadarChart data={dowLabels.map((d, i) => ({ day: d, topics: data.dowDist[i] }))}>
+          <RadarChart data={dowLabels.map((d, i) => ({ day: d, topics: data.dowDist[i] }))} onClick={pin.onChartClick}>
             <PolarGrid stroke="hsl(var(--border)/0.3)" />
             <PolarAngleAxis dataKey="day" tick={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 700 }} />
             <PolarRadiusAxis tick={false} axisLine={false} />
@@ -332,10 +342,11 @@ function MiniStat({ label, value, icon }: { label: string; value: string; icon: 
 /* ══════════════════════════════════════════════════════════
    5. CUMULATIVE PROGRESS
    ══════════════════════════════════════════════════════════ */
-export function CumulativeProgressSection({ subjects, open, onToggle }: {
-  subjects: Subject[]; open: boolean; onToggle: () => void;
+export function CumulativeProgressSection({ subjects, dailyLogs, dbSessions, open, onToggle }: {
+  subjects: Subject[]; dailyLogs?: DailyLog[]; dbSessions?: DbStudySession[]; open: boolean; onToggle: () => void;
 }) {
   const data = useMemo(() => computeCumulative(subjects), [subjects]);
+  const pin = useChartPin();
   const gId = useId().replace(/:/g, '');
   const pctDone = data.totalAll > 0 ? Math.round((data.totalDone / data.totalAll) * 100) : 0;
 
@@ -347,8 +358,13 @@ export function CumulativeProgressSection({ subjects, open, onToggle }: {
       {/* Cumulative Area Chart */}
       <div className="rounded-xl bg-card/30 border border-border/15 p-3">
         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Total Topics Over 30 Days</p>
-        <ResponsiveContainer width="100%" height={140}>
-          <AreaChart data={data.points.map(p => ({ date: fmtDD(p.date), total: p.cumulative, daily: p.daily }))} margin={{ left: -5, top: 4, right: 4, bottom: 0 }}>
+        <ChartPinPanel pin={pin} className="mb-1.5" hint="Tap a day for its numbers" describe={(d) => ({ title: `📅 ${d.date}`, rows: [
+          { label: 'Study time', value: formatStudyTime(getDayStudyStats(subjects, dailyLogs || [], d.iso, dbSessions).mins), color: 'hsl(var(--primary))' },
+          { label: 'Topics that day', value: `${d.daily}` },
+          { label: 'Total so far', value: `${d.total}`, color: 'hsl(var(--primary))' },
+        ] })} />
+        <ResponsiveContainer width="100%" height={150}>
+          <AreaChart data={data.points.map(p => ({ iso: p.date, date: fmtDD(p.date), total: p.cumulative, daily: p.daily }))} margin={{ left: -5, top: 4, right: 4, bottom: 0 }} onClick={pin.onChartClick} style={{ cursor: 'pointer' }}>
             <defs>
               <linearGradient id={`cum_${gId}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />

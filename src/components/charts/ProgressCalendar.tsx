@@ -6,7 +6,6 @@ import GlowCard from '../shared/GlowCard';
 import AnimatedStreakNumber from '../shared/AnimatedStreakNumber';
 import ExamPosterCard, { computeExamPosterData } from '../shared/ExamPosterCard';
 import CalendarAnalysis from './CalendarAnalysis';
-import GrowthComparison from '../shared/GrowthComparison';
 import DayByDayTimeline from '../dashboard/DayByDayTimeline';
 import DayDetailPanel from './DayDetailPanel';
 import type { CalendarTopicInfo } from './DayDetailPanel';
@@ -694,9 +693,6 @@ export default function ProgressCalendar({ subjects, dailyLogs, onUpdateMood, on
           rangeFrom={rangeFrom} rangeTo={rangeTo} year={year} month={month} />
       )}
 
-      {/* ⚖️ Month-to-date vs the same days last month */}
-      <GrowthComparison subjects={filteredSubjects} dailyLogs={dailyLogs || []} dbSessions={dbSessions} variant="compact" title="Month growth" persistKey="growth-compare-calendar" defaultPeriod="month" />
-
       {/* ── EXAM POSTER for selected date ── */}
       {selectedDate && examDateMap[selectedDate] && (
         <div className="mt-3 space-y-2">
@@ -715,17 +711,6 @@ export default function ProgressCalendar({ subjects, dailyLogs, onUpdateMood, on
           })}
         </div>
       )}
-
-      {/* ── DAY-BY-DAY TIMELINE ── */}
-      <div className="mt-3">
-        <DayByDayTimeline
-          subjects={filteredSubjects} dailyLogs={dailyLogs || []} dbSessions={dbSessions}
-          onOpenTopicDetail={onOpenTopicDetail}
-          externalRange={rangeApplied && hasRange ? { from: rangeFrom, to: rangeTo } : { from: `${year}-${String(month + 1).padStart(2, '0')}-01`, to: `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}` }}
-          getTodosForDate={getTodosForDate}
-          getPendingCountForDate={getPendingCountForDate}
-        />
-      </div>
 
       {/* ════════════════════════════════════════
           DAY DETAIL PANEL (opens when date clicked)
@@ -762,6 +747,17 @@ export default function ProgressCalendar({ subjects, dailyLogs, onUpdateMood, on
           />
         )}
       </AnimatePresence>
+
+      {/* ── DAY-BY-DAY TIMELINE — sits below the day card (Today / To-do / Study time / Mood & Notes) ── */}
+      <div className="mt-3">
+        <DayByDayTimeline
+          subjects={filteredSubjects} dailyLogs={dailyLogs || []} dbSessions={dbSessions}
+          onOpenTopicDetail={onOpenTopicDetail}
+          externalRange={rangeApplied && hasRange ? { from: rangeFrom, to: rangeTo } : { from: `${year}-${String(month + 1).padStart(2, '0')}-01`, to: `${year}-${String(month + 1).padStart(2, '0')}-${String(new Date(year, month + 1, 0).getDate()).padStart(2, '0')}` }}
+          getTodosForDate={getTodosForDate}
+          getPendingCountForDate={getPendingCountForDate}
+        />
+      </div>
     </div>
   );
 }

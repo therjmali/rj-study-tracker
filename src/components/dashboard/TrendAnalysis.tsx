@@ -1,8 +1,10 @@
+import { useChartPin, ChartPinPanel } from '../shared/chartPin';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid,
+  ReferenceLine,
 } from 'recharts';
 import { BookOpen, Clock, Trophy, TrendingUp, ChevronDown, ChevronRight, CheckCircle2, BarChart3 } from 'lucide-react';
 import type { Subject, DailyLog, DbStudySession, SubTopic } from '../../types';
@@ -66,6 +68,7 @@ function ChartTooltip({ active, payload }: any) {
 }
 
 export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, showFilter, hideShelf, isAllTime, onOpenTopicDetail, onNavigate }: Props) {
+  const pin = useChartPin();
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
 
   const { from, to: rawTo } = range;
@@ -252,9 +255,14 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
             <p className="text-[10px] text-muted-foreground font-semibold">No study data in this period</p>
           </div>
         ) : (
-          <div className="h-[200px]">
+          <div>
+            <ChartPinPanel pin={pin} className="mb-1.5" describe={(d) => ({ title: `📅 ${d.fullDate}`, rows: [
+              { label: 'Study time', value: formatStudyHours(d.hours), color: 'hsl(var(--primary))' },
+              { label: 'Topics', value: `${d.topics}`, color: 'hsl(var(--chart-4))' },
+            ] })} />
+            <div className="h-[200px] cursor-pointer">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} margin={{ left: -8, right: -4, top: 8, bottom: 0 }}>
+              <ComposedChart data={chartData} margin={{ left: -8, right: -4, top: 8, bottom: 0 }} onClick={pin.onChartClick}>
                 <defs>
                   <linearGradient id="trendBarGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.85} />
@@ -284,6 +292,7 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
                   tickFormatter={(v: number) => formatStudyHours(v)}
                 />
                 <Tooltip content={<ChartTooltip />} />
+                {pin.label != null && <ReferenceLine yAxisId="hours" x={pin.label as any} stroke="hsl(var(--primary))" strokeOpacity={0.55} strokeWidth={2} strokeDasharray="4 3" />}
                 {/* Hours bars (tubes) */}
                 <Bar
                   yAxisId="hours"
@@ -306,6 +315,7 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
                 />
               </ComposedChart>
             </ResponsiveContainer>
+            </div>
           </div>
         )}
         {/* Legend */}

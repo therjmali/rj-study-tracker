@@ -1,3 +1,4 @@
+import { useChartPin, ChartPinPanel } from '../shared/chartPin';
 import { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import type { Subject } from '../../types';
@@ -7,6 +8,7 @@ const TT = { contentStyle: { background: 'hsl(var(--card))', border: '1px solid 
 interface Props { subjects: Subject[]; }
 
 export default function TopicDistribution({ subjects }: Props) {
+  const pin = useChartPin();
   const data = useMemo(() =>
     subjects.map(s => {
       const total = s.units.reduce((a, u) => a + u.subTopics.length, 0);
@@ -20,11 +22,15 @@ export default function TopicDistribution({ subjects }: Props) {
   return (
     <div className="glass-card p-4">
       <h3 className="text-sm font-bold text-foreground mb-3">📊 Topic Distribution</h3>
+      <ChartPinPanel pin={pin} className="mb-2" hint="Tap a slice for its numbers" describe={(d) => ({ title: d.name, rows: [
+        { label: 'Topics', value: `${d.value}`, color: d.color },
+        { label: 'Share', value: `${data.reduce((a, x) => a + x.value, 0) > 0 ? Math.round((d.value / data.reduce((a, x) => a + x.value, 0)) * 100) : 0}%` },
+      ] })} />
       <div className="flex items-center gap-4">
-        <div className="w-[130px] h-[130px] shrink-0">
+        <div className="w-[130px] h-[130px] shrink-0 cursor-pointer">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={data} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={2} strokeWidth={0}>
+              <Pie data={data} dataKey="value" cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={2} strokeWidth={0} onClick={pin.onItemClick}>
                 {data.map(d => <Cell key={d.name} fill={d.color} />)}
               </Pie>
               <Tooltip {...TT} />

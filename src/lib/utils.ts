@@ -637,3 +637,10 @@ export function getSubjectStudyMinutes(
   subject.units.forEach(u => { topicUnit += u.timeSpent || 0; u.subTopics.forEach(t => { topicUnit += t.timeSpent || 0; }); });
   return (allSessMins.get(subject.id) || 0) + Math.max(0, topicUnit - (overlapSessMins.get(subject.id) || 0));
 }
+
+/** Study minutes + topics completed on ONE date, from the same engine as every other screen (for chart readouts). */
+export function getDayStudyStats(subjects: any[], dailyLogs: any[], date: string, dbSessions?: any[]) {
+  let topics = 0;
+  subjects.forEach(s => s.units.forEach((u: any) => u.subTopics.forEach((t: any) => { if (t.completed && t.completedDate === date) topics++; })));
+  return { mins: Math.round(getEffectiveDayMinutes(subjects, dailyLogs, date, dbSessions)), topics };
+}

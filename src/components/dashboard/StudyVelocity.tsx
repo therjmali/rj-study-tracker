@@ -1,9 +1,10 @@
+import { useChartPin, ChartPinPanel } from '../shared/chartPin';
 import { useMemo } from 'react';
 import { Zap } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, Cell } from 'recharts';
 import GlowCard from '../shared/GlowCard';
 import type { Subject, DailyLog, DbStudySession } from '../../types';
-import { getLocalDateStr, getEffectiveDayMinutes } from '../../lib/utils';
+import { getLocalDateStr, getEffectiveDayMinutes, formatStudyTime } from '../../lib/utils';
 import { useToday } from '../../hooks/useToday';
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 
 export default function StudyVelocity({ subjects, dailyLogs, dbSessions }: Props) {
   const today = useToday();
+  const pin = useChartPin();
   const velocity = useMemo(() => {
     const todayHours = getEffectiveDayMinutes(subjects, dailyLogs, today, dbSessions) / 60;
 
@@ -64,9 +66,13 @@ export default function StudyVelocity({ subjects, dailyLogs, dbSessions }: Props
       </div>
 
       {/* Spark chart */}
-      <div className="h-14">
+      <ChartPinPanel pin={pin} hint="Tap a bar for that day" className="mb-1.5" describe={(d) => ({ title: `📅 ${d.date}`, rows: [
+        { label: 'Study time', value: formatStudyTime(d.mins), color: 'hsl(var(--primary))' },
+        { label: 'Topics', value: `${d.topics}`, color: 'hsl(var(--secondary))' },
+      ] })} />
+      <div className="h-[72px] cursor-pointer">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={velocity.days} barCategoryGap="20%">
+          <BarChart data={velocity.days} barCategoryGap="12%" onClick={pin.onChartClick}>
             <Bar dataKey="topics" radius={[3, 3, 0, 0]}>
               {velocity.days.map((_, i) => (
                 <Cell

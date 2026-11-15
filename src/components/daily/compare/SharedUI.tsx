@@ -1,3 +1,5 @@
+import { useChartPin, ChartPinPanel } from '../../shared/chartPin';
+import { formatStudyTime } from '../../../lib/utils';
 import { useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, TrendingUp, TrendingDown, Minus } from 'lucide-react';
@@ -130,10 +132,12 @@ export function OverlayLineChart({ current, previous, labelCurrent, labelPreviou
   current: PeriodStats; previous: PeriodStats; labelCurrent: string; labelPrevious: string;
 }) {
   const gId = useId().replace(/:/g, '');
+  const pin = useChartPin();
   const data = current.daily.map((d, i) => ({
     date: fmtDD(d.date),
     current: d.topics,
     previous: previous.daily[i]?.topics ?? 0,
+    curMins: d.minutes, prevMins: previous.daily[i]?.minutes ?? 0, prevDate: previous.daily[i] ? fmtDD(previous.daily[i].date) : '—',
   }));
   const showDots = data.length <= 14;
 
@@ -152,8 +156,14 @@ export function OverlayLineChart({ current, previous, labelCurrent, labelPreviou
           <span className="text-muted-foreground/70">{labelPrevious}</span>
         </span>
       </div>
+      <ChartPinPanel pin={pin} className="mb-1.5" hint="Tap a day to compare it with the earlier period" describe={(d) => ({ title: `📅 ${d.date}  ·  vs ${d.prevDate}`, rows: [
+        { label: `${labelCurrent} time`, value: formatStudyTime(d.curMins), color: 'hsl(var(--primary))' },
+        { label: 'Topics', value: `${d.current}`, color: 'hsl(var(--primary))' },
+        { label: `${labelPrevious} time`, value: formatStudyTime(d.prevMins) },
+        { label: 'Topics', value: `${d.previous}` },
+      ] })} />
       <ResponsiveContainer width="100%" height={180}>
-        <AreaChart data={data} margin={{ left: -10, top: 8, right: 8, bottom: 0 }}>
+        <AreaChart data={data} margin={{ left: -10, top: 8, right: 8, bottom: 0 }} onClick={pin.onChartClick} style={{ cursor: 'pointer' }}>
           <defs>
             <linearGradient id={`cg_${gId}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
@@ -186,6 +196,7 @@ export function OverlayLineChart({ current, previous, labelCurrent, labelPreviou
 
 /* ═══ Difficulty Radar ═══ */
 export function DifficultyRadar({ current, previous }: { current: PeriodStats; previous: PeriodStats }) {
+  const pin = useChartPin();
   const data = [
     { d: 'Easy', current: current.easyDone, previous: previous.easyDone },
     { d: 'Medium', current: current.mediumDone, previous: previous.mediumDone },
@@ -194,8 +205,12 @@ export function DifficultyRadar({ current, previous }: { current: PeriodStats; p
   return (
     <div className="rounded-xl bg-card/30 border border-border/15 p-3">
       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider text-center mb-1">Difficulty Breakdown</p>
+      <ChartPinPanel pin={pin} className="mb-1" hint="Tap a corner for its numbers" describe={(d) => ({ title: `${d.d} topics`, rows: [
+        { label: 'Current', value: `${d.current}`, color: 'hsl(var(--primary))' },
+        { label: 'Previous', value: `${d.previous}` },
+      ] })} />
       <ResponsiveContainer width="100%" height={130}>
-        <RadarChart data={data}>
+        <RadarChart data={data} onClick={pin.onChartClick}>
           <PolarGrid stroke="hsl(var(--border)/0.3)" />
           <PolarAngleAxis dataKey="d" tick={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 700 }} />
           <PolarRadiusAxis tick={false} axisLine={false} />

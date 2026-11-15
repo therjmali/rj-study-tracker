@@ -1,3 +1,4 @@
+import { useChartPin, ChartPinPanel } from './shared/chartPin';
 import { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -6,7 +7,7 @@ import { Button } from '@project/components/ui/button';
 import { toast } from 'sonner';
 import type { DailyLog, Subject, StudyGoals, TrackingMode, StudySession, DbStudySession } from '../types';
 import type { TodoItem } from '../hooks/useTodos';
-import { getLocalDateStr, formatStudyTime, readableInk } from '../lib/utils';
+import { getLocalDateStr, formatStudyTime, readableInk, getEffectiveDayMinutes } from '../lib/utils';
 import { useToday } from '../hooks/useToday';
 import { useStreak } from '../hooks/useStreak';
 import GlowCard from './shared/GlowCard';
@@ -89,9 +90,10 @@ export default function DailyTracker({ dailyLogs, subjects, onUpdate, onDateChan
     return logs.map(l => {
       const d = new Date(l.date + 'T00:00:00');
       const topicsDone = subjects.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.filter(t => t.completed && t.completedDate === l.date).length, 0), 0);
-      return { day: dayNames[d.getDay()], topics: topicsDone };
+      return { day: dayNames[d.getDay()], topics: topicsDone, date: l.date, fullDate: d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }), mins: Math.round(getEffectiveDayMinutes(subjects as any, dailyLogs as any, l.date, dbSessions as any)) };
     });
-  }, [dailyLogs, subjects]);
+  }, [dailyLogs, subjects, dbSessions]);
+  const pin = useChartPin();
 
   // ── Stats Pills ──
   const statsPills = useMemo(() => {
@@ -226,7 +228,7 @@ export default function DailyTracker({ dailyLogs, subjects, onUpdate, onDateChan
 
       {/* ── Compare Periods ── */}
       <motion.div variants={fadeUp}>
-        <ComparePeriods subjects={subjects} dailyLogs={dailyLogs} />
+        <ComparePeriods subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} />
       </motion.div>
 
       {/* ── Stats Pills ── */}
@@ -239,9 +241,13 @@ export default function DailyTracker({ dailyLogs, subjects, onUpdate, onDateChan
       {/* ── Last 7 Days Chart ── */}
       <motion.div variants={fadeUp}>
         <GlowCard className="p-4" paper>
-          <p className="text-xs font-bold text-foreground mb-3">📊 LAST 7 DAYS</p>
-          <ResponsiveContainer width="100%" height={130}>
-            <BarChart data={last7}>
+          <p className="text-xs font-bold text-foreground mb-2">📊 LAST 7 DAYS</p>
+          <ChartPinPanel pin={pin} className="mb-1.5" hint="Tap a day for its numbers" describe={(d) => ({ title: `📅 ${d.fullDate}`, rows: [
+            { label: 'Study time', value: formatStudyTime(d.mins), color: 'hsl(var(--primary))' },
+            { label: 'Topics', value: `${d.topics}`, color: 'hsl(var(--primary))' },
+          ] })} />
+          <ResponsiveContainer width="100%" height={150}>
+            <BarChart data={last7} onClick={pin.onChartClick} style={{ cursor: 'pointer' }}>
               <XAxis dataKey="day" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
               <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} width={20} />
               <Tooltip {...TT} />

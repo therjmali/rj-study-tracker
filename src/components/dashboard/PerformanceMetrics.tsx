@@ -1,3 +1,4 @@
+import { useChartPin, ChartPinPanel } from '../shared/chartPin';
 import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { Activity, Timer, TrendingUp, Target } from 'lucide-react';
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function PerformanceMetrics({ subjects, dailyLogs }: Props) {
+  const pin = useChartPin();
   // Time per difficulty level
   const timeByDifficulty = useMemo(() => {
     const acc: Record<string, { total: number; count: number }> = {
@@ -100,8 +102,12 @@ export default function PerformanceMetrics({ subjects, dailyLogs }: Props) {
           {timeByDifficulty.every(d => d.avgTime === 0) ? (
             <p className="py-8 text-center text-[11px] text-muted-foreground">Log study time on completed topics to see how long each difficulty takes.</p>
           ) : (
+            <>
+            <ChartPinPanel pin={pin} className="mb-1.5" hint="Tap a bar for details" describe={(d) => ({ title: `${d.difficulty} topics`, rows: [
+              { label: 'Avg time', value: `${d.avgTime} min`, color: DIFF_COLORS[d.difficulty] },
+            ] })} />
             <ResponsiveContainer width="100%" height={150}>
-              <BarChart data={timeByDifficulty} barSize={34} margin={{ top: 18, right: 8, left: 0, bottom: 0 }}>
+              <BarChart data={timeByDifficulty} barSize={34} margin={{ top: 18, right: 8, left: 0, bottom: 0 }} onClick={pin.onChartClick} style={{ cursor: 'pointer' }}>
                 <XAxis dataKey="difficulty" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: 'hsl(var(--foreground))' }} />
                 <YAxis width={38} axisLine={false} tickLine={false} allowDecimals={false} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} unit="m" />
                 {/* No grey hover band over the bars; the tooltip floats above them and the values are printed on the bars anyway */}
@@ -120,6 +126,7 @@ export default function PerformanceMetrics({ subjects, dailyLogs }: Props) {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            </>
           )}
         </GlowCard>
 
