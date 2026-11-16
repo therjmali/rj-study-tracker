@@ -1047,7 +1047,7 @@ main > * {
 
 /* Page-level entrance — smooth upward reveal with stable dimensions */
 @keyframes page-enter {
-  0% { opacity: 0; transform: translateY(4px); }
+  0% { opacity: 0.55; transform: translateY(3px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 .animate-page-enter {
@@ -1643,3 +1643,20 @@ html.perf-lite * { scroll-behavior: auto !important; }
 
 /* Big data: off-screen cards skip layout/paint until they scroll near the viewport (any mode). */
 .cv-auto { content-visibility: auto; contain-intrinsic-size: auto 320px; }
+
+/* ── Streak embers: compositor-only (transform/opacity), replaces the JS-driven particles + shimmer repaint ── */
+@keyframes streak-ember {
+  0%   { opacity: 0;   transform: translate3d(0, 0, 0) scale(0.4); }
+  35%  { opacity: 0.9; transform: translate3d(calc(var(--ex) * 0.5), calc(var(--ey) * 0.5), 0) scale(0.8); }
+  100% { opacity: 0;   transform: translate3d(var(--ex), var(--ey), 0) scale(0.3); }
+}
+.streak-ember { animation: streak-ember 2s ease-out infinite; will-change: transform, opacity; }
+html.perf-lite .streak-embers { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .streak-embers { display: none !important; } }
+
+/* ── Readable-text floor ──
+   Hundreds of labels were 6–9 px, which is hard to read on a phone. One place raises them all a little
+   (unlayered, so it wins over the utility classes) — change these three values to tune the whole app. */
+.text-\[6px\], .text-\[7px\] { font-size: 9px; }
+.text-\[8px\] { font-size: 9.5px; }
+.text-\[9px\] { font-size: 10px; }

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useConnectivity } from '@/platform/connectivity';
 import { getAiSettings, isAiConfigured, subscribeAiSettings } from '@/platform/ai';
 import { useSyncExternalStore } from 'react';
+import { useScrolling } from '@/hooks/useScrolling';
 
 const HINT_KEY = 'rj-ai-fab-hint-v1';
 const LONG_PRESS_MS = 420;
@@ -17,6 +18,7 @@ const LONG_PRESS_MS = 420;
 export default function AiFab({ onOpenAi, onOpenQuickComplete, onOpenPomodoro, timerRunning }: {
   onOpenAi: () => void; onOpenQuickComplete: () => void; onOpenPomodoro: () => void; timerRunning: boolean;
 }) {
+  const scrolling = useScrolling();
   const [expanded, setExpanded] = useState(false);
   const [hubOpen, setHubOpen] = useState(false);
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function AiFab({ onOpenAi, onOpenQuickComplete, onOpenPomodoro, t
   const label = !configured ? 'AI Tutor — add a key to start' : conn.status === 'online' ? 'AI Tutor' : 'AI Tutor — offline';
 
   return (
-    <div className={`fixed bottom-[8.9rem] right-3 z-[55] flex flex-col items-center gap-2 transition-opacity duration-150 sm:bottom-[9.9rem] sm:right-6 ${hubOpen ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
+    <div className={`fixed bottom-[8.9rem] right-3 z-[55] flex flex-col items-center gap-2 transition-[opacity,transform] duration-150 sm:bottom-[9.9rem] sm:right-6 ${hubOpen ? 'pointer-events-none opacity-0' : scrolling && !expanded ? 'opacity-30 scale-90 pointer-events-none' : 'opacity-100'}`}>
       <AnimatePresence>
         {expanded && (
           <>

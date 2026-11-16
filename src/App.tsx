@@ -36,6 +36,8 @@ import InstallBanner from './components/shared/InstallBanner';
 import { NotificationProvider } from './contexts/NotificationContext';
 import NotificationContainer from './components/shared/NotificationContainer';
 import HelpModal from './components/shared/HelpModal';
+import { startPrefetch } from './platform/prefetch';
+import { useStreakRules } from './lib/streakRules';
 import FloatingTimer from './components/shared/FloatingTimer';
 import FloatingWidgetHub from './components/shared/FloatingWidgetHub';
 import WidgetManagerModal from './components/widgets/WidgetManagerModal';
@@ -75,27 +77,9 @@ const SyncCenter = lazy(() => import('./components/cloud/SyncCenter'));
 const AuthScreen = lazy(() => import('./components/auth/AuthScreen'));
 const CloudGate = lazy(() => import('./components/cloud/CloudGate'));
 
-// Prefetch all lazy chunks during idle time so tab switches are instant
-if (typeof window !== 'undefined') {
-  const prefetch = () => {
-    import('./components/Dashboard');
-    import('./components/SyllabusTracker');
-    import('./components/DailyTracker');
-    import('./components/ChartsView');
-    import('./components/RevisionPanel');
-    import('./components/profile/ProfilePage');
-    import('./components/GamificationPanel');
-    import('./components/FocusTimer');
-    import('./components/AIChat');
-    import('./components/MCQPractice');
-    import('./components/FlashcardDeck');
-  };
-  if ('requestIdleCallback' in window) {
-    (window as any).requestIdleCallback(prefetch);
-  } else {
-    setTimeout(prefetch, 2000);
-  }
-}
+// Lazy screens are warmed one at a time once the app is idle (see platform/prefetch.ts) so tab switches stay instant
+// without competing with start-up.
+startPrefetch();
 
 const MAX_HISTORY = 500;
 const MAX_UNDO = 10;
@@ -586,6 +570,13 @@ function AppInner() {
     window.addEventListener('rj:back-unhandled', handleUnhandledBack);
     return () => window.removeEventListener('rj:back-unhandled', handleUnhandledBack);
   }, [profileOpen, pomodoroOpen, widgetModalOpen, mcqOpen, flashcardOpen, notifCenterOpen, cloudDataOpen, searchOpen, quickCompleteOpen, helpOpen, activeTab, navigate]);
+  // Keyboard users (tablet + keyboard, desktop): Esc closes the full-screen Profile & Settings page
+  useEffect(() => {
+    if (!profileOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented) setProfileOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [profileOpen]);
   const [qcSubjectId, setQcSubjectId] = useState('');
   const [qcUnitId, setQcUnitId] = useState('');
   const [qcTopicId, setQcTopicId] = useState('');
@@ -1135,7 +1126,8 @@ function AppInner() {
     }
   }, [authUser, setAppState]);
 
-  const stats = useMemo(() => getStats(appState.subjects, appState.dailyLogs, dbSessions), [appState, dbSessions]);
+  const streakRules = useStreakRules(); // re-count the streak the moment the rules change
+  const stats = useMemo(() => getStats(appState.subjects, appState.dailyLogs, dbSessions), [appState, dbSessions, streakRules]); // eslint-disable-line react-hooks/exhaustive-deps
   const srsDueCount = useMemo(() => countDueTopics(appState.subjects), [appState.subjects]);
 
   // Level requires BOTH XP and syllabus progress

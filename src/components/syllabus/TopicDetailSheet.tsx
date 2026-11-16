@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Trash2, Plus, X, CalendarIcon, Hash, Undo2, Redo2, Timer, Clock, ChevronDown, ChevronRight, ChevronLeft, CheckCircle2, Circle, Flame, Target, BookOpen, AlertTriangle, Eye, Play, Pause, RotateCcw, Save, Link2, ExternalLink, Youtube, FileText, Pencil, ClipboardCopy, Sparkles, Zap, Trophy, Minus, Star } from 'lucide-react';
-import { MarkdownEditor } from '@project/components/markdown-editor';
+// The rich-text editor (~100 KB gzipped) only loads when the Notes section is opened
+const loadEditor = () => import('@project/components/markdown-editor');
+const MarkdownEditor = lazy(() => loadEditor().then(m => ({ default: m.MarkdownEditor })));
 import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
 import { Label } from '@project/components/ui/label';
@@ -102,6 +104,13 @@ function nowStartTime(mins: number, date?: string): string | undefined {
 
 export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelete, canUndo, canRedo, onUndo, onRedo, onOpenPomodoro, subjectId, unitId, subjectName, subjectShortName, unitName, onNavigatePrev, onNavigateNext, hasPrev, hasNext, topicIndex, totalTopics, availableSubjects = [], onMoveToSubject, onRenameTopic, onNavigateToTopic, sheetZIndex, onCreateSession }: Props) {
   const [draft, setDraft] = useState<SubTopic | null>(null);
+  // Warm the notes editor in the background while the sheet is open, so tapping Notes is instant
+  useEffect(() => {
+    if (!open) return;
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+    const id = w.requestIdleCallback ? w.requestIdleCallback(() => { void loadEditor(); }, { timeout: 3000 }) : window.setTimeout(() => { void loadEditor(); }, 1200);
+    return () => { if (!w.requestIdleCallback) clearTimeout(id); };
+  }, [open]);
   const [newTag, setNewTag] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [moduleOpen, setModuleOpen] = useState(false);
@@ -710,7 +719,9 @@ export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelet
         <div className="rounded-2xl bg-card/80 border border-border/12 overflow-hidden" style={{ boxShadow: '0 2px 12px hsl(var(--foreground) / 0.03)' }}>
           <SectionRow id="notes" icon="📝" title="Notes" hint={notesPreview || 'Add your own notes'} badge={notesPreview ? '✓' : undefined}
             open={openSections.includes('notes')} onToggle={toggleSection}>
-            <MarkdownEditor content={draft.notes || ''} onChange={(md) => setField('notes', md)} height="dynamic-sm" hideHorizontalRule hideCode />
+            <Suspense fallback={<div className="h-28 rounded-xl bg-muted/20 border border-border/10" aria-busy="true" />}>
+              <MarkdownEditor content={draft.notes || ''} onChange={(md) => setField('notes', md)} height="dynamic-sm" hideHorizontalRule hideCode />
+            </Suspense>
           </SectionRow>
         </div>
 

@@ -1,3 +1,4 @@
+import StreakRulesSettings from './StreakRulesSettings';
 import { useState, useMemo, useRef, useEffect, useCallback, useDeferredValue } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, ChevronDown, ChevronRight, CornerDownLeft } from 'lucide-react';
@@ -67,7 +68,7 @@ export interface SettingsHubProps {
 export type ItemId =
   | 'analytics' | 'achievements'
   | 'displayMode' | 'perfMode' | 'accent' | 'textLayout' | 'zoom'
-  | 'studentMode' | 'goals' | 'exams' | 'srs'
+  | 'studentMode' | 'goals' | 'exams' | 'srs' | 'streakRules'
   | 'pomodoroTool' | 'pomodoroPrefs'
   | 'reminders'
   | 'aiDevice'
@@ -121,6 +122,7 @@ const CATEGORIES: CategoryMeta[] = [
       { id: 'studentMode', icon: '🩺', title: 'Student Mode & Exam Labels', description: 'Nursing or Agriculture mode and the exam names shown in the app', keywords: ['mode', 'nursing', 'agriculture', 'student', 'agro', 'nurse', 'norcet', 'exam', 'label', 'branding'] },
       { id: 'goals', icon: '🎯', title: 'Study Goals & Targets', description: 'Daily, weekly and monthly hours and topic targets', keywords: ['goal', 'target', 'daily', 'weekly', 'monthly', 'hours', 'topics', 'plan'] },
       { id: 'exams', icon: '⏳', title: 'Exam Countdown', description: 'Add exam dates and track the days left', keywords: ['exam', 'countdown', 'date', 'deadline', 'days left', 'test'] },
+      { id: 'streakRules', icon: '🔥', title: 'Streak Rules', description: 'Minimum study time for a streak day and weekly rest days', keywords: ['streak', 'rest', 'day off', 'minimum', 'minutes', 'freeze', 'weekend', 'sunday'] },
       { id: 'srs', icon: '🧠', title: 'Spaced Repetition', description: 'Revision intervals for easy, medium and hard topics', keywords: ['srs', 'spaced', 'repetition', 'interval', 'review', 'revision', 'memory', 'schedule'] },
     ],
   },
@@ -299,6 +301,7 @@ export default function SettingsHub(props: SettingsHubProps) {
       case 'goals': return <StudyGoalsSettings settings={settings} onUpdate={onUpdateSettings} />;
       case 'exams': return <ExamCountdown subjects={subjects} exams={props.exams} onUpdateExams={props.onUpdateExams} />;
       case 'srs': return <SRSSettings settings={settings} onUpdate={onUpdateSettings} />;
+      case 'streakRules': return <StreakRulesSettings />;
       case 'pomodoroTool': return <GamificationPanel subjects={subjects} dailyLogs={dailyLogs} onPomodoroComplete={props.onPomodoroComplete} pomodoroSettings={settings.pomodoroSettings} initialTab="pomodoro" />;
       case 'pomodoroPrefs': return <PomodoroSettingsPanel settings={settings} onUpdate={onUpdateSettings} />;
       case 'reminders': return onUpdateReminders ? <ReminderManager reminders={reminders || []} onUpdate={onUpdateReminders} /> : null;

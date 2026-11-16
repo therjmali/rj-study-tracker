@@ -202,7 +202,8 @@ export default function ExamPosterCard({ data, onManage, onSubjectClick, compact
   const toggleStyle = () => setFlipStyle(v => { const n = !v; try { localStorage.setItem('rj-exam-cd-style', n ? 'flip' : 'classic'); } catch { /* ignore */ } return n; });
   const hasCustomBg = !!exam.backgroundImage;
   const bgBrightness = useImageBrightness(exam.backgroundImage);
-  const isDarkBg = bgBrightness === 'dark';
+  // Busy posters defeat brightness detection (white text vanished on bright art): always darken the poster and use white text.
+  const isDarkBg = hasCustomBg ? true : bgBrightness === 'dark';
 
   const tp = hasCustomBg ? (isDarkBg ? 'text-white' : 'text-gray-900') : 'text-foreground';
   const ts = hasCustomBg ? (isDarkBg ? 'text-white/70' : 'text-gray-700') : 'text-muted-foreground';
@@ -227,7 +228,7 @@ export default function ExamPosterCard({ data, onManage, onSubjectClick, compact
         {hasCustomBg && (
           <>
             <img src={exam.backgroundImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
-            <div className={`absolute inset-0 ${isDarkBg ? 'bg-black/40' : 'bg-white/50'}`} />
+            <div className="absolute inset-0 bg-black/55" />
           </>
         )}
         <div className="relative text-center py-6 space-y-2">
@@ -251,7 +252,7 @@ export default function ExamPosterCard({ data, onManage, onSubjectClick, compact
       {hasCustomBg && (
         <>
           <img src={exam.backgroundImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          <div className={`absolute inset-0 ${isDarkBg ? 'bg-black/30' : 'bg-white/40'} backdrop-blur-[1px]`} />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/40 to-black/60" />
         </>
       )}
 

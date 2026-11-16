@@ -1,5 +1,34 @@
 # Changelog
 
+## 20.0.0 — Smooth, fast, planned: deadline planner, safer streaks, fewer stalls
+
+**⚡ Smoother, faster, no flicker**
+- **Found and fixed the biggest source of lag on Home and Stats:** a streak of 7+ days ran continuous JavaScript fire particles plus a shimmer that repainted the number (with a glow filter) every frame. It is now pure GPU-friendly CSS, off in Smooth mode and with *reduce motion*. Measured on a throttled phone profile: frames slower than 33 ms while idle on Home dropped from 35 to 10 per 150, and while scrolling Home from 64 to 14 of 120.
+- Home sections that are off-screen are no longer rendered or painted until you scroll near them.
+- Start-up: the app no longer loads every screen at once while it is still starting. Screens are warmed one at a time when the phone is idle, so the first open is not competing with scrolling. The splash minimum dropped from 1.1 s to 0.35 s.
+- The topic sheet is far lighter: the rich-text notes editor (~180 KB) loads only when you open Notes, and is pre-warmed in the background.
+- Floating AI button and timer pill fade away while you scroll so they stop covering cards; the page-switch fade no longer starts from fully transparent.
+
+**🗓️ Deadline planner + Today’s plan (new, on Home)**
+- For every subject with an exam date: topics left, **topics/day you need vs. topics/day you do**, a status (On track · Behind · Critical) and the date you would finish at your current pace.
+- **Today’s plan:** the exact topics to study today (Important and Hard first), sized to what the deadline needs, plus revisions that are due. Tick a topic off and the next one appears.
+- **Readiness score** per subject = weighted completion (difficulty and importance) + revision rounds done + how recently you touched it.
+
+**🔥 Streak safety**
+- New **Settings → Study Setup → Streak Rules**: choose the minimum minutes for a counted day (any study / 10 / 20 / 30 / 60) and weekly **rest days** that never break the streak. Every screen, widget and the planner use the same rules.
+
+**🏠 Customize Home**
+- Hide the sections you do not use, or pick a preset (Full · Exam mode · Daily · Minimal). Hidden sections are not loaded at all.
+
+**↔️ Wide screens (tablets, landscape)**
+- Long lists (Review) use two columns instead of stretching a row across the whole screen with a gap in the middle; the header now lines up with the content edges.
+
+**🔤 Readability**
+- Text that was 6–9 px is raised app-wide (one place to tune). The exam poster title always has a dark scrim and white text, even over bright artwork. Esc closes Profile & Settings.
+
+**🧪 Quality**
+- Automated tests now load the real app logic: streak engine (including every screen agreeing), per-day / per-subject minutes, planner, readiness and streak rules (61 tests). ESLint works again (0 errors) and found a real bug (`Infinity` icon shadowing the global). The Home shelf report’s streak now uses the shared engine too.
+
 ## 19.0.0 — Tap any chart, ⚖️ on demand, one streak, numbers that fit
 
 **👆 Tap any chart to see its numbers**

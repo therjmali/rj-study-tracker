@@ -15,6 +15,10 @@ import TodaysFocus from './dashboard/TodaysFocus';
 import WhatToStudyNext from './dashboard/WhatToStudyNext';
 import StudyReport from './dashboard/StudyReport';
 import GrowthComparison from './shared/GrowthComparison';
+import DeadlinePlanner from './dashboard/DeadlinePlanner';
+import HomeLayoutPanel from './dashboard/HomeLayoutPanel';
+import BottomSheet from './shared/BottomSheet';
+import { useHiddenSections, type HomeSectionId } from '../lib/homeLayout';
 import GrowthToggle from './shared/GrowthToggle';
 import WeeklyRecap from './dashboard/WeeklyRecap';
 import StudyVelocity from './dashboard/StudyVelocity';
@@ -84,6 +88,9 @@ export default function Dashboard({
   customFrom, customTo, onCustomFromChange, onCustomToChange,
   subjectFilter, onSubjectFilterChange, onMoveSubject,
 }: DashboardProps) {
+  const hiddenSections = useHiddenSections();
+  const show = (id: HomeSectionId) => !hiddenSections.includes(id);
+  const [layoutOpen, setLayoutOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(true);
   const { excludedSubjects, toggleExclude, setAll: setExcludedSubjects } = useExcludedSubjects();
   const [calendarLinked, setCalendarLinked] = useLocalStorage('nursetrack-calendar-linked', false);
@@ -208,6 +215,8 @@ export default function Dashboard({
       {/* ═══ 0. GUEST SIGN-IN INVITATION CARD ═══ */}
       <SignInCard />
 
+      {show('ticker') && (
+      <>
       {/* ═══ 1. NEWS TICKER (red bar) — TOP ═══ */}
       <TargetsTicker
         studyGoals={studyGoals}
@@ -217,12 +226,24 @@ export default function Dashboard({
         onUpdateGoals={(goals) => onUpdateSettings?.({ studyGoals: goals })}
         dbSessions={dbSessions}
       />
+      </>
+      )}
 
+      {show('header') && (
+      <>
       {/* ═══ 2. HEADER (greeting + quote merged shelf) ═══ */}
       <DashboardHeader subjects={subjects} dailyLogs={dailyLogs} dbSessions={dbSessions} />
+      </>
+      )}
 
+      {show('shelf') && (
+      <>
       {/* ═══ 3. PROGRESS & TODAY'S GOALS UNIFIED SHELF ═══ */}
-      <ProgressCard subjects={subjects} dailyLogs={dailyLogs} studyGoals={studyGoals} dbSessions={dbSessions} />
+      <div className="cv-auto -mx-1.5 px-1.5 -my-1.5 py-1.5" style={{ containIntrinsicSize: 'auto 560px' }}>
+        <ProgressCard subjects={subjects} dailyLogs={dailyLogs} studyGoals={studyGoals} dbSessions={dbSessions} />
+      </div>
+      </>
+      )}
 
       {/* ═══ 3b. TODAY'S LOGGED SESSIONS ═══ */}
       {dbSessions && dbSessions.length > 0 && (
@@ -234,44 +255,73 @@ export default function Dashboard({
         />
       )}
 
+      {show('stats') && (
+      <>
       {/* ═══ 4. STAT CARDS (with integrated subject visibility) ═══ */}
-      <StatCardsGrid
-        subjects={subjects}
-        dailyLogs={dailyLogs}
-        semesterConfig={semesterConfig}
-        difficultyFilter={diffFilter}
-        onNavigate={onNavigate}
-        onOpenTopicDetail={onOpenTopicDetail}
-        excludedSubjects={excludedSubjects}
-        onToggleExclude={toggleExclude}
-        onSetAllExcluded={setExcludedSubjects}
-        calendarLinked={calendarLinked}
-        onCalendarLinkedChange={setCalendarLinked}
-        dbSessions={dbSessions}
-      />
+      <div className="cv-auto -mx-1.5 px-1.5 -my-1.5 py-1.5" style={{ containIntrinsicSize: 'auto 620px' }}>
+        <StatCardsGrid
+          subjects={subjects}
+          dailyLogs={dailyLogs}
+          semesterConfig={semesterConfig}
+          difficultyFilter={diffFilter}
+          onNavigate={onNavigate}
+          onOpenTopicDetail={onOpenTopicDetail}
+          excludedSubjects={excludedSubjects}
+          onToggleExclude={toggleExclude}
+          onSetAllExcluded={setExcludedSubjects}
+          calendarLinked={calendarLinked}
+          onCalendarLinkedChange={setCalendarLinked}
+          dbSessions={dbSessions}
+        />
+      </div>
+      </>
+      )}
 
+      {show('exams') && (
+      <>
       {/* ═══ 4b. EXAM SHELF — unified carousel ═══ */}
-      <ExamShelf
-        exams={semesterConfig.exams}
-        subjects={subjects}
-        onNavigate={onNavigate}
-        onManageExams={onOpenProfile}
-      />
+      <div className="cv-auto -mx-1.5 px-1.5 -my-1.5 py-1.5" style={{ containIntrinsicSize: 'auto 460px' }}>
+        <ExamShelf
+          exams={semesterConfig.exams}
+          subjects={subjects}
+          onNavigate={onNavigate}
+          onManageExams={onOpenProfile}
+        />
+      </div>
+      </>
+      )}
 
+      {show('planner') && (
+      <>
+      {/* Deadline planner — what each exam needs per day, and today's concrete list */}
+      <div className="cv-auto -mx-1.5 px-1.5 -my-1.5 py-1.5" style={{ containIntrinsicSize: 'auto 520px' }}>
+        <DeadlinePlanner subjects={subjects} onToggleTopic={onToggleTopic} onOpenTopicDetail={onOpenTopicDetail} />
+      </div>
+      </>
+      )}
+
+      {show('subjects') && (
+      <>
       {/* ═══ 5. SUBJECT INTELLIGENCE ═══ */}
-      <SubjectIntelligence
-        subjects={subjects}
-        studyGoals={studyGoals}
-        diffFilter={diffFilter}
-        onDiffFilterChange={onDiffFilterChange}
-        onNavigate={onNavigate}
-        onToggleTopic={onToggleTopic}
-        onOpenTopicDetail={onOpenTopicDetail}
-        onMoveSubject={onMoveSubject}
-        dbSessions={dbSessions}
-        dailyLogs={dailyLogs}
-      />
+      <div className="cv-auto -mx-1.5 px-1.5 -my-1.5 py-1.5" style={{ containIntrinsicSize: 'auto 700px' }}>
+        <SubjectIntelligence
+          subjects={subjects}
+          studyGoals={studyGoals}
+          diffFilter={diffFilter}
+          onDiffFilterChange={onDiffFilterChange}
+          onNavigate={onNavigate}
+          onToggleTopic={onToggleTopic}
+          onOpenTopicDetail={onOpenTopicDetail}
+          onMoveSubject={onMoveSubject}
+          dbSessions={dbSessions}
+          dailyLogs={dailyLogs}
+        />
+      </div>
+      </>
+      )}
 
+      {show('analytics') && (
+      <>
       {/* ═══ 7. ANALYTICS & TRENDS — Collapsible ═══ */}
       {/* cv-auto enables content-visibility for off-screen perf */}
       <div className="cv-auto relative overflow-hidden rounded-3xl border border-border/20 bg-card/60 shadow-md">
@@ -367,14 +417,39 @@ export default function Dashboard({
           )}
         </AnimatePresence>
       </div>
+      </>
+      )}
 
+      {show('studyplan') && (
+      <>
       {/* ═══ 8. TODAY'S STUDY PLAN ═══ */}
       <div className="cv-auto">
       <SectionHeader icon={<Zap className="w-4 h-4 text-primary" />} title="Today's Study Plan" subtitle="Focus areas & AI recommendations" />
-      <TodaysFocus subjects={subjects} studyGoals={studyGoals} difficultyFilter={diffFilter} onNavigate={onNavigate} />
-      <AIStudyPlan subjects={subjects} studyGoals={studyGoals} />
-      <WhatToStudyNext subjects={subjects} difficultyFilter={diffFilter} onToggleTopic={onToggleTopic} onOpenTopicDetail={onOpenTopicDetail} onNavigate={onNavigate} onAddTodo={onAddTodo} />
+      <div className="cv-auto -mx-1.5 px-1.5 -my-1.5 py-1.5" style={{ containIntrinsicSize: 'auto 380px' }}>
+        <TodaysFocus subjects={subjects} studyGoals={studyGoals} difficultyFilter={diffFilter} onNavigate={onNavigate} />
       </div>
+      <div className="cv-auto -mx-1.5 px-1.5 -my-1.5 py-1.5" style={{ containIntrinsicSize: 'auto 320px' }}>
+        <AIStudyPlan subjects={subjects} studyGoals={studyGoals} />
+      </div>
+      <div className="cv-auto -mx-1.5 px-1.5 -my-1.5 py-1.5" style={{ containIntrinsicSize: 'auto 420px' }}>
+        <WhatToStudyNext subjects={subjects} difficultyFilter={diffFilter} onToggleTopic={onToggleTopic} onOpenTopicDetail={onOpenTopicDetail} onNavigate={onNavigate} onAddTodo={onAddTodo} />
+      </div>
+      </div>
+      </>
+      )}
+
+
+
+      {/* Customize Home */}
+      <div className="flex justify-center pt-1 pb-2">
+        <button type="button" onClick={() => setLayoutOpen(true)}
+          className="min-h-[44px] px-5 rounded-full border border-border/25 bg-card/60 text-[12px] font-bold text-muted-foreground active:scale-95 transition flex items-center gap-2">
+          ⚙️ Customize Home{hiddenSections.length ? ` · ${hiddenSections.length} hidden` : ''}
+        </button>
+      </div>
+      <BottomSheet open={layoutOpen} onClose={() => setLayoutOpen(false)} title="Customize Home">
+        <div className="px-4 pb-6"><HomeLayoutPanel /></div>
+      </BottomSheet>
     </div>
   );
 }

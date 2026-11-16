@@ -567,14 +567,14 @@ export default function RevisionPanel({ subjects, onUpdate, initialFilter, onOpe
               actionLabel={activeFilterCount > 0 || search ? '✕ Clear Filters' : undefined}
               onAction={activeFilterCount > 0 || search ? clearAllFilters : undefined} />
           ) : (
-            <div className="space-y-1.5">
+            <div className="grid grid-cols-1 gap-1.5 min-[900px]:grid-cols-2 min-[900px]:gap-x-3 min-[900px]:items-stretch">
               {shown.map(item => (
                 <TopicRow key={item.topic.id} item={item} showUnitName={showUnitName} isWeak={weakIds.has(item.topic.id)} today={today}
                   onTopicClick={handleTopicClick} onSRSReview={handleSRSReview} onNavigate={onNavigate} hasDetailHandler={!!onOpenTopicDetail} />
               ))}
               {filtered.length > shown.length && (
                 <button onClick={() => setVisible(v => v + PAGE)}
-                  className="w-full py-2.5 rounded-xl border border-border/20 bg-card/50 text-[11px] font-bold text-foreground/80 hover:bg-card active:scale-[0.99] transition">
+                  className="col-span-full w-full py-2.5 rounded-xl border border-border/20 bg-card/50 text-[11px] font-bold text-foreground/80 hover:bg-card active:scale-[0.99] transition">
                   Show {Math.min(PAGE, filtered.length - shown.length)} more · {shown.length} of {filtered.length}
                 </button>
               )}

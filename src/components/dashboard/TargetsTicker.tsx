@@ -159,7 +159,7 @@ export default function TargetsTicker({ studyGoals, subjects, dailyLogs, exams, 
         {/* Marquee area — clickable to open stats popup */}
         <button
           onClick={() => setStatsOpen(true)}
-          className="flex-1 overflow-hidden relative h-9 text-left cursor-pointer hover:bg-destructive-foreground/5 transition-colors min-w-0"
+          className="flex-1 overflow-hidden relative h-9 text-left cursor-pointer hover:bg-destructive-foreground/5 transition-colors min-w-0 [contain:paint]"
         >
           <div className="news-ticker-track whitespace-nowrap text-[11px] font-bold text-destructive-foreground leading-9">
             <span className="inline-block news-ticker-item">{tickerText}</span>

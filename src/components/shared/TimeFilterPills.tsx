@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Infinity, CalendarDays, CalendarRange, Calendar, FileText, ChevronDown } from 'lucide-react';
+import { Infinity as InfinityIcon, CalendarDays, CalendarRange, Calendar, FileText, ChevronDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverAnchor } from '@project/components/ui/popover';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addMonths, addWeeks, subWeeks, isAfter, isSameWeek, isSameMonth } from 'date-fns';
 import { getLocalDateStr } from '../../lib/utils';
@@ -181,7 +181,7 @@ export default function TimeFilterPills({
   return (
     // Five equal columns: always fits (no sideways scrolling, nothing cut off) from small phones to tablets.
     <div className="grid grid-cols-5 gap-1.5 sm:gap-2" role="group" aria-label="Time range">
-      <Pill icon={<Infinity className="h-4 w-4" />} label="All Time" sub="Everything" active={timeFilter === 'all'} onClick={() => select('all')} />
+      <Pill icon={<InfinityIcon className="h-4 w-4" />} label="All Time" sub="Everything" active={timeFilter === 'all'} onClick={() => select('all')} />
       <Pill icon={<CalendarDays className="h-4 w-4" />} label="Today" sub={format(now, 'MMM d')} active={timeFilter === 'today'} onClick={() => select('today')} />
 
       <Popover open={weekPickerOpen} onOpenChange={setWeekPickerOpen}>

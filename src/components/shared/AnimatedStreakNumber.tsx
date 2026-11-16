@@ -25,30 +25,23 @@ export default function AnimatedStreakNumber({ value, size = 'md', showFire = tr
 
   return (
     <div className="relative inline-flex flex-col items-center">
-      {/* Fire particles for streak >= 3 */}
+      {/* Embers for streak >= 3 — pure CSS (transform + opacity only → runs on the GPU, no JS per frame, off in Smooth mode) */}
       {showFire && isWarm && (
-        <div className="absolute inset-0 pointer-events-none">
-          {[...Array(isHot ? 5 : 3)].map((_, i) => (
-            <motion.span
+        <div className="absolute inset-0 pointer-events-none streak-embers" aria-hidden>
+          {[...Array(isHot ? 4 : 2)].map((_, i) => (
+            <span
               key={i}
-              className="absolute text-[8px]"
-              initial={{ opacity: 0, y: 0, x: 0, scale: 0.5 }}
-              animate={{
-                opacity: [0, 0.9, 0],
-                y: [0, -16 - i * 4],
-                x: [0, (i % 2 === 0 ? 1 : -1) * (4 + i * 2)],
-                scale: [0.4, 0.8, 0.3],
+              className="streak-ember absolute text-[8px]"
+              style={{
+                left: '50%', top: '10%',
+                ['--ex' as string]: `${(i % 2 === 0 ? 1 : -1) * (4 + i * 2)}px`,
+                ['--ey' as string]: `${-16 - i * 4}px`,
+                animationDuration: `${1.8 + i * 0.4}s`,
+                animationDelay: `${i * 0.45}s`,
               }}
-              transition={{
-                duration: 1.5 + i * 0.3,
-                repeat: Infinity,
-                delay: i * 0.35,
-                ease: 'easeOut',
-              }}
-              style={{ left: '50%', top: '10%' }}
             >
               🔥
-            </motion.span>
+            </span>
           ))}
         </div>
       )}
@@ -61,10 +54,9 @@ export default function AnimatedStreakNumber({ value, size = 'md', showFire = tr
         className={`${s.text} font-black font-mono leading-none relative z-10 streak-number ${isHot ? 'streak-gold' : ''}`}
         style={isHot ? {
           background: 'linear-gradient(135deg, hsl(40 95% 55%), hsl(25 100% 50%), hsl(40 95% 55%))',
-          backgroundSize: '200% 200%',
+          backgroundSize: '100% 100%',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
-          animation: 'streak-shimmer 2s ease-in-out infinite',
           filter: `drop-shadow(0 0 ${s.glow}px hsla(35, 100%, 50%, 0.5))`,
         } : isWarm ? {
           color: 'hsl(var(--chart-4))',

@@ -7,6 +7,7 @@
  */
 import type { DailyLog, DbStudySession, StudyGoals, Subject } from '../types';
 import { getEffectiveDayMinutes, getLocalDateStr } from './utils';
+import { computeStreak as computeStreakInfo } from '../hooks/useStreak';
 
 export type PeriodId = 'today' | 'yesterday' | 'week' | 'month' | 'custom' | 'all';
 
@@ -171,16 +172,9 @@ function buildSeries(from: string, to: string, perDay: Map<string, number>, inpu
   return pts;
 }
 
+/** Same engine as Home / Stats / Profile — the report must never disagree with them. */
 function currentStreak(input: ReportInput, today: string): number {
-  let streak = 0;
-  // a study day = any minutes OR a topic completed; today not yet studied does not break yesterday's streak
-  for (let d = today, i = 0; i < 1000; d = shift(d, -1), i++) {
-    const active = getEffectiveDayMinutes(input.subjects, input.dailyLogs, d, input.dbSessions) > 0 || topicsIn(input, d, d) > 0;
-    if (active) streak++;
-    else if (i === 0) continue;
-    else break;
-  }
-  return streak;
+  return computeStreakInfo(input.subjects as any, input.dailyLogs as any, today, input.dbSessions as any).current;
 }
 
 export function buildReport(input: ReportInput, period: PeriodId, custom?: { from: string; to: string }, today = getLocalDateStr()): ProgressReport {

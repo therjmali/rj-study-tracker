@@ -89,7 +89,7 @@
           setTimeout(function () {
             el.classList.add('rj-out');
             setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 520);
-          }, Math.max(0, 1100 - (Date.now() - t0)));
+          }, Math.max(0, 350 - (Date.now() - t0)));
         };
         setTimeout(function () { window.__rjHideSplash && window.__rjHideSplash(); }, 7000); // never get stuck
       })();

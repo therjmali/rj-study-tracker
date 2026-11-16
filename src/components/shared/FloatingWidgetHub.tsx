@@ -1,3 +1,4 @@
+import { useScrolling } from '../../hooks/useScrolling';
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, X, ChevronUp, ChevronDown, Clock, Target, Flame, Sparkles, Maximize2, Smartphone } from 'lucide-react';
@@ -37,6 +38,7 @@ export default function FloatingWidgetHub({
   onToggleTimer,
   streakDays = 0,
 }: Props) {
+  const scrolling = useScrolling();
   const [isOpen, setIsOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const { timeLeft, swTime } = useTimerTick();
@@ -92,7 +94,7 @@ export default function FloatingWidgetHub({
   return (
     <>
       {isOpen && <div className="fixed inset-0 z-[39]" onPointerDown={() => setIsOpen(false)} aria-hidden="true" />}
-    <div className="fixed bottom-20 sm:bottom-24 right-3 sm:right-6 z-40 select-none">
+    <div className={`fixed bottom-20 sm:bottom-24 right-3 sm:right-6 z-40 select-none transition-[opacity,transform] duration-200 ${scrolling && !isOpen ? 'opacity-25 scale-95 pointer-events-none' : 'opacity-100'}`}>
       <AnimatePresence>
         {isOpen ? (
           <motion.div

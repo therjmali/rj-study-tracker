@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { getLocalDateStr, getEffectiveDayMinutes } from '../lib/utils';
+import { getStreakRules, useStreakRules, type StreakRules } from '../lib/streakRules';
 
 interface StreakSubject {
   units: { timeEntries?: { date: string; minutes: number }[]; subTopics: { completed: boolean; completedDate?: string; timeSpent: number; timeEntries?: { date: string; minutes: number }[] }[] }[];
@@ -62,6 +63,8 @@ export function getActiveDates(
   dailyLogs: StreakLog[],
   today: string,
   dbSessions?: StreakSession[],
+  /** A day counts when it has at least this many minutes (default: any study at all). Only the streak raises it. */
+  minMinutes = 0,
 ): Set<string> {
   // Step 1: Collect all CANDIDATE dates from every data source.
   // This is just to know which dates to check — the actual activity test is getEffectiveDayMinutes.
@@ -94,35 +97,39 @@ export function getActiveDates(
     // Don't count future dates
     if (dateStr > today) return;
     const mins = getEffectiveDayMinutes(subjects as any, dailyLogs, dateStr, dbSessions);
-    if (mins > 0) activeDates.add(dateStr);
+    if (mins > 0 && mins >= minMinutes) activeDates.add(dateStr);
   });
 
   return activeDates;
 }
+
+const isRestDay = (dateStr: string, rest: number[]) => rest.length > 0 && rest.includes(new Date(dateStr + 'T12:00:00').getDay());
 
 export function computeStreak(
   subjects: StreakSubject[],
   dailyLogs: StreakLog[],
   today: string,
   dbSessions?: StreakSession[],
+  rules: StreakRules = getStreakRules(),
 ): StreakInfo {
-  const activeDates = getActiveDates(subjects, dailyLogs, today, dbSessions);
+  const activeDates = getActiveDates(subjects, dailyLogs, today, dbSessions, rules.minMinutes > 1 ? rules.minMinutes : 0);
+  const rest = rules.restDays;
 
-  // Step 3: Current streak — walk backwards from today
+  // Step 3: Current streak — walk backwards from today. A rest day without study neither counts nor breaks.
   let current = 0;
   const d = new Date(today + 'T12:00:00');
   if (!activeDates.has(today)) {
     // Today has no activity yet — start counting from yesterday
     d.setDate(d.getDate() - 1);
   }
-  while (true) {
+  for (let guard = 0; guard < 4000; guard++) {
     const dateStr = getLocalDateStr(d);
     if (activeDates.has(dateStr)) {
       current++;
-      d.setDate(d.getDate() - 1);
-    } else {
+    } else if (!isRestDay(dateStr, rest)) {
       break;
     }
+    d.setDate(d.getDate() - 1);
   }
 
   // Step 4: Best streak
@@ -134,7 +141,9 @@ export function computeStreak(
       const prev = new Date(sorted[i - 1] + 'T12:00:00');
       const curr = new Date(sorted[i] + 'T12:00:00');
       const diffDays = Math.round((curr.getTime() - prev.getTime()) / 86400000);
-      temp = diffDays === 1 ? temp + 1 : 1;
+      let gapIsRest = diffDays > 1 && rest.length > 0;
+      if (gapIsRest) for (let k = 1; k < diffDays; k++) { const g = new Date(prev); g.setDate(g.getDate() + k); if (!rest.includes(g.getDay())) { gapIsRest = false; break; } }
+      temp = diffDays === 1 || gapIsRest ? temp + 1 : 1;
     }
     best = Math.max(best, temp);
   }
@@ -162,8 +171,9 @@ export function useStreak(
   dbSessions?: StreakSession[],
 ): StreakInfo {
   const today = getLocalDateStr();
+  const rules = useStreakRules();
   return useMemo(
-    () => computeStreak(subjects, dailyLogs, today, dbSessions),
-    [subjects, dailyLogs, today, dbSessions],
+    () => computeStreak(subjects, dailyLogs, today, dbSessions, rules),
+    [subjects, dailyLogs, today, dbSessions, rules],
   );
 }
