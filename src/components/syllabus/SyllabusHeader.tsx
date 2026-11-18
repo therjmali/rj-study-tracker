@@ -1,9 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Search, Undo2, Redo2, Calendar, X } from 'lucide-react';
-import { Input } from '@project/components/ui/input';
+import { Undo2, Redo2, Calendar } from 'lucide-react';
 import type { Subject, RevisionKey } from '../../types';
 import { formatDate, getLocalDateStr } from '../../lib/utils';
-import DeepSearchToggle from '../shared/DeepSearchToggle';
 import StatusFilterPills, { type StatusFilter, type DiffFilter } from '../shared/StatusFilterPills';
 
 export type { StatusFilter, DiffFilter } from '../shared/StatusFilterPills';
@@ -34,7 +32,6 @@ interface Props {
   onAddFolder?: () => void;
   searchResultCount?: number;
   searchSubjectCount?: number;
-  /** Controlled deep-search flag (so the toggle actually changes the results) */
   deepSearch?: boolean;
   onDeepSearchChange?: (v: boolean) => void;
   externalCounts?: { status: Partial<Record<StatusFilter, number>>; diff: Record<DiffFilter, number> };
@@ -45,18 +42,11 @@ interface Props {
 
 export default function SyllabusHeader({
   subjects, search, onSearchChange, filters, onFiltersChange, activeLogDate,
-  canUndo, canRedo, onUndo, onRedo, onAddSubject, selectMode, onToggleSelectMode,
-  totalTopics, doneTopics, onImport, onAddFolder,
+  canUndo, canRedo, onUndo, onRedo,
+  totalTopics, doneTopics,
   searchResultCount, searchSubjectCount, externalCounts,
   categories, activeCategory, onCategoryChange,
-  deepSearch: deepSearchProp, onDeepSearchChange,
 }: Props) {
-  const [localDeepSearch, setLocalDeepSearch] = useState(false);
-  const deepSearch = deepSearchProp ?? localDeepSearch;
-  const setDeepSearch = (fn: (p: boolean) => boolean) => {
-    const next = fn(deepSearch);
-    if (onDeepSearchChange) onDeepSearchChange(next); else setLocalDeepSearch(next);
-  };
 
   const counts = useMemo(() => {
     if (externalCounts) return externalCounts;
@@ -80,43 +70,37 @@ export default function SyllabusHeader({
     return { status, diff };
   }, [subjects, externalCounts]);
 
+  const pct = totalTopics > 0 ? Math.round((doneTopics / totalTopics) * 100) : 0;
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Title row */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-bold text-foreground">📚 Syllabus</h2>
-          <span className="text-xs text-muted-foreground font-mono">{doneTopics}/{totalTopics}</span>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">📚</span>
+            <h2 className="text-2xl font-black tracking-tight text-foreground">Syllabus</h2>
+          </div>
+          <div className="flex items-center gap-1.5 pl-9">
+            <span className="text-sm font-bold text-foreground/80">{doneTopics}</span>
+            <span className="text-xs text-muted-foreground font-medium">/ {totalTopics} topics</span>
+            <span className="ml-1 text-xs font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{pct}%</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground glass-subtle px-1.5 py-0.5 rounded-lg">
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground bg-card/50 border border-border/20 backdrop-blur-sm px-2 py-1 rounded-xl">
             <Calendar className="w-3 h-3" />
-            <span className="font-mono">{formatDate(activeLogDate)}</span>
+            <span className="font-mono font-semibold">{formatDate(activeLogDate)}</span>
           </div>
           <button disabled={!canUndo} onClick={onUndo} title="Undo"
-            className="w-7 h-7 rounded-lg border border-border/20 bg-card/30 flex items-center justify-center disabled:opacity-30 hover:bg-muted/30 active:scale-90 transition-all">
+            className="w-8 h-8 rounded-xl border border-border/20 bg-card/40 backdrop-blur-sm flex items-center justify-center disabled:opacity-30 hover:bg-muted/40 active:scale-90 transition-all min-h-[44px] min-w-[44px]">
             <Undo2 className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
           <button disabled={!canRedo} onClick={onRedo} title="Redo"
-            className="w-7 h-7 rounded-lg border border-border/20 bg-card/30 flex items-center justify-center disabled:opacity-30 hover:bg-muted/30 active:scale-90 transition-all">
+            className="w-8 h-8 rounded-xl border border-border/20 bg-card/40 backdrop-blur-sm flex items-center justify-center disabled:opacity-30 hover:bg-muted/40 active:scale-90 transition-all min-h-[44px] min-w-[44px]">
             <Redo2 className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         </div>
-      </div>
-
-      {/* Search */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input value={search} onChange={e => onSearchChange(e.target.value)} placeholder={deepSearch ? "Deep search (notes, resources, files)..." : "Search topics... (Ctrl+K)"}
-            className="pl-10 pr-8 bg-card/30 backdrop-blur-xl border-border/15" />
-          {search && (
-            <button onClick={() => onSearchChange('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-muted/50 flex items-center justify-center hover:bg-muted/70 transition-colors">
-              <X className="w-3 h-3 text-muted-foreground" />
-            </button>
-          )}
-        </div>
-        <DeepSearchToggle enabled={deepSearch} onToggle={() => setDeepSearch(p => !p)} />
       </div>
 
       {/* Search result indicator */}
@@ -128,7 +112,7 @@ export default function SyllabusHeader({
         </div>
       )}
 
-      {/* ── Unified Emoji Filter Strip (status + difficulty in one row) ── */}
+      {/* Status filter pills */}
       <StatusFilterPills
         value={filters.status}
         onChange={(v) => onFiltersChange({ ...filters, status: v })}

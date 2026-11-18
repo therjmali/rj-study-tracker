@@ -35,6 +35,8 @@ import { deepFilterSubjects, computeFilterCounts, getMatchingIds, topicMatchesSe
 import { renumberTopicNumbers } from '../lib/renumberTopics';
 import type { StatusFilter } from './shared/StatusFilterPills';
 import StatusFilterPills from './shared/StatusFilterPills';
+import SyllabusCommandBar from './syllabus/SyllabusCommandBar';
+import RearrangeModal from './syllabus/RearrangeModal';
 import type { DiffFilter } from './syllabus/SyllabusHeader';
 
 interface Props {
@@ -184,6 +186,7 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
   const [showFolderAnalytics, setShowFolderAnalytics] = useState(false);
   const [viewMode, setViewMode] = useState<'subjects' | 'units'>('subjects');
   const [toolbarOpen, setToolbarOpen] = useState(false);
+  const [rearrangeOpen, setRearrangeOpen] = useState(false);
 
   // Create Unit from Selected
   const [createUnitOpen, setCreateUnitOpen] = useState(false);
@@ -1016,6 +1019,23 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
     }));
   }, [subjects, onUpdate, currentFolderId]);
 
+  const handleReorderSubjectsGlobal = useCallback((subjectIds: string[]) => {
+    const ordered = subjectIds.map((id) => subjects.find(s => s.id === id)).filter(Boolean) as Subject[];
+    const unchanged = subjects.filter(s => !subjectIds.includes(s.id));
+    const withOrder = ordered.map((s, i) => ({ ...s, order: i }));
+    onUpdate([...withOrder, ...unchanged]);
+    toast.success('Order saved');
+  }, [subjects, onUpdate]);
+
+  const handleReorderFoldersGlobal = useCallback((folderIds: string[]) => {
+    const reordered = folderIds.map((id, i) => {
+      const f = folders.find(x => x.id === id);
+      return f ? { ...f, order: i } : null;
+    }).filter(Boolean) as Folder[];
+    const unchanged = folders.filter(f => !folderIds.includes(f.id));
+    onUpdateFolders([...reordered, ...unchanged]);
+  }, [folders, onUpdateFolders]);
+
   // ── Stable callbacks for SubjectCard to reduce re-render cascading ──
   const handleOpenTopicDetail = useCallback((topic: SubTopic, sId: string, uId: string, navList?: TopicNavRef[]) => {
     setDetailNavList(navList && navList.length > 1 ? navList : null);
@@ -1334,24 +1354,6 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
             <span className="text-foreground font-semibold">{currentFolder.name}</span>
           </div>
 
-          {/* Search */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input value={search} onChange={e => setSearch(e.target.value)}
-                placeholder={folderDeepSearch ? `Deep search in ${currentFolder.name}...` : `Search in ${currentFolder.name}...`}
-                className="pl-10 bg-card/30 backdrop-blur-xl border-border/15" />
-            </div>
-            <DeepSearchToggle enabled={folderDeepSearch} onToggle={() => setFolderDeepSearch(p => !p)} />
-          </div>
-
-          {/* Add Subject + Actions */}
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setEditSubject(null); setAddSubjectOpen(true); }} className="gap-1 text-xs h-8 bg-card/30 border-border/15">
-              <PlusIcon className="w-3.5 h-3.5" /> Add Subject
-            </Button>
-          </div>
-
           {/* ===== FOLDER FILTER SYSTEM — Unified emoji strip ===== */}
           <StatusFilterPills
             value={folderFilters.status}
@@ -1402,94 +1404,40 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
           onCategoryChange={setCategoryFilter} />
       )}
 
-      {/* ── Combined Toolbar: [Actions ▼] [Expand All] ── */}
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2">
-          <button onClick={() => setToolbarOpen(p => !p)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all active:scale-95 ${
-              toolbarOpen ? 'bg-primary/10 border-primary/20 text-primary' : 'bg-card/30 border-border/15 text-foreground/60 hover:text-foreground hover:bg-card/50'
-            }`}>
-            <MoreHorizontal className="w-3.5 h-3.5" />
-            Actions
-            {toolbarOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
-          <div className="flex-1" />
-          {filteredDisplaySubjects.length > 1 && (() => {
-            const allIds = filteredDisplaySubjects.map(s => s.id);
-            const allExpanded = allIds.every(id => expandedSubjects.has(id));
-            return (
-              <button
-                onClick={() => {
-                  if (allExpanded) {
-                    setExpandedSubjects(prev => { const n = new Set(prev); allIds.forEach(id => n.delete(id)); return n; });
-                  } else {
-                    setExpandedSubjects(prev => new Set([...prev, ...allIds]));
-                  }
-                }}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold border transition-all active:scale-95 shrink-0 ${
-                  allExpanded
-                    ? 'bg-primary/15 border-primary/30 text-primary'
-                    : 'bg-muted/40 border-border/30 text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                }`}
-              >
-                {allExpanded ? '▼ Collapse' : '▶ Expand'} All
-              </button>
-            );
-          })()}
-        </div>
-
-        {toolbarOpen && (
-          <div className="space-y-2 pl-1 pb-1">
-            {/* View mode tabs */}
-            {!currentFolderId && (
-              <div className="flex items-center gap-1">
-                <button onClick={() => setViewMode('subjects')}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all active:scale-95 ${viewMode === 'subjects' ? 'bg-primary/15 text-primary border border-primary/25' : 'text-muted-foreground hover:text-foreground'}`}>
-                  📚 Subjects
-                </button>
-                <button onClick={() => setViewMode('units')}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all active:scale-95 ${viewMode === 'units' ? 'bg-primary/15 text-primary border border-primary/25' : 'text-muted-foreground hover:text-foreground'}`}>
-                  📋 Units
-                </button>
-              </div>
-            )}
-
-            {/* Sort options */}
-            <div className="overflow-hidden">
-              <SortBar active={sortMode} onChange={setSortMode} itemCount={filteredDisplaySubjects.length + (!currentFolderId && !deferredSearch ? sortedFolders.length : 0)} />
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button onClick={() => setAddSubjectOpen(true)} className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-card/30 border border-border/15 text-foreground/60 hover:text-foreground hover:bg-card/50 transition-all active:scale-95">
-                <PlusIcon className="w-3 h-3" /> Subject
-              </button>
-              <button onClick={() => setCreateFolderOpen(true)} className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-card/30 border border-border/15 text-foreground/60 hover:text-foreground hover:bg-card/50 transition-all active:scale-95">
-                📁 Folder
-              </button>
-              <button onClick={() => { setSelectMode(p => !p); setSelectedTopics(new Set()); }}
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-all active:scale-95 ${
-                  selectMode ? 'bg-primary/15 border-primary/25 text-primary' : 'bg-card/30 border-border/15 text-foreground/60 hover:text-foreground hover:bg-card/50'
-                }`}>
-                <MousePointer2 className="w-3 h-3" /> Select
-              </button>
-              <button onClick={() => setImportOpen(true)} className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-card/30 border border-border/15 text-foreground/60 hover:text-foreground hover:bg-card/50 transition-all active:scale-95">
-                <FileDown className="w-3 h-3" /> Import
-              </button>
-              <button onClick={() => {
-                const lines: string[] = [];
-                let count = 0;
-                subjects.forEach(s => { s.units.forEach(u => { u.subTopics.filter(t => !t.completed).forEach(t => { lines.push(`☐ [${t.difficulty}] ${t.name} — ${s.shortName}`); count++; }); }); });
-                if (count === 0) { toast.info('All topics completed! 🎉'); return; }
-                const grouped = `Pending Topics (${count})\n${'─'.repeat(30)}\n${lines.join('\n')}`;
-                navigator.clipboard.writeText(grouped).then(() => toast.success(`📋 Copied ${count} pending topics`));
-              }} className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-card/30 border border-border/15 text-foreground/60 hover:text-foreground hover:bg-card/50 transition-all active:scale-95">
-                <ClipboardCopy className="w-3 h-3" /> Export
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* ── Unified Command Bar ── */}
+      {(() => {
+        const allIds = filteredDisplaySubjects.map(s => s.id);
+        const allExpanded = allIds.length > 0 && allIds.every(id => expandedSubjects.has(id));
+        const totalItems = filteredDisplaySubjects.length + (!currentFolderId && !deferredSearch ? sortedFolders.length : 0);
+        return (
+          <SyllabusCommandBar
+            sortMode={sortMode}
+            onSortChange={setSortMode}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            onAddSubject={() => { setEditSubject(null); setAddSubjectOpen(true); }}
+            onAddFolder={() => { setEditFolderData(null); setCreateFolderOpen(true); }}
+            onRearrange={() => setRearrangeOpen(true)}
+            onImport={() => setImportOpen(true)}
+            onExport={() => {
+              const lines: string[] = [];
+              let count = 0;
+              subjects.forEach(s => { s.units.forEach(u => { u.subTopics.filter(t => !t.completed).forEach(t => { lines.push(`☐ [${t.difficulty}] ${t.name} — ${s.shortName}`); count++; }); }); });
+              if (count === 0) { toast.info('All topics completed! 🎉'); return; }
+              const grouped = `Pending Topics (${count})\n${'─'.repeat(30)}\n${lines.join('\n')}`;
+              navigator.clipboard.writeText(grouped).then(() => toast.success(`📋 Copied ${count} pending topics`));
+            }}
+            selectMode={selectMode}
+            onToggleSelect={() => { setSelectMode(p => !p); setSelectedTopics(new Set()); }}
+            itemCount={totalItems}
+            expandAll={() => setExpandedSubjects(prev => new Set([...prev, ...allIds]))}
+            collapseAll={() => setExpandedSubjects(prev => { const n = new Set(prev); allIds.forEach(id => n.delete(id)); return n; })}
+            allExpanded={allExpanded}
+            hasMultipleItems={allIds.length > 1}
+            inFolder={!!currentFolderId}
+          />
+        );
+      })()}
 
       {/* Info line for root with folders */}
       {!currentFolderId && folders.length > 0 && (
@@ -1803,6 +1751,20 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
             onSelectAll={handleSelectAll}
             onDeselectAll={handleDeselectAll}
             subjectSummary={subjectSummary} />
+        )}
+      </AnimatePresence>
+
+      {/* ── Rearrange Modal ── */}
+      <AnimatePresence>
+        {rearrangeOpen && (
+          <RearrangeModal
+            open={rearrangeOpen}
+            onClose={() => setRearrangeOpen(false)}
+            subjects={subjects}
+            folders={folders}
+            onReorderSubjects={handleReorderSubjectsGlobal}
+            onReorderFolders={handleReorderFoldersGlobal}
+          />
         )}
       </AnimatePresence>
     </div>

@@ -1,5 +1,32 @@
 # Changelog
 
+## 21.0.0 — Complete UI/UX redesign of Syllabus & Action Toolbar: Unified Command Bar, Rearrange Mode & Clean Layout
+
+**✨ Streamlined Header & Universal Search**
+- Removed the redundant, vertical-space-consuming local search bar in the Syllabus view. The global navigation bar's search icon and command palette provide unified, instant access across all screens.
+- Redesigned the syllabus title and progress indicators with refined typographic hierarchy (bold title with prominent topic counters and percentage badge).
+- Cleanly grouped active date indicator and Undo/Redo controls with ergonomic 44px touch targets.
+
+**⚡ Unified Action Command Bar**
+- Purged previous visual clutter: removed the detached "Actions ^" popup button, scattered bottom buttons (+ Subject, Folder, Select, Import, Export), and standalone sorting pills.
+- Introduced a single, horizontal, smoothly scrollable toolbar (`SyllabusCommandBar`) equipped with Radix-powered dropdown menus:
+  - `Sort ⌄`: Custom, Name (A→Z), Newest, Oldest, High %, Low %
+  - `View ⌄`: Instant switch between Subjects view and Units view + Expand/Collapse All
+  - `Manage ⌄`: Add Subject, Add Folder, and launch Rearrange mode
+  - `Import/Export ⌄`: Consolidated syllabus import and clipboard export
+  - `Select`: Direct toggle for multi-topic bulk management
+
+**🔀 Dedicated Rearrange Mode (Drag & Drop)**
+- Replaced cumbersome manual buttons with an interactive, full-screen drag-and-drop Rearrange Mode powered by `@dnd-kit`.
+- Touch-friendly long-press drag activation (with haptic feedback) prevents accidental moves during scrolling.
+- Real-time visual feedback: dragged items elevate with smooth transition physics, elevated shadows, and scaling.
+- Supports reordering top-level folders and root subjects, plus instant folder drill-down to peek at contained subjects.
+- Atomic state update with one-tap "Save Order" ensuring local and cloud order consistency.
+
+**💎 Polished Status Filter Strip & Touch Ergonomics**
+- Preserved and enhanced the animated emoji status & difficulty chips with clear counts and glowing active indicators.
+- Ensured all buttons, dropdown triggers, and interactive elements satisfy a minimum 44px touch target standard.
+
 ## 20.0.0 — Smooth, fast, planned: deadline planner, safer streaks, fewer stalls
 
 **⚡ Smoother, faster, no flicker**
