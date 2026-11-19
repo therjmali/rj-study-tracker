@@ -1,5 +1,31 @@
 # Changelog
 
+## 21.1.0 — Filters that turn off, bars that scroll, folders that look like folders, a real Rearrange
+
+**🧹 Filters (bug fixes, whole app)**
+- **One tap on, one tap off:** tapping an active status filter (✅ 🔄 ⭕ ⭐ 🎯 🔁 🔥 …) now removes it, exactly like the difficulty chips. Same in Review.
+- **Clear really clears.** "Clear" used to fire two updates that overwrote each other, so only the difficulty filter went away and a stuck 🎯 Focus (or any status) came straight back. It is now one update that clears status, difficulty and category, and it is a bigger, easier button.
+
+**↔️ Horizontal scrolling that works everywhere**
+- **Root cause found with a real touch swipe:** every ▾ button in the Sort · View · Manage bar opened its menu the instant a finger touched it, so a swipe that started on a button never scrolled the bar. Dropdowns now open on tap for touch (mouse and keyboard unchanged), so the bar — and every other toolbar with a dropdown — swipes freely.
+- Every sideways-scrolling row in the app (filter chips, toolbars, tab strips, subject chips) now fades on the side that has more, so a half-visible chip reads as “swipe me” instead of “cut off”.
+- Removed the bare number at the start of the Syllabus toolbar that looked like a cut-off label.
+
+**📚 Syllabus**
+- The top bar now reads **Syllabus**; below it only the completion count with a slim progress bar, the date and Undo / Redo.
+- **Folders look like folders:** a coloured tab, a tinted top edge and sheets stacked behind. **Subjects stay flat cards** with a “📘 Subject” marker, so they can no longer be confused.
+- Folder cards show **every subject** as a sideways-scrolling row of progress rings — no more “+2”.
+- **Press the tab you are on to reload it.** Tap Syllabus again and you are back at the top level (out of any folder, unit or topic, filters cleared, scrolled to the top); the same for Home, Stats and Review. Tapping the “Syllabus” title does the same.
+
+**↕️ Rearrange (rebuilt)**
+- Manage ▾ → **Rearrange** opens a true full-screen sheet above the app bars.
+- Top level lists **Folders** and **Subjects**; **tap a folder (or Open)** to reorder the subjects inside it, with a breadcrumb back.
+- **Press and hold a card, then drag** (the whole card is the handle; scrolling still works until the hold). The lifted card scales up with a deep shadow at 80 % opacity, its old slot becomes a dashed “Drop here” placeholder, and the list **auto-scrolls** near the top and bottom.
+- **Saved on every drop** (local state, then cloud sync) with a “Saved” indicator, an **Undo** for the last 20 moves, haptics, keyboard support, and the list switches to Custom order automatically.
+
+**📊 Statistics**
+- Study Rhythm is now **one straight row of four tiles** (Morning · Afternoon · Evening · Night), each filling from the bottom with its share of the day, the peak period highlighted with a crown.
+
 ## 21.0.0 — Complete UI/UX redesign of Syllabus & Action Toolbar: Unified Command Bar, Rearrange Mode & Clean Layout
 
 **✨ Streamlined Header & Universal Search**

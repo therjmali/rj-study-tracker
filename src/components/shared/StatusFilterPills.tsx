@@ -42,21 +42,32 @@ interface Props {
   categories?: string[];
   activeCategory?: string;
   onCategoryChange?: (cat: string) => void;
+  /** Clears status + difficulty + category in ONE update (two separate callbacks would overwrite each other) */
+  onClear?: () => void;
 }
 
 export default function StatusFilterPills({
   value, onChange, counts, size = 'md',
   diffValue, onDiffChange, diffCounts,
-  categories, activeCategory, onCategoryChange,
+  categories, activeCategory, onCategoryChange, onClear,
 }: Props) {
   const [showCategories, setShowCategories] = useState(false);
 
+  // Tapping the active chip turns it off again (just like the difficulty chips) — one tap on, one tap off.
   const handleClick = useCallback((id: StatusFilter) => {
     navigator.vibrate?.(15);
-    onChange(id);
-  }, [onChange]);
+    onChange(value === id && id !== 'all' ? 'all' : id);
+  }, [onChange, value]);
 
-  const hasActiveFilter = value !== 'all' || (diffValue && diffValue !== 'all');
+  const clearAll = useCallback(() => {
+    navigator.vibrate?.(10);
+    if (onClear) { onClear(); return; }
+    onChange('all');
+    onDiffChange?.('all');
+    onCategoryChange?.('');
+  }, [onClear, onChange, onDiffChange, onCategoryChange]);
+
+  const hasActiveFilter = value !== 'all' || (diffValue && diffValue !== 'all') || !!activeCategory;
   const hasCategories = categories && categories.length > 0;
 
   const chipBase = size === 'sm'
@@ -75,6 +86,8 @@ export default function StatusFilterPills({
             <motion.button
               key={opt.id}
               onClick={() => handleClick(opt.id)}
+              aria-pressed={isActive}
+              aria-label={opt.label}
               whileTap={{ scale: 0.85 }}
               className={`relative flex flex-col items-center justify-center ${chipBase} border shrink-0 transition-all duration-200 ${
                 isActive
@@ -212,10 +225,12 @@ export default function StatusFilterPills({
               🔍 Filtered view
               {value !== 'all' && ` · ${STATUS_OPTIONS.find(o => o.id === value)?.emoji} ${STATUS_OPTIONS.find(o => o.id === value)?.label}`}
               {diffValue && diffValue !== 'all' && ` · ${DIFF_OPTIONS.find(o => o.id === diffValue)?.emoji} ${diffValue}`}
+              {activeCategory && ` · 🏷️ ${activeCategory}`}
             </span>
             <button
-              onClick={() => { onChange('all'); onDiffChange?.('all'); }}
-              className="text-[9px] font-bold text-destructive hover:underline px-1.5 py-0.5 rounded hover:bg-destructive/10 transition-colors"
+              type="button"
+              onClick={clearAll}
+              className="min-h-[36px] text-[11px] font-bold text-destructive px-3 rounded-lg bg-destructive/8 hover:bg-destructive/15 active:scale-95 transition"
             >
               Clear
             </button>

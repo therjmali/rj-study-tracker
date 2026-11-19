@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { MotionConfig } from 'framer-motion';
 import { createRoot } from 'react-dom/client';
+import { installHScroll } from './platform/hscroll';
 import { ErrorBoundary } from 'react-error-boundary';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './fonts.css';
@@ -73,6 +74,7 @@ bootStorage()
   );
   requestAnimationFrame(() => requestAnimationFrame(() => (window as unknown as { __rjHideSplash?: () => void }).__rjHideSplash?.()));
   applyAppIcon();
+  installHScroll(); // fade hint on every sideways-scrolling row
   syncNativeIconOnBoot();
   installFocusLog();
   installNativeBridge();

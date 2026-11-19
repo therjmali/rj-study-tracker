@@ -22,6 +22,9 @@ interface Props {
   onOpenReminders?: () => void;
   studentMode?: StudentMode;
   onNavigateHome?: () => void;
+  /** When set (e.g. "Syllabus"), replaces the app name next to the logo so you always know where you are */
+  pageTitle?: string;
+  onTitleClick?: () => void;
   onOpenCloudData?: () => void;
   streakDays?: number;
   todayTopicsDone?: number;
@@ -38,7 +41,7 @@ function AppIcon({ mode, suppressCustom = false }: { mode?: StudentMode; suppres
   return <GraduationCap className="w-4 h-4 text-primary-foreground" />;
 }
 
-function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, level, xpProgress = 0, onOpenSearch, syncStatus = 'idle', dueReminders = 0, onOpenReminders, studentMode, onNavigateHome, onOpenCloudData, streakDays = 0, todayTopicsDone = 0, todayMinutes = 0, onLevelClick }: Props) {
+function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, level, xpProgress = 0, onOpenSearch, syncStatus = 'idle', dueReminders = 0, onOpenReminders, studentMode, onNavigateHome, pageTitle, onTitleClick, onOpenCloudData, streakDays = 0, todayTopicsDone = 0, todayMinutes = 0, onLevelClick }: Props) {
   const isLight = themeMode === 'light' || themeMode === 'vyxel';
   // If the custom app logo is the same picture as the profile photo, show the stock mark on the left so the
   // same face never appears twice in the header (the photo stays on the right, where the profile opens).
@@ -65,10 +68,10 @@ function TopHeaderInner({ user, pct, onOpenProfile, themeMode, onToggleTheme, le
             <button onClick={onNavigateHome} className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center shadow-[0_8px_20px_-10px_hsl(var(--primary))] shrink-0 hover:scale-105 active:scale-95 transition-all border border-primary/20" aria-label="Go to Home">
               <AppIcon mode={studentMode} suppressCustom={logoDuplicatesAvatar} />
             </button>
-            <button onClick={onNavigateHome} className="font-heading text-foreground text-[15px] sm:text-[16px] font-black tracking-tight hover:text-primary transition-colors truncate min-w-[3.25rem]">
-              {appName}
+            <button onClick={pageTitle ? (onTitleClick ?? onNavigateHome) : onNavigateHome} className="font-heading text-foreground text-[15px] sm:text-[16px] font-black tracking-tight hover:text-primary transition-colors truncate min-w-[3.25rem]" aria-label={pageTitle ? `${pageTitle} — tap to reload` : undefined}>
+              {pageTitle ?? appName}
             </button>
-            <span className="hidden min-[430px]:inline-block text-[8px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-black leading-none border border-primary/15 shrink-0 tracking-widest uppercase">PRO</span>
+            {!pageTitle && <span className="hidden min-[430px]:inline-block text-[8px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-black leading-none border border-primary/15 shrink-0 tracking-widest uppercase">PRO</span>}
           </div>
 
           {/* Center: Sync + Net + Progress */}

@@ -360,7 +360,8 @@ const SubjectCard = memo(function SubjectCard({
           })()}
           <div className="flex-1 text-left min-w-0">
             {!subject.image && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[9px] font-black uppercase tracking-[0.16em] px-1.5 py-0.5 rounded-md border border-dashed text-muted-foreground" style={{ borderColor: `${subject.color}60` }} data-kind="subject">📘 Subject</span>
                 <span className="text-xs font-black px-2.5 py-1 rounded-lg border" style={{ backgroundColor: subject.color + '15', color: readableInk(subject.color), borderColor: subject.color + '25' }}>{subject.shortName}</span>
                 <span className="text-base font-bold text-foreground break-words">{subject.name}</span>
               </div>

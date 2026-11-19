@@ -4,9 +4,56 @@ import { Check, ChevronRight, Circle } from 'lucide-react';
 
 import { cn } from '../lib/utils';
 
-const DropdownMenu = DropdownMenuPrimitive.Root;
+/**
+ * Touch-safe dropdown.
+ *
+ * Radix opens a dropdown on `pointerdown`. On a phone that means a swipe that merely STARTS on a button
+ * (Sort ⌄ · View ⌄ · Manage ⌄ …) opens the menu and swallows the gesture, so a horizontally scrolling toolbar
+ * could not be scrolled. For touch and pen we now open on `click` instead (a click never fires after a swipe),
+ * while mouse and keyboard behave exactly as before.
+ */
+type MenuCtx = { open: boolean; set: (v: boolean) => void };
+const MenuContext = React.createContext<MenuCtx | null>(null);
 
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+const DropdownMenu = ({ open: openProp, defaultOpen = false, onOpenChange, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) => {
+  const [inner, setInner] = React.useState(defaultOpen);
+  const controlled = openProp !== undefined;
+  const open = controlled ? !!openProp : inner;
+  const set = React.useCallback((v: boolean) => {
+    if (!controlled) setInner(v);
+    onOpenChange?.(v);
+  }, [controlled, onOpenChange]);
+  const ctx = React.useMemo(() => ({ open, set }), [open, set]);
+  return (
+    <MenuContext.Provider value={ctx}>
+      <DropdownMenuPrimitive.Root {...props} open={open} onOpenChange={set} />
+    </MenuContext.Provider>
+  );
+};
+
+const DropdownMenuTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
+>(({ onPointerDown, onClick, ...props }, ref) => {
+  const ctx = React.useContext(MenuContext);
+  const touch = React.useRef(false);
+  return (
+    <DropdownMenuPrimitive.Trigger
+      ref={ref}
+      {...props}
+      onPointerDown={(e) => {
+        onPointerDown?.(e);
+        touch.current = e.pointerType === 'touch' || e.pointerType === 'pen';
+        if (touch.current) e.preventDefault(); // stops Radix opening on press; the swipe stays a swipe
+      }}
+      onClick={(e) => {
+        onClick?.(e);
+        if (touch.current && !e.defaultPrevented) { touch.current = false; ctx?.set(!ctx.open); }
+      }}
+    />
+  );
+});
+DropdownMenuTrigger.displayName = 'DropdownMenuTrigger';
 
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 

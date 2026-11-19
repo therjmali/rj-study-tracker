@@ -1660,3 +1660,11 @@ html.perf-lite .streak-embers { display: none !important; }
 .text-\[6px\], .text-\[7px\] { font-size: 9px; }
 .text-\[8px\] { font-size: 9.5px; }
 .text-\[9px\] { font-size: 10px; }
+
+/* ── Horizontal scrollers: fade on the side that has more (set by platform/hscroll.ts) ── */
+[data-hs] { --hs-fade: 26px; }
+[data-hs="r"]  { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--hs-fade)), transparent); mask-image: linear-gradient(to right, #000 calc(100% - var(--hs-fade)), transparent); }
+[data-hs="l"]  { -webkit-mask-image: linear-gradient(to left,  #000 calc(100% - var(--hs-fade)), transparent); mask-image: linear-gradient(to left,  #000 calc(100% - var(--hs-fade)), transparent); }
+[data-hs="lr"] { -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--hs-fade), #000 calc(100% - var(--hs-fade)), transparent); mask-image: linear-gradient(to right, transparent, #000 var(--hs-fade), #000 calc(100% - var(--hs-fade)), transparent); }
+/* smooth, predictable swiping on every sideways row */
+.overflow-x-auto, .overflow-x-scroll { overscroll-behavior-x: contain; scroll-behavior: auto; }

@@ -76,15 +76,15 @@ export default function SyllabusHeader({
     <div className="space-y-4">
       {/* Title row */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-col gap-0.5">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">📚</span>
-            <h2 className="text-2xl font-black tracking-tight text-foreground">Syllabus</h2>
+        {/* Completion only — the page name now lives in the top bar */}
+        <div className="min-w-0 flex-1" aria-label={`${doneTopics} of ${totalTopics} topics complete, ${pct} percent`}>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xl font-black font-mono text-foreground leading-none">{doneTopics}</span>
+            <span className="text-xs text-muted-foreground font-semibold">/ {totalTopics} topics</span>
+            <span className="ml-1 text-[11px] font-black px-2 py-0.5 rounded-full bg-primary/10 text-primary">{pct}%</span>
           </div>
-          <div className="flex items-center gap-1.5 pl-9">
-            <span className="text-sm font-bold text-foreground/80">{doneTopics}</span>
-            <span className="text-xs text-muted-foreground font-medium">/ {totalTopics} topics</span>
-            <span className="ml-1 text-xs font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{pct}%</span>
+          <div className="mt-1.5 h-1 rounded-full bg-muted/30 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${pct}%` }} />
           </div>
         </div>
         <div className="flex items-center gap-1.5">
@@ -124,6 +124,7 @@ export default function SyllabusHeader({
         categories={categories}
         activeCategory={activeCategory}
         onCategoryChange={onCategoryChange}
+        onClear={() => { onFiltersChange({ ...filters, status: 'all', difficulty: 'all', revisionMissing: null }); onCategoryChange?.(''); }}
       />
     </div>
   );

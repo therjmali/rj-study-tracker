@@ -1553,7 +1553,21 @@ function AppInner() {
   const clearSyllabusNavTarget = useCallback(() => setSyllabusNavTarget(null), []);
   const goHome = useCallback(() => { setSlideDir(null); startTransition(() => setActiveTab('dashboard')); }, [setActiveTab]);
   const handleSideNavChange = useCallback((t: AppTab) => { setSlideDir(null); startTransition(() => setActiveTab(t)); }, [setActiveTab]);
-  const handleBottomNavChange = useCallback((tab: AppTab, dir?: 'left' | 'right') => { setSlideDir(dir ?? null); setRevisionFilter(undefined); startTransition(() => setActiveTab(tab)); }, [setActiveTab]);
+  // Pressing the tab you are already on reloads that section to its start state (out of any folder / unit / topic,
+  // filters cleared, scrolled to top) — same as arriving from another tab. A bumped counter remounts the screen.
+  const [resetCounts, setResetCounts] = useState<Record<string, number>>({});
+  const handleBottomNavChange = useCallback((tab: AppTab, dir?: 'left' | 'right') => {
+    if (tab === activeTab) {
+      navigator.vibrate?.(8);
+      setSlideDir(null);
+      setRevisionFilter(undefined);
+      setPendingTopicDetail(null);
+      setResetCounts(prev => ({ ...prev, [tab]: (prev[tab] ?? 0) + 1 }));
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      return;
+    }
+    setSlideDir(dir ?? null); setRevisionFilter(undefined); startTransition(() => setActiveTab(tab));
+  }, [setActiveTab, activeTab]);
   const handleThemeToggle = useCallback(() => setSettings(prev => {
     const cur = prev.themeMode ?? 'light';
     // Liquid Glass: the quick toggle flips its light / dark tone instead of leaving the theme
@@ -2144,6 +2158,8 @@ function AppInner() {
 
       <TopHeader user={user} pct={stats.pct} onOpenProfile={openProfile}
         onNavigateHome={goHome}
+        pageTitle={activeTab === 'syllabus' ? 'Syllabus' : undefined}
+        onTitleClick={activeTab === 'syllabus' ? () => handleBottomNavChange('syllabus') : undefined}
         themeMode={settings.themeMode ?? 'light'}
         streakDays={stats.streak}
         todayTopicsDone={todayTopicsDone}
@@ -2177,7 +2193,7 @@ function AppInner() {
 
       <div className="flex max-w-full bg-background min-h-[calc(100vh-3.5rem)]">
         <main className="flex-1 px-2 sm:px-6 py-4 pb-36 max-w-7xl mx-auto w-full">
-          <div key={activeTab} className="animate-page-enter min-h-[50vh]">
+          <div key={`${activeTab}:${resetCounts[activeTab] ?? 0}`} className="animate-page-enter min-h-[50vh]">
               {renderContent()}
           </div>
         </main>

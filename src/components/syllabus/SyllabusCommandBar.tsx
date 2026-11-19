@@ -53,9 +53,7 @@ export default function SyllabusCommandBar({
 
   return (
     <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1" style={{ WebkitOverflowScrolling: 'touch' }}>
-      {/* Item count badge */}
-      <span className="text-[11px] font-black text-muted-foreground/70 shrink-0 pl-0.5 font-mono">{itemCount}</span>
-
+      {/* (the count lives in the "N folders · M subjects" line below — a bare number here only looked like a cut-off label) */}
       {/* Sort dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

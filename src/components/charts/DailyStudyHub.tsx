@@ -295,22 +295,26 @@ export default function DailyStudyHub({ subjects, dailyLogs, studyGoals, dbSessi
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 min-[460px]:grid-cols-4 gap-2">
+                {/* One straight row, four equal tiles — each fills from the bottom with its share of the day */}
+                <div className="grid grid-cols-4 gap-1.5">
                   {DAY_PERIOD_LABELS.map(p => {
                     const m = rhythm.minutes[p.key];
                     const n = rhythm.topics[p.key];
                     const share = rhythm.assigned > 0 ? Math.round((m / rhythm.assigned) * 100) : 0;
-                    const isPeak = rhythm.peak === p.key;
+                    const isPeak = rhythm.peak === p.key && m > 0;
+                    const fill = maxShift > 0 ? Math.max(m > 0 ? 8 : 0, Math.round((m / maxShift) * 100)) : 0;
                     return (
-                      <div key={p.key} title={p.timeRange}
-                        className={`relative text-center px-1 py-1.5 rounded-xl border ${isPeak ? 'bg-primary/8 border-primary/30' : 'bg-card/35 border-border/10'}`}>
-                        <p className="text-[10px] font-bold text-foreground leading-none">{p.emoji} {p.label}</p>
-                        <FitText max={13} min={8} className="font-black font-mono text-foreground leading-tight mt-1 text-center">{m > 0 ? formatStudyTime(m) : '—'}</FitText>
-                        <p className="text-[9px] font-bold text-muted-foreground leading-tight">{n} {n === 1 ? 'topic' : 'topics'}</p>
-                        <div className="h-1 rounded-full bg-muted/25 mt-1 overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(m / maxShift) * 100}%`, background: SHIFT_STYLE[p.key].bar }} />
+                      <div key={p.key} title={`${p.label} · ${p.timeRange}`} role="group" aria-label={`${p.label}: ${m > 0 ? formatStudyTime(m) : 'no study'}, ${n} topics, ${share} percent${isPeak ? ', peak' : ''}`}
+                        className={`relative overflow-hidden rounded-2xl border min-h-[96px] flex flex-col items-center justify-between px-1 pt-2 pb-1.5 text-center transition-shadow ${isPeak ? 'border-primary/50 shadow-[0_6px_18px_-8px_hsl(var(--primary)/0.55)] ring-1 ring-primary/25' : 'border-border/12'} bg-card/40`}>
+                        {/* rising fill */}
+                        <div className="absolute inset-x-0 bottom-0 transition-[height] duration-700 ease-out" style={{ height: `${fill}%`, background: `linear-gradient(to top, ${SHIFT_STYLE[p.key].bar}55, ${SHIFT_STYLE[p.key].bar}12)` }} aria-hidden />
+                        {isPeak && <span className="absolute top-1 right-1 text-[9px] leading-none" aria-hidden>👑</span>}
+                        <span className="relative text-[19px] leading-none" aria-hidden>{p.emoji}</span>
+                        <div className="relative w-full min-w-0">
+                          <FitText max={10} min={7} className="font-bold text-muted-foreground leading-none">{p.label}</FitText>
+                          <FitText max={15} min={9} className={`font-black font-mono leading-tight mt-0.5 ${m > 0 ? 'text-foreground' : 'text-muted-foreground/50'}`}>{m > 0 ? formatStudyTime(m) : '—'}</FitText>
                         </div>
-                        <p className="text-[8px] font-bold font-mono text-muted-foreground/80 mt-0.5">{share}%{isPeak ? ' · PEAK' : ''}</p>
+                        <p className="relative text-[9.5px] font-bold font-mono text-muted-foreground leading-none">{n}<span className="font-sans"> {n === 1 ? 'topic' : 'topics'}</span> · {share}%</p>
                       </div>
                     );
                   })}

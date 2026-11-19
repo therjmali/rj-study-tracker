@@ -37,6 +37,7 @@ import type { StatusFilter } from './shared/StatusFilterPills';
 import StatusFilterPills from './shared/StatusFilterPills';
 import SyllabusCommandBar from './syllabus/SyllabusCommandBar';
 import RearrangeModal from './syllabus/RearrangeModal';
+import { reorderSubjectGroup, reorderFolderIds } from '../lib/reorder';
 import type { DiffFilter } from './syllabus/SyllabusHeader';
 
 interface Props {
@@ -1020,20 +1021,13 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
   }, [subjects, onUpdate, currentFolderId]);
 
   const handleReorderSubjectsGlobal = useCallback((subjectIds: string[]) => {
-    const ordered = subjectIds.map((id) => subjects.find(s => s.id === id)).filter(Boolean) as Subject[];
-    const unchanged = subjects.filter(s => !subjectIds.includes(s.id));
-    const withOrder = ordered.map((s, i) => ({ ...s, order: i }));
-    onUpdate([...withOrder, ...unchanged]);
-    toast.success('Order saved');
+    // Re-orders one group inside its own slots (see lib/reorder.ts); saved on every drop (local state → cloud sync)
+    const next = reorderSubjectGroup(subjects, subjectIds);
+    if (next !== subjects) onUpdate(next);
   }, [subjects, onUpdate]);
 
   const handleReorderFoldersGlobal = useCallback((folderIds: string[]) => {
-    const reordered = folderIds.map((id, i) => {
-      const f = folders.find(x => x.id === id);
-      return f ? { ...f, order: i } : null;
-    }).filter(Boolean) as Folder[];
-    const unchanged = folders.filter(f => !folderIds.includes(f.id));
-    onUpdateFolders([...reordered, ...unchanged]);
+    onUpdateFolders(reorderFolderIds(folders, folderIds));
   }, [folders, onUpdateFolders]);
 
   // ── Stable callbacks for SubjectCard to reduce re-render cascading ──
@@ -1366,6 +1360,7 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
             categories={allCategories}
             activeCategory={folderCategoryFilter}
             onCategoryChange={setFolderCategoryFilter}
+            onClear={() => { setFolderFilters({ status: 'all', difficulty: 'all' }); setFolderCategoryFilter(''); }}
           />
 
           {/* Folder Analytics — hidden by default, expandable */}
@@ -1764,6 +1759,7 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
             folders={folders}
             onReorderSubjects={handleReorderSubjectsGlobal}
             onReorderFolders={handleReorderFoldersGlobal}
+            onApplied={() => setSortMode('custom')}
           />
         )}
       </AnimatePresence>

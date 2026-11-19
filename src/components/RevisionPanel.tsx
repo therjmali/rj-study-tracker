@@ -394,7 +394,7 @@ export default function RevisionPanel({ subjects, onUpdate, initialFilter, onOpe
           {/* ══════ STATUS PILLS ══════ */}
           <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
             {(['all', 'completed', 'incomplete', 'in_progress', 'not_started', 'due', 'weak'] as StatusKey[]).map(k => (
-              <button key={k} onClick={() => patchPrefs({ status: k })} aria-pressed={statusFilter === k}
+              <button key={k} onClick={() => patchPrefs({ status: statusFilter === k && k !== 'all' ? 'all' : k })} aria-pressed={statusFilter === k}
                 className={`shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-bold border transition-[background-color,color,border-color] duration-150 ${
                   statusFilter === k ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-card/50 text-foreground/70 border-border/20 hover:bg-card hover:text-foreground'
                 }`}>

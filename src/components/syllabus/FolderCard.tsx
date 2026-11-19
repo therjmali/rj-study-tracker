@@ -107,12 +107,21 @@ export default function FolderCard({ folder, subjects, onOpen, onEdit, onDelete,
 
   return (
     <>
+      {/* A FOLDER looks like a folder: coloured tab on top + sheets stacked behind. (A subject is one flat card.) */}
+      <div className="relative pt-5 pb-2" data-kind="folder">
+        <span aria-hidden className="absolute left-3 right-3 bottom-0 h-3 rounded-b-2xl border border-t-0 border-border/15" style={{ background: `color-mix(in srgb, ${folder.color} 14%, hsl(var(--card)))` }} />
+        <span aria-hidden className="absolute left-1.5 right-1.5 bottom-1 h-3 rounded-b-2xl border border-t-0 border-border/20" style={{ background: `color-mix(in srgb, ${folder.color} 22%, hsl(var(--card)))` }} />
+        <div className="absolute left-4 top-0 z-10 flex items-center gap-1.5 h-6 pl-2.5 pr-3 rounded-t-xl text-[10px] font-black uppercase tracking-[0.14em] shadow-sm"
+          style={{ background: folder.color, color: readableInk(folder.color) }}>
+          <FolderOpen className="w-3 h-3" aria-hidden /> Folder · {subjects.length} {subjects.length === 1 ? 'subject' : 'subjects'}
+        </div>
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         whileHover={{ scale: 1.01, y: -2 }}
         whileTap={{ scale: 0.98 }}
-        className="rounded-2xl overflow-hidden cursor-pointer border border-border/15 backdrop-blur-xl bg-card/40 shadow-sm hover:shadow-lg hover:shadow-primary/5 transition-shadow duration-300"
+        className="relative z-[1] rounded-2xl rounded-tl-md overflow-hidden cursor-pointer border backdrop-blur-xl bg-card/40 shadow-md hover:shadow-lg hover:shadow-primary/5 transition-shadow duration-300"
+        style={{ borderColor: `${folder.color}55`, borderTopWidth: 2, borderTopColor: folder.color }}
         onClick={onOpen}
       >
         {/* Hero Banner */}
@@ -262,28 +271,23 @@ export default function FolderCard({ folder, subjects, onOpen, onEdit, onDelete,
               </div>
             </div>
 
-            {/* Inline per-subject completion rings */}
+            {/* Every subject, side by side — swipe sideways for the rest (no hidden "+2") */}
             {subjects.length > 0 && (
-              <div className="flex items-center gap-2.5 flex-wrap">
-                {perSubject.slice(0, 5).map(s => (
-                  <div key={s.id} className="flex items-center gap-1.5" title={`${s.name}: ${s.pct}%`}>
-                    <div className="relative w-7 h-7 shrink-0">
+              <div className="-mx-3 px-3 flex items-center gap-2 overflow-x-auto scrollbar-hide py-0.5" onClick={e => e.stopPropagation()} aria-label="Subjects in this folder">
+                {perSubject.map(s => (
+                  <button key={s.id} type="button" onClick={onOpen} title={`${s.name}: ${s.pct}%`}
+                    className="shrink-0 flex items-center gap-1.5 pl-1 pr-2.5 h-9 rounded-full border border-border/15 bg-card/50 active:scale-95 transition">
+                    <span className="relative w-7 h-7 shrink-0">
                       <svg viewBox="0 0 28 28" className="w-full h-full -rotate-90">
-                        <circle cx="14" cy="14" r="10.5" fill="none" stroke="hsl(var(--muted) / 0.15)" strokeWidth="2.5" />
+                        <circle cx="14" cy="14" r="10.5" fill="none" stroke="hsl(var(--muted) / 0.2)" strokeWidth="2.5" />
                         <circle cx="14" cy="14" r="10.5" fill="none" stroke={s.color} strokeWidth="2.5" strokeLinecap="round"
-                          strokeDasharray={`${2 * Math.PI * 10.5}`} strokeDashoffset={`${2 * Math.PI * 10.5 * (1 - s.pct / 100)}`}
-                          style={{ transition: 'stroke-dashoffset 0.5s ease-out', filter: `drop-shadow(0 0 3px ${s.color}40)` }} />
+                          strokeDasharray={`${2 * Math.PI * 10.5}`} strokeDashoffset={`${2 * Math.PI * 10.5 * (1 - s.pct / 100)}`} />
                       </svg>
-                      <span className="absolute inset-0 flex items-center justify-center text-[7px] font-black font-mono" style={{ color: readableInk(s.color) }}>
-                        {s.pct}
-                      </span>
-                    </div>
-                    <span className="text-[9px] font-bold text-muted-foreground truncate max-w-[50px]">{s.name}</span>
-                  </div>
+                      <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black font-mono text-foreground">{s.pct}</span>
+                    </span>
+                    <span className="text-[11px] font-bold text-foreground whitespace-nowrap">{s.name}</span>
+                  </button>
                 ))}
-                {subjects.length > 5 && (
-                  <span className="text-[9px] font-bold text-muted-foreground">+{subjects.length - 5}</span>
-                )}
               </div>
             )}
 
@@ -454,6 +458,7 @@ export default function FolderCard({ folder, subjects, onOpen, onEdit, onDelete,
           </div>
         )}
       </motion.div>
+      </div>
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent className="glass-card bg-card/90 backdrop-blur-xl">
