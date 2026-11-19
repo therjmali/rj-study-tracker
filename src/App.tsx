@@ -20,7 +20,7 @@ import { TimerProvider } from './contexts/TimerContext';
 import { DEFAULT_SEMESTER, generateDefaultLogs } from './data/syllabus';
 import { getStats, getLevel, getLevelProgress } from './lib/gamification';
 import { countDueTopics } from './lib/srs';
-import type { AppTab, Subject, DailyLog, AppState, HistoryEntry, UserSettings, ExamConfig, TrashItem, StoreState, Folder, Reminder, StudentMode, DbStudySession } from './types';
+import type { AppTab, Subject, DailyLog, AppState, HistoryEntry, UserSettings, ExamConfig, TrashItem, StoreState, Folder, Reminder, StudentMode, DbStudySession, RevisionSession } from './types';
 import { getLocalDateStr, normalizeSubjectId, getLastActiveUnit, getEffectiveDayMinutes } from './lib/utils';
 import { DEFAULT_SETTINGS } from './types';
 import { getDueReminders, getTodayStr } from './lib/reminderUtils';
@@ -71,6 +71,8 @@ const AIChat = lazy(() => import('./components/AIChat').then(m => ({ default: me
 const MCQPractice = lazy(() => import('./components/MCQPractice'));
 const FlashcardDeck = lazy(() => import('./components/FlashcardDeck'));
 const TopicDetailSheet = lazy(() => import('./components/syllabus/TopicDetailSheet'));
+// memo: Revision Center is a heavy overlay (timer engine + swipe queue) — warm it on demand
+const RevisionCenter = lazy(() => import('./components/revision/RevisionCenter').then(m => ({ default: memo(m.default as React.ComponentType<any>) as unknown as typeof m.default })));
 const ReminderPopup = lazy(() => import('./components/reminders/ReminderPopup'));
 const NotificationCenter = lazy(() => import('./components/NotificationCenter'));
 const SyncCenter = lazy(() => import('./components/cloud/SyncCenter'));
@@ -446,6 +448,7 @@ function AppInner() {
     try { return !localStorage.getItem('nursetrack-onboarded-v7'); } catch { return false; }
   });
   const [pomodoroOpen, setPomodoroOpen] = useState(false);
+  const [revisionCenterOpen, setRevisionCenterOpen] = useState(false);
   const [widgetModalOpen, setWidgetModalOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mcqOpen, setMcqOpen] = useState(false);
@@ -592,9 +595,13 @@ function AppInner() {
   const [localCoverGradient, setLocalCoverGradient] = useState<string | undefined>(() => {
     try { const v = localStorage.getItem('nursetrack-cover-gradient'); return v || undefined; } catch { return undefined; }
   });
-  const [dbSessions, setDbSessions] = useLocalStorage<DbStudySession[]>('nursing-dbsessions-v1', []);
-  const dbSessionsRef = useRef(dbSessions);
-  dbSessionsRef.current = dbSessions;
+const [dbSessions, setDbSessions] = useLocalStorage<DbStudySession[]>('nursing-dbsessions-v1', []);
+const dbSessionsRef = useRef(dbSessions);
+dbSessionsRef.current = dbSessions;
+/** First-class revision sessions (R1–R4). Offline-first, synced with the subject tree. */
+const [revisionSessions, setRevisionSessions] = useLocalStorage<RevisionSession[]>('nursing-revision-sessions-v1', []);
+const revisionSessionsRef = useRef(revisionSessions);
+revisionSessionsRef.current = revisionSessions;
 
   const undoStack = useRef<Subject[][]>([]);
   const redoStack = useRef<Subject[][]>([]);
@@ -1053,6 +1060,13 @@ function AppInner() {
       }
     }
   }, [authUser, setAppState]);
+
+  // Record a finished revision session (R1–R4). The subject tree and the
+  // DbStudySession are already written by RevisionCenter; this keeps the
+  // canonical RevisionSession log for selectors & exports.
+  const handleRevisionSessionComplete = useCallback((session: RevisionSession) => {
+    setRevisionSessions((prev) => [...prev, session]);
+  }, [setRevisionSessions]);
 
   // Delete a study session from the DB — with undo support
   const deleteStudySession = useCallback(async (sessionId: string) => {
@@ -2089,6 +2103,7 @@ function AppInner() {
               onCreateSession={createStudySession} onUpdateSession={updateStudySession} onDeleteSession={deleteStudySession} onUpdateSubjects={updateSubjects}
               settings={settings} onUpdateSettings={setSettings}
               dbSessions={dbSessions}
+              revisionSessions={revisionSessions}
               exams={appState.semesterConfig?.exams || []}
               diffFilter={diffFilter} timeFilter={timeFilter} customFrom={filterCustomFrom} customTo={filterCustomTo} subjectFilter={subjectFilter}
               onNavigateToCalendar={handleNavigateToCalendar}
@@ -2101,7 +2116,7 @@ function AppInner() {
       case 'revision': return (
         <ErrorBoundary fallbackTitle="Revision Panel failed to load">
           <Suspense fallback={<PageSkeleton />}>
-            <RevisionPanel subjects={appState.subjects} onUpdate={updateSubjects} initialFilter={revisionFilter} onOpenTopicDetail={handleOpenGlobalTopicDetail} onNavigate={handleNavigate} />
+            <RevisionPanel subjects={appState.subjects} onUpdate={updateSubjects} initialFilter={revisionFilter} onOpenTopicDetail={handleOpenGlobalTopicDetail} onNavigate={handleNavigate} onOpenRevisionCenter={() => setRevisionCenterOpen(true)} />
           </Suspense>
         </ErrorBoundary>
       );
@@ -2231,6 +2246,16 @@ function AppInner() {
           <Suspense fallback={<div className="h-40 flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
             <FocusTimer onSessionComplete={handlePomodoroComplete_inner} settings={settings.pomodoroSettings} subjects={appState.subjects}
               initialSubjectId={pomodoroPreFill?.subjectId} initialUnitId={pomodoroPreFill?.unitId} initialTopicId={pomodoroPreFill?.topicId} />
+          </Suspense>
+        </ErrorBoundary>
+      </BottomSheet>
+
+
+      {/* Revision Center Sheet — active revision sessions with swipe navigation */}
+      <BottomSheet open={revisionCenterOpen} onClose={() => setRevisionCenterOpen(false)} title="🔄 Revision Center">
+        <ErrorBoundary fallbackTitle="Revision Center crashed">
+          <Suspense fallback={<div className="h-40 flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+            <RevisionCenter subjects={appState.subjects} onUpdate={updateSubjects} onRevisionComplete={handleRevisionSessionComplete} />
           </Suspense>
         </ErrorBoundary>
       </BottomSheet>

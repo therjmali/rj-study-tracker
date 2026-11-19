@@ -9,7 +9,7 @@ import CalendarAnalysis from './CalendarAnalysis';
 import DayByDayTimeline from '../dashboard/DayByDayTimeline';
 import DayDetailPanel from './DayDetailPanel';
 import type { CalendarTopicInfo } from './DayDetailPanel';
-import type { Subject, SubTopic, DailyLog, DbStudySession, ExamConfig } from '../../types';
+import type { Subject, SubTopic, DailyLog, DbStudySession, ExamConfig, RevisionSession } from '../../types';
 import { formatDate, formatStudyTime, getEffectiveDayMinutes, getLocalDateStr, readableInk } from '../../lib/utils';
 import { useStreak } from '../../hooks/useStreak';
 import { useExcludedSubjects } from '../../hooks/useExcludedSubjects';
@@ -36,11 +36,13 @@ interface Props {
   onDeleteSession?: (sessionId: string) => void;
   onUpdateSubjects?: (subjects: Subject[]) => void;
   dbSessions?: DbStudySession[];
+  /** Revision sessions — their time is folded into the day's minutes and they appear as topics on their date. */
+  revisionSessions?: RevisionSession[];
   exams?: ExamConfig[];
   onNavigate?: (tab: string, filter?: Record<string, string>) => void;
 }
 
-export default function ProgressCalendar({ subjects, dailyLogs, onUpdateMood, onOpenTopicDetail, externalRange, onUpdateLogs, onNavigateToCalendar, externalSubjectFilter, todos, addTodo, toggleTodo, deleteTodo, updateTodo, getTodosForDate: getTodosForDateProp, getPendingCountForDate: getPendingCountForDateProp, onCreateSession, onUpdateSession, onDeleteSession, onUpdateSubjects, dbSessions, exams, onNavigate }: Props) {
+export default function ProgressCalendar({ subjects, dailyLogs, onUpdateMood, onOpenTopicDetail, externalRange, onUpdateLogs, onNavigateToCalendar, externalSubjectFilter, todos, addTodo, toggleTodo, deleteTodo, updateTodo, getTodosForDate: getTodosForDateProp, getPendingCountForDate: getPendingCountForDateProp, onCreateSession, onUpdateSession, onDeleteSession, onUpdateSubjects, dbSessions, revisionSessions, exams, onNavigate }: Props) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [calendarSync, setCalendarSync] = useState(() => {
     try { return localStorage.getItem('nursetrack-calendar-sync') === 'true'; } catch { return false; }
@@ -145,8 +147,30 @@ export default function ProgressCalendar({ subjects, dailyLogs, onUpdateMood, on
         }
       });
     });
-    return map;
-  }, [filteredSubjects]);
+
+  // Revision sessions are first-class study activity: they light up the heatmap
+  // on their date (their minutes flow through getEffectiveDayMinutes via the
+  // DbStudySession RevisionCenter logs) and appear as topics on that date.
+  revisionSessions?.forEach((rs) => {
+    const subject = filteredSubjects.find((s) => s.id === rs.subjectId);
+    const dateStr = rs.date;
+    if (!map[dateStr]) map[dateStr] = { done: 0, subjects: new Set(), topics: [] };
+    map[dateStr].subjects.add(rs.subjectName);
+    map[dateStr].topics.push({
+      subjectName: rs.subjectName,
+      subjectColor: subject?.color ?? '#888',
+      unitName: rs.unitName ?? '',
+      topicName: `${rs.topicName} (${rs.revisionRound})`,
+      difficulty: 'Medium',
+      timeSpent: rs.durationMinutes,
+      subjectId: rs.subjectId,
+      unitId: rs.unitId ?? '',
+      topicId: `rev-${rs.id}`,
+    });
+  });
+
+  return map;
+}, [filteredSubjects, revisionSessions]);
 
   const [completeWeek, setCompleteWeek] = useState(() => {
     try { return localStorage.getItem('nursetrack-complete-week') !== 'false'; } catch { return true; }

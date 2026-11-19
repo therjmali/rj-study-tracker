@@ -109,6 +109,8 @@ interface ChartsViewProps {
   settings?: import('../types').UserSettings;
   onUpdateSettings?: (s: import('../types').UserSettings) => void;
   dbSessions?: import('../types').DbStudySession[];
+  /** Revision sessions — folded into calendar heatmap and day detail by ProgressCalendar. */
+  revisionSessions?: import('../types').RevisionSession[];
   exams?: import('../types').ExamConfig[];
 }
 
@@ -119,7 +121,7 @@ export default function ChartsView({
   onNavigateToCalendar, onNavigate,
   todos, addTodo, toggleTodo, deleteTodo, updateTodo, getTodosForDate, getPendingCountForDate,
   onCreateSession, onUpdateSession, onDeleteSession, onUpdateSubjects,
-  settings, onUpdateSettings, dbSessions, exams,
+  settings, onUpdateSettings, dbSessions, revisionSessions, exams,
 }: ChartsViewProps) {
   const [subTab, setSubTab] = useState<'charts' | 'daily'>('charts');
   const pinDiff = useChartPin();
@@ -320,7 +322,7 @@ export default function ChartsView({
         onOpenTopicDetail={onOpenTopicDetail}
         onNavigateToCalendar={onNavigateToCalendar}
         onCreateSession={onCreateSession} onUpdateSession={onUpdateSession} onDeleteSession={onDeleteSession} onUpdateSubjects={onUpdateSubjects}
-        dbSessions={dbSessions} exams={exams} onNavigate={onNavigate} />
+        dbSessions={dbSessions} exams={exams} onNavigate={onNavigate} revisionSessions={revisionSessions} />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">

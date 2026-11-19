@@ -145,6 +145,32 @@ export interface StudySession {
   endTime?: string;
 }
 
+/** First-class revision session — functionally identical to a main study
+ *  session, but attributed to a specific revision round (R1–R4) of a topic.
+ *  Revision time is kept SEPARATE from the topic's main `timeSpent` (see
+ *  `RevisionData.timeSpent`) and is aggregated alongside main study time by the
+ *  unified selectors in `lib/revisionSessions.ts`. */
+export interface RevisionSession {
+  id: string;
+  subjectId: string;
+  subjectName: string;
+  unitId?: string;
+  unitName?: string;
+  topicId: string;
+  topicName: string;
+  /** Revision round this session counts toward (R1 | R2 | R3 | R4). */
+  revisionRound: RevisionKey;
+  durationMinutes: number;
+  /** Local date the session happened on (YYYY-MM-DD). */
+  date: string;
+  /** Time of day the session STARTED (HH:MM). */
+  startTime: string;
+  /** Time of day the session ENDED (HH:MM). */
+  endTime?: string;
+  note?: string;
+  createdAt: string; // ISO timestamp
+}
+
 /** First-class DB study session — each is its own row in the StudySessions table */
 export interface DbStudySession {
   id: string;

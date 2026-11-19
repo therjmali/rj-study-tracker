@@ -1,5 +1,19 @@
 # Changelog
 
+## 21.1.0 — Revision Center unification: swipe-through revision queue, embedded timer & revision-aware calendar
+
+**🔄 Revision Center (new)**
+- First-class revision sessions (R1–R4) treated identically to main study: a due-revision queue ordered longest-untouched-first, with framer-motion swipe navigation and an embedded `<StudyTimer />` that keeps running across swipes (time re-attributed per topic via `linkTopic`).
+- Completing a round writes a `RevisionSession`, updates `topic.revisions[round]` (status, timeSpent, timeEntries), logs a `DbStudySession` (type `Other`) so revision time appears on the calendar/day views, and auto-advances to the next due topic.
+- Round aggregates grid (R1–R4) with done/left/minutes at a glance; per-topic round-state chips.
+
+**📅 Progress Calendar & Subject Progress now reflect revision activity**
+- Revision sessions fold into the heatmap day map and appear as topics on their date.
+- Revision time flows through `getEffectiveDayMinutes` / `getUnifiedTotalMinutes` / `getActiveDates` automatically (no double counting — revision time stays in `topic.revisions[*.timeSpent]`, separate from main `timeSpent`/`timeEntries`).
+
+**💾 Persistence**
+- New localStorage domain `nursing-revision-sessions-v1`; revision sessions are canonical logs for selectors & exports.
+
 ## 21.0.0 — Complete UI/UX redesign of Syllabus & Action Toolbar: Unified Command Bar, Rearrange Mode & Clean Layout
 
 **✨ Streamlined Header & Universal Search**

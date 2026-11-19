@@ -40,6 +40,8 @@ interface Props {
   initialFilter?: Record<string, string>;
   onOpenTopicDetail?: (topic: SubTopic, subjectId: string, unitId: string, navList?: TopicNavRef[]) => void;
   onNavigate?: (tab: string, filter?: Record<string, string>) => void;
+  /** Open the focused Revision Center (timer + swipe queue) for active revision sessions. */
+  onOpenRevisionCenter?: () => void;
 }
 
 function getUserSettings() {
@@ -89,7 +91,7 @@ function loadPrefs(): Prefs {
 
 const PAGE = 60;
 
-export default function RevisionPanel({ subjects, onUpdate, initialFilter, onOpenTopicDetail, onNavigate }: Props) {
+export default function RevisionPanel({ subjects, onUpdate, initialFilter, onOpenTopicDetail, onNavigate, onOpenRevisionCenter }: Props) {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs);
   const patchPrefs = useCallback((p: Partial<Prefs>) => setPrefs(prev => ({ ...prev, ...p })), []);
   useEffect(() => { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ignore */ } }, [prefs]);
@@ -557,6 +559,12 @@ export default function RevisionPanel({ subjects, onUpdate, initialFilter, onOpe
               <button onClick={startRevising}
                 className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-[11px] font-bold shadow-sm active:scale-95 transition-transform">
                 <Play className="w-3 h-3 fill-current" /> Start revising
+              </button>
+            )}
+            {onOpenRevisionCenter && (
+              <button onClick={onOpenRevisionCenter}
+                className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-xl border border-primary/20 bg-primary/5 text-primary text-[11px] font-bold shadow-sm active:scale-[0.99] transition-transform">
+                <Timer className="w-3 h-3" /> Revision Center
               </button>
             )}
           </div>
