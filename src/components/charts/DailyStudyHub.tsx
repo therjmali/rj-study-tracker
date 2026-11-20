@@ -153,7 +153,7 @@ export default function DailyStudyHub({ subjects, dailyLogs, studyGoals, dbSessi
   const goals = filter === 'all' ? liveGoals : periodGoals;
 
   // Study rhythm — hours per shift
-  const rhythm = useMemo(() => computeStudyRhythm(subjects, dbSessions, win.range), [subjects, dbSessions, win.range]);
+  const rhythm = useMemo(() => computeStudyRhythm(subjects, dbSessions, win.range, dailyLogs), [subjects, dbSessions, win.range, dailyLogs]);
   const maxShift = Math.max(1, ...Object.values(rhythm.minutes));
 
   const milestone = allTimeStreak.milestone;

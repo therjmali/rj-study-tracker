@@ -5,6 +5,7 @@ import type { Subject, SubTopic, DailyLog, DbStudySession } from '../../types';
 import { getLocalDateStr, formatStudyHours, formatStudyTime, getEffectiveDayMinutes, normalizeSubjectId, readableInk } from '../../lib/utils';
 import { useToday } from '../../hooks/useToday';
 import { revisionCompletions, revisionMinutesOn } from '../../lib/topicActivity';
+import { indexStudyDays } from '../../lib/studySlices';
 interface Props {
   subjects: Subject[];
   dailyLogs: DailyLog[];
@@ -128,6 +129,7 @@ function parseActivity(desc: string): { type: string; rest: string } {
 }
 
 const ACTIVITY_COLORS: Record<string, string> = {
+  MCQ: 'bg-rose-500/10 text-rose-600 border-rose-500/20',
   'Self-Study': 'bg-primary/10 text-primary border-primary/20',
   Lecture: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
   Video: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
@@ -467,18 +469,23 @@ export default function DayByDayTimeline({ subjects, dailyLogs, dbSessions, onOp
       });
       topicDetails.sort((a, b) => (a.completedTime || '').localeCompare(b.completedTime || ''));
 
-      // Merge logged sessions into subject groups so every subject shows total = topic + session time
-      const daySessions = (dbSessions || []).filter(s => s.date === dateStr);
-      // Build per-subject session time (only type='Other' since Topic/Unit already updates topic.timeSpent)
+      // ONE engine (lib/studySlices) decides which minutes belong to this day — the same slices the day card, Trend and
+      // Study Rhythm use — so every subject row below adds up to the day's total.
+      const dayAgg = indexStudyDays(filteredSubjects as any, dailyLogs, dbSessions as any, { from: dateStr, to: dateStr, slices: true }).get(dateStr);
+      const sliceTotalBySubject = new Map<string, number>();
       const sessionTimeBySubject = new Map<string, number>();
       const allSessionTimeBySubject = new Map<string, number>();
-      daySessions.forEach(s => {
-        const key = normalizeSubjectId(s.subjectId) || '__other__';
-        allSessionTimeBySubject.set(key, (allSessionTimeBySubject.get(key) || 0) + (s.minutes || 0));
-        if (s.type === 'Other') {
-          sessionTimeBySubject.set(key, (sessionTimeBySubject.get(key) || 0) + (s.minutes || 0));
+      const countedSessionIds = new Set<string>();
+      (dayAgg?.slices || []).forEach(sl => {
+        const key = normalizeSubjectId(sl.subjectId) || '__other__';
+        sliceTotalBySubject.set(key, (sliceTotalBySubject.get(key) || 0) + sl.minutes);
+        if (sl.kind === 'session') {
+          sessionTimeBySubject.set(key, (sessionTimeBySubject.get(key) || 0) + sl.minutes);
+          allSessionTimeBySubject.set(key, (allSessionTimeBySubject.get(key) || 0) + sl.minutes);
+          if (sl.sessionId) countedSessionIds.add(sl.sessionId);
         }
       });
+      const daySessions = (dbSessions || []).filter(s => s.date === dateStr);
 
       // Add subject entries for sessions that have a subjectId but no topic completions on this day
       allSessionTimeBySubject.forEach((_, key) => {
@@ -496,27 +503,8 @@ export default function DayByDayTimeline({ subjects, dailyLogs, dbSessions, onOp
 
       const subjectGroups: SubjectGroup[] = Array.from(subjectMap.values())
         .map(sg => {
-          // FIX: Use per-date topic time (from timeEntries), not all-time timeSpent
-          let topicTimeForDate = 0;
-          filteredSubjects.filter(s => s.id === sg.subjectId).forEach(s => {
-            s.units.forEach(u => {
-              // Topic timeEntries for this date
-              u.subTopics.forEach(t => {
-                topicTimeForDate += revisionMinutesOn(t, dateStr);
-                const entryMins = t.timeEntries?.filter(e => e.date === dateStr).reduce((a, e) => a + e.minutes, 0) || 0;
-                if (entryMins > 0) {
-                  topicTimeForDate += entryMins;
-                } else if (t.completed && t.completedDate === dateStr && (t.timeSpent || 0) > 0) {
-                  topicTimeForDate += t.timeSpent;
-                }
-              });
-              // Unit-level timeEntries for this date
-              const unitMins = u.timeEntries?.filter(e => e.date === dateStr).reduce((a, e) => a + e.minutes, 0) || 0;
-              topicTimeForDate += unitMins;
-            });
-          });
-          const sessTime = sessionTimeBySubject.get(sg.subjectId === '__other__' ? '__other__' : sg.subjectId) || 0;
-          return { ...sg, totalTime: topicTimeForDate + sessTime, sessionTime: sessTime };
+          const sessTime = sessionTimeBySubject.get(sg.subjectId) || 0;
+          return { ...sg, totalTime: sliceTotalBySubject.get(sg.subjectId) || 0, sessionTime: sessTime };
         })
         .filter(sg => sg.topics.length > 0 || sg.totalTime > 0)
         .sort((a, b) => (b.topics.length + b.totalTime) - (a.topics.length + a.totalTime));
@@ -528,7 +516,7 @@ export default function DayByDayTimeline({ subjects, dailyLogs, dbSessions, onOp
 
       // Collect logged sessions for this date (for individual listing — exclude Topic type since those appear as topic completions)
       const loggedSessions: LoggedSessionEntry[] = daySessions
-        .filter(s => s.type !== 'Topic')
+        .filter(s => countedSessionIds.has(s.id))
         .map(s => {
           const subj = subjects.find(sub => sub.id === s.subjectId);
           return {

@@ -27,6 +27,7 @@ import DailyStudyHub from './charts/DailyStudyHub';
 import TimeFilterPills from './shared/TimeFilterPills';
 import { Input } from '@project/components/ui/input';
 import { completionsInRange } from '../lib/topicActivity';
+import { useStreak } from '../hooks/useStreak';
 
 const DailyTracker = lazy(() => import('./DailyTracker'));
 
@@ -122,6 +123,8 @@ export default function ChartsView({
   onCreateSession, onUpdateSession, onDeleteSession, onUpdateSubjects,
   settings, onUpdateSettings, dbSessions, exams,
 }: ChartsViewProps) {
+  // The same streak the Home banner, Profile and Daily Study Hub show — one engine, so it can never disagree
+  const streak = useStreak(subjects as any, dailyLogs as any, dbSessions as any);
   const [subTab, setSubTab] = useState<'charts' | 'daily'>('charts');
   const pinDiff = useChartPin();
   const pinTime = useChartPin();
@@ -264,9 +267,23 @@ export default function ChartsView({
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-primary" /> Statistics
-        </h2>
+        <div className="flex items-center gap-2 min-w-0">
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-primary" /> Statistics
+          </h2>
+          {/* 🔥 streak — always visible on Statistics */}
+          <div
+            className={`shrink-0 flex items-center gap-1 pl-1.5 pr-2 py-1 rounded-full border text-[11px] font-black font-mono leading-none ${
+              streak.todayDone > 0 || streak.todayHours > 0
+                ? 'bg-orange-500/12 border-orange-500/30 text-orange-600 dark:text-orange-400 shadow-[0_0_10px_hsl(25_95%_53%/0.25)]'
+                : 'bg-muted/30 border-border/20 text-muted-foreground'
+            }`}
+            title={`${streak.current}-day streak · best ${streak.best} days`}
+            aria-label={`${streak.current} day streak`}
+          >
+            <span className="text-sm leading-none">🔥</span>{streak.current}<span className="text-[9px] font-bold opacity-70">d</span>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <GrowthToggle />
           <PdfExportButton subjects={subjects} dailyLogs={dailyLogs} />

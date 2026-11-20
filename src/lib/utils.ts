@@ -1,4 +1,10 @@
 import { revisionMinutes, revisionMinutesOn, forEachRevisionEntry, completionsOn } from './topicActivity';
+import { indexStudyDays, undatedStudyMinutes, isIndependentSession } from './studySlices';
+
+/** A Topic/Unit session that merely mirrors topic time (the timer's copy) — NOT one logged by hand via Add Study Time. */
+export function isOverlapSession(s: { type?: string; description?: string; topicId?: string }): boolean {
+  return (s.type === 'Topic' || s.type === 'Unit') && !isIndependentSession(s);
+}
 
 /**
  * Normalize a session's subjectId — empty string, null, undefined, 'general'
@@ -247,18 +253,10 @@ export function getEffectiveDayMinutes(
   subjects: { id?: string; units: { id?: string; timeEntries?: { date: string; minutes: number }[]; subTopics: { id?: string; completed: boolean; completedDate?: string; timeSpent: number; timeEntries?: { date: string; minutes: number }[] }[] }[] }[],
   dailyLogs: { date: string; hoursStudied: number; sessions?: any[] }[],
   dateStr: string,
-  dbSessions?: { date: string; minutes: number; type: string; topicId?: string; unitId?: string }[],
+  dbSessions?: { date: string; minutes: number; type: string; topicId?: string; unitId?: string; description?: string }[],
 ): number {
-  const { mins: topicUnitMin, topicIds } = _getTopicUnitDayMinutes(subjects, dateStr);
-
-  // Collect ALL sessions for this date — dbSessions first, then legacy dailyLog.sessions fallback
-  const allDaySessions = _getAllDaySessions(dailyLogs, dateStr, dbSessions);
-
-  // Count all sessions EXCEPT those whose topicId is already counted in topic time
-  const sessionMin = allDaySessions
-    .filter(s => !s.topicId || !topicIds.has(s.topicId))
-    .reduce((a, s) => a + (s.minutes || 0), 0);
-  return topicUnitMin + sessionMin;
+  // One engine for every screen: topic + revision + unit entries + non-mirrored sessions (see studySlices.ts)
+  return indexStudyDays(subjects as any, dailyLogs, dbSessions as any, { from: dateStr, to: dateStr }).get(dateStr)?.total || 0;
 }
 
 /**
@@ -273,16 +271,12 @@ export function getEffectiveDayMinutes(
 export function getDayStudyBreakdown(
   subjects: { id?: string; units: { id?: string; timeEntries?: { date: string; minutes: number }[]; subTopics: { id?: string; completed: boolean; completedDate?: string; timeSpent: number; timeEntries?: { date: string; minutes: number }[] }[] }[] }[],
   dateStr: string,
-  dbSessions: { date: string; minutes: number; type: string; topicId?: string; unitId?: string }[],
+  dbSessions: { date: string; minutes: number; type: string; topicId?: string; unitId?: string; description?: string }[],
   dailyLogs?: { date: string; hoursStudied: number; sessions?: any[] }[],
-): { topicMins: number; sessionMins: number; totalMins: number } {
-  const { mins: topicMins, topicIds } = _getTopicUnitDayMinutes(subjects, dateStr);
-  const allDaySessions = _getAllDaySessions(dailyLogs || [], dateStr, dbSessions);
-  // Count all sessions EXCEPT those whose topicId is already counted in topic time
-  const sessionMins = allDaySessions
-    .filter(s => !s.topicId || !topicIds.has(s.topicId))
-    .reduce((a, s) => a + (s.minutes || 0), 0);
-  return { topicMins, sessionMins, totalMins: topicMins + sessionMins };
+): { topicMins: number; revisionMins: number; sessionMins: number; totalMins: number } {
+  const a = indexStudyDays(subjects as any, dailyLogs || [], dbSessions as any, { from: dateStr, to: dateStr }).get(dateStr);
+  if (!a) return { topicMins: 0, revisionMins: 0, sessionMins: 0, totalMins: 0 };
+  return { topicMins: a.topicMin + a.unitMin, revisionMins: a.revisionMin, sessionMins: a.sessionMin, totalMins: a.total };
 }
 
 /**
@@ -333,7 +327,7 @@ export function getTotalTopicMinutes(
  */
 export function getUnifiedTotalMinutes(
   subjects: { units: { timeSpent?: number; subTopics: { timeSpent: number }[] }[] }[],
-  dbSessions?: { id: string; minutes: number; type: string }[],
+  dbSessions?: { id: string; minutes: number; type: string; description?: string }[],
   dailyLogs?: { hoursStudied: number; sessions?: { id: string; durationMinutes: number }[] }[],
 ): number {
   const topicUnitTime = getTotalTopicMinutes(subjects);
@@ -360,7 +354,7 @@ export function getUnifiedTotalMinutes(
   const allSessionTime = dbSessions.reduce((a, s) => a + (s.minutes || 0), 0) + legacyOnlyMins;
   // Sessions with type 'Topic'/'Unit' also update syllabus timeSpent — deduct overlap
   const overlapping = dbSessions
-    .filter(s => s.type === 'Topic' || s.type === 'Unit')
+    .filter(s => isOverlapSession(s))
     .reduce((a, s) => a + (s.minutes || 0), 0);
   return allSessionTime + Math.max(0, topicUnitTime - overlapping);
 }
@@ -385,11 +379,11 @@ export function getAllSessionMinutesBySubject(
  * These sessions also update syllabus timeSpent, so they overlap.
  */
 export function getOverlappingSessionMinutesBySubject(
-  dbSessions: { subjectId: string; minutes: number; type: string }[],
+  dbSessions: { subjectId: string; minutes: number; type: string; description?: string }[],
 ): Map<string, number> {
   const map = new Map<string, number>();
   dbSessions.forEach(s => {
-    if ((s.type === 'Topic' || s.type === 'Unit') && s.subjectId) {
+    if (isOverlapSession(s) && s.subjectId) {
       map.set(s.subjectId, (map.get(s.subjectId) || 0) + (s.minutes || 0));
     }
   });
@@ -465,126 +459,13 @@ export function getEffectiveStudyMinutes(
   dailyLogs: { date: string; hoursStudied: number; sessions?: any[] }[],
   dateFrom?: string,
   dateTo?: string,
-  dbSessions?: { date: string; minutes: number; type: string }[],
+  dbSessions?: { date: string; minutes: number; type: string; description?: string }[],
 ): number {
-  // 1. Accumulate topic + unit time by date
-  const topicMinByDate = new Map<string, number>();
-  subjects.forEach(s => s.units.forEach(u => {
-    if (u.timeEntries && u.timeEntries.length > 0) {
-      u.timeEntries.forEach(e => {
-        if (dateFrom && e.date < dateFrom) return;
-        if (dateTo && e.date > dateTo) return;
-        topicMinByDate.set(e.date, (topicMinByDate.get(e.date) || 0) + e.minutes);
-      });
-    }
-    u.subTopics.forEach(t => {
-      forEachRevisionEntry(t as any, e => {
-        if (dateFrom && e.date < dateFrom) return;
-        if (dateTo && e.date > dateTo) return;
-        topicMinByDate.set(e.date, (topicMinByDate.get(e.date) || 0) + e.minutes);
-      });
-      if (t.timeEntries && t.timeEntries.length > 0) {
-        t.timeEntries.forEach(e => {
-          if (dateFrom && e.date < dateFrom) return;
-          if (dateTo && e.date > dateTo) return;
-          topicMinByDate.set(e.date, (topicMinByDate.get(e.date) || 0) + e.minutes);
-        });
-      } else if (t.completed && t.completedDate && (t.timeSpent || 0) > 0) {
-        if (dateFrom && t.completedDate < dateFrom) return;
-        if (dateTo && t.completedDate > dateTo) return;
-        topicMinByDate.set(t.completedDate, (topicMinByDate.get(t.completedDate) || 0) + t.timeSpent);
-      }
-    });
-  }));
-
-  // 2. Accumulate ALL session minutes by date + overlapping (Topic/Unit type) by date
-  const allSessionMinByDate = new Map<string, number>();
-  const overlappingMinByDate = new Map<string, number>();
-  // dbSessions (canonical)
-  const dbIds = new Set<string>();
-  if (dbSessions) {
-    dbSessions.forEach(s => {
-      if (dateFrom && s.date < dateFrom) return;
-      if (dateTo && s.date > dateTo) return;
-      if ((s as any).id) dbIds.add((s as any).id);
-      allSessionMinByDate.set(s.date, (allSessionMinByDate.get(s.date) || 0) + (s.minutes || 0));
-      if (s.type === 'Topic' || s.type === 'Unit') {
-        overlappingMinByDate.set(s.date, (overlappingMinByDate.get(s.date) || 0) + (s.minutes || 0));
-      }
-    });
-  }
-  // Legacy sessions from dailyLogs — only for dates with NO dbSessions
-  const dbDates = new Set(dbSessions?.map(s => s.date) || []);
-  dailyLogs.forEach(l => {
-    if (dbDates.has(l.date)) return; // db sessions take priority
-    if (dateFrom && l.date < dateFrom) return;
-    if (dateTo && l.date > dateTo) return;
-    (l.sessions || []).forEach((s: any) => {
-      const mins = s.durationMinutes || s.minutes || 0;
-      if (mins > 0 && !dbIds.has(s.id)) {
-        allSessionMinByDate.set(l.date, (allSessionMinByDate.get(l.date) || 0) + mins);
-      }
-    });
-  });
-
-  // 3. Merge using unified formula per date
-  const allDates = new Set([...topicMinByDate.keys(), ...allSessionMinByDate.keys()]);
+  // Exactly the sum of the per-day totals (same engine as getEffectiveDayMinutes), plus undated legacy time
   let total = 0;
-  allDates.forEach(date => {
-    const topicMin = topicMinByDate.get(date) || 0;
-    const allSessionMin = allSessionMinByDate.get(date) || 0;
-    const overlappingMin = overlappingMinByDate.get(date) || 0;
-
-    // Unified: allSessions + max(0, topicUnit - overlap)
-    // Legacy sessions are already included in allSessionMinByDate
-    total += allSessionMin + Math.max(0, topicMin - overlappingMin);
-  });
-
-  // 4. Include "undated" topic time — topics with timeSpent > 0 but no timeEntries
-  //    and either not completed or no completedDate. These are counted by
-  //    getUnifiedTotalMinutes (getTotalTopicMinutes) but missed above because
-  //    they can't be assigned to any date. Include them so totals match.
-  let datedTopicTime = 0;
-  let allTopicTime = 0;
-  subjects.forEach(s => s.units.forEach(u => {
-    // Unit-level time
-    if (u.timeEntries && u.timeEntries.length > 0) {
-      // Dated entries already counted above
-    } else {
-      // No timeEntries on unit — not counted above unless via topic loop
-    }
-    u.subTopics.forEach(t => {
-      const ts = t.timeSpent || 0;
-      if (ts <= 0) return;
-      allTopicTime += ts;
-      if (t.timeEntries && t.timeEntries.length > 0) {
-        // Has timeEntries — already counted by date above
-        datedTopicTime += ts;
-      } else if (t.completed && t.completedDate) {
-        // Completed with date — already counted above (if in range)
-        datedTopicTime += ts;
-      }
-      // else: undated — NOT counted above
-    });
-  }));
-  // Also count unit-level time
-  let datedUnitTime = 0;
-  let allUnitTime = 0;
-  subjects.forEach(s => s.units.forEach(u => {
-    const ut = u.timeSpent || 0;
-    if (ut <= 0) return;
-    allUnitTime += ut;
-    if (u.timeEntries && u.timeEntries.length > 0) {
-      datedUnitTime += ut;
-    }
-    // else: undated unit time
-  }));
-  const undatedTopicMins = Math.max(0, (allTopicTime - datedTopicTime) + (allUnitTime - datedUnitTime));
-  // Add undated time directly — these topics were never linked to a session
-  // (they have no date info), so no double-counting risk with sessions.
-  total += undatedTopicMins;
-
-  return total;
+  indexStudyDays(subjects as any, dailyLogs, dbSessions as any, { from: dateFrom, to: dateTo }).forEach(a => { total += a.total; });
+  // Undated legacy time belongs to the all-time view only — a dated window must equal the sum of its day cards
+  return total + (!dateFrom && !dateTo ? undatedStudyMinutes(subjects as any) : 0);
 }
 
 

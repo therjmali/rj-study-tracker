@@ -14,7 +14,7 @@ import { formatDate, formatStudyTime, getEffectiveDayMinutes, getLocalDateStr, r
 import { useStreak } from '../../hooks/useStreak';
 import { useExcludedSubjects } from '../../hooks/useExcludedSubjects';
 import type { TodoItem } from '../../hooks/useTodos';
-import { revisionCompletions, forEachRevisionEntry, revisionMinutesOn } from '../../lib/topicActivity';
+import { revisionCompletions, forEachRevisionEntry, revisionRoundMinutesOn } from '../../lib/topicActivity';
 
 interface Props {
   subjects: Subject[];
@@ -112,12 +112,12 @@ export default function ProgressCalendar({ subjects, dailyLogs, onUpdateMood, on
       if (!map[dateStr]) map[dateStr] = { done: 0, subjects: new Set(), topics: [] };
       if (isCompletion) map[dateStr].done++;
       map[dateStr].subjects.add(s.shortName);
-      const entryMins = round ? revisionMinutesOn(t, dateStr) : (t.timeEntries?.filter(e => e.date === dateStr).reduce((a, e) => a + e.minutes, 0) || 0);
+      const entryMins = round ? revisionRoundMinutesOn(t, round, dateStr) : (t.timeEntries?.filter(e => e.date === dateStr).reduce((a, e) => a + e.minutes, 0) || 0);
       const displayTime = entryMins > 0 ? entryMins : (isCompletion && !round ? (t.timeSpent || 0) : 0);
       map[dateStr].topics.push({
         subjectName: s.shortName, subjectColor: s.color, unitName: u.name, topicName: round ? `${t.name} · ${round}` : t.name,
         difficulty: t.difficulty, time: isCompletion ? (round ? roundTime : t.completedTime) : undefined, timeSpent: displayTime,
-        topicId: t.id, subjectId: s.id, unitId: u.id,
+        topicId: t.id, subjectId: s.id, unitId: u.id, done: isCompletion, revision: round,
       });
     };
     filteredSubjects.forEach(s => {

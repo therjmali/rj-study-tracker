@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, X, ChevronUp, ChevronDown, Clock, Target, Flame, Sparkles, Maximize2, Smartphone } from 'lucide-react';
 import { useTimerTick } from '../../hooks/useGlobalTimer';
 import type { GlobalTimerState } from '../../hooks/useGlobalTimer';
-import type { Subject, DailyLog, StudyGoals } from '../../types';
-import { getLocalDateStr, formatStudyTime } from '../../lib/utils';
+import type { Subject, DailyLog, StudyGoals, DbStudySession } from '../../types';
+import { getLocalDateStr, formatStudyTime, getEffectiveDayMinutes } from '../../lib/utils';
 import { completionsOn, revisionMinutesOn } from '../../lib/topicActivity';
 
 function fmt(sec: number) {
@@ -21,6 +21,7 @@ interface Props {
   timer: GlobalTimerState;
   subjects: Subject[];
   dailyLogs: DailyLog[];
+  dbSessions?: DbStudySession[];
   studyGoals: StudyGoals;
   onOpenFocusTimer: () => void;
   onOpenWidgetManager?: () => void;
@@ -33,6 +34,7 @@ export default function FloatingWidgetHub({
   timer,
   subjects,
   dailyLogs,
+  dbSessions,
   studyGoals,
   onOpenFocusTimer,
   onOpenWidgetManager,
@@ -58,18 +60,10 @@ export default function FloatingWidgetHub({
   // Compute today's topics and minutes
   const { todayTopicsDone, todayMinutes } = useMemo(() => {
     let topics = 0;
-    let mins = 0;
-    subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      topics += completionsOn(t, today);
-      if (t.timeEntries) {
-        t.timeEntries.forEach(e => {
-          if (e.date === today) mins += e.minutes;
-        });
-      }
-      mins += revisionMinutesOn(t, today);
-    })));
-    return { todayTopicsDone: topics, todayMinutes: mins };
-  }, [subjects, today]);
+    subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => { topics += completionsOn(t, today); })));
+    // minutes come from the shared study-time engine (topic + revision + sessions, no double counting)
+    return { todayTopicsDone: topics, todayMinutes: getEffectiveDayMinutes(subjects, dailyLogs, today, dbSessions as any) };
+  }, [subjects, dailyLogs, dbSessions, today]);
 
   const targetTopics = studyGoals?.dailyTopics || 5;
   const targetMinutes = Math.round((studyGoals?.dailyHours || 3) * 60);

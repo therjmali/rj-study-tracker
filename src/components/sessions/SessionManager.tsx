@@ -630,7 +630,7 @@ function EditSheet({ session, subjects, onSave, onClose }: {
   session: MergedSession; subjects: Subject[];
   onSave: (s: MergedSession) => void; onClose: () => void;
 }) {
-  const ACTIVITIES = ['Self-Study', 'Seminar', 'Revision', 'Lecture', 'Practice', 'Other'];
+  const ACTIVITIES = ['MCQ', 'Self-Study', 'Lecture', 'Seminar', 'Revision', 'Practice', 'Other'];
   const [subId, setSubId] = useState(session.subjectId || 'general');
   const [activity, setActivity] = useState(session._activity || 'Self-Study');
   const [startTime, setStartTime] = useState(session.startTime?.slice(0, 5) || '09:00');

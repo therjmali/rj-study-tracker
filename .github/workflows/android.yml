@@ -19,6 +19,9 @@ jobs:
     outputs:
       build: ${{ steps.g.outputs.build }}
     steps:
+      - name: Warn when the repository is private (in-app updates and Pages need it public)
+        if: ${{ github.event.repository.private }}
+        run: echo "::warning title=Repository is private::The in-app updater and GitHub Pages read releases without signing in, so they cannot see this repository. Make it public (Settings → General → Danger Zone → Change visibility) or download APKs from the Releases page."
       - uses: actions/checkout@v4
       - id: g
         run: |

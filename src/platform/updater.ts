@@ -16,6 +16,7 @@ import { getConnectivity } from './connectivity';
 export const REPO_OWNER = 'therjmali';
 export const REPO_NAME = 'rj-study-tracker';
 const API = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
+export const RELEASES_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases`;
 const CHECK_KEY = 'rj-update-check-v1';
 export const OPEN_UPDATES_EVENT = 'rj:open-updates';
 
@@ -73,7 +74,9 @@ export const isNativeUpdater = (): boolean => isNative && typeof nativeBridge()?
 export async function fetchLatestRelease(signal?: AbortSignal): Promise<ReleaseInfo> {
   const res = await fetch(API, { headers: { accept: 'application/vnd.github+json' }, signal, cache: 'no-store' });
   if (res.status === 403 || res.status === 429) throw new Error('GitHub is limiting requests right now. Try again in a few minutes.');
-  if (res.status === 404) throw new Error('No release has been published yet.');
+  // GitHub answers 404 (not 403) for a PRIVATE repository when nobody is signed in — which is how this app asks.
+  // "No release yet" and "repository is private" look identical from here, so say both and how to fix it.
+  if (res.status === 404) throw new Error(`The release list is not public, so the app cannot see new versions. If the repository is private, make it public (GitHub → Settings → General → Danger Zone → Change visibility), or download the latest APK from ${RELEASES_URL}`);
   if (!res.ok) throw new Error(`Could not read the latest release (${res.status}).`);
   const j = await res.json();
   return {

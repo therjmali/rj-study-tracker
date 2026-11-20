@@ -9,8 +9,8 @@ import {
 import { BookOpen, Clock, Trophy, TrendingUp, ChevronDown, ChevronRight, CheckCircle2, BarChart3 } from 'lucide-react';
 import type { Subject, DailyLog, DbStudySession, SubTopic } from '../../types';
 import { formatStudyHours, formatStudyTime, getEffectiveDayMinutes, getEffectiveStudyMinutes, getUnifiedTotalMinutes, getLocalDateStr, formatDate, readableInk } from '../../lib/utils';
-import { completionsOn, completionsInRange } from '../../lib/topicActivity';
-import { forEachRevisionEntry } from '../../lib/topicActivity';
+import { completionsOn, completionsInRange, revisionCompletionsOn, topicTouchedOn } from '../../lib/topicActivity';
+import { indexStudyDays, undatedStudyMinutes } from '../../lib/studySlices';
 
 type TimeFilter = 'all' | 'today' | 'weekly' | 'monthly' | 'custom';
 
@@ -59,6 +59,18 @@ function ChartTooltip({ active, payload }: any) {
           <span className="text-[10px] text-muted-foreground flex-1">Topics</span>
           <span className="text-[11px] font-black font-mono text-foreground">{d.topics}</span>
         </div>
+        {d.revised > 0 && (
+          <div className="flex items-center gap-2 pl-4">
+            <span className="text-[9px] text-muted-foreground flex-1">🔁 of which revision</span>
+            <span className="text-[10px] font-black font-mono text-chart-2">{d.revised}</span>
+          </div>
+        )}
+        {d.studied > d.topics && (
+          <div className="flex items-center gap-2 pl-4">
+            <span className="text-[9px] text-muted-foreground flex-1">📖 studied (any time logged)</span>
+            <span className="text-[10px] font-black font-mono text-muted-foreground">{d.studied}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-sm bg-primary" />
           <span className="text-[10px] text-muted-foreground flex-1">Hours</span>
@@ -86,27 +98,33 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
     const totalDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1);
 
     const rawDates: string[] = [];
-    const raw: { dateStr: string; topics: number; mins: number }[] = [];
+    const raw: { dateStr: string; topics: number; studied: number; revised: number; mins: number }[] = [];
+    // ONE pass for all days → every day's minutes come from the same engine as the day cards
+    const idx = indexStudyDays(subjects as any, dailyLogs, dbSessions as any, { from, to });
     for (let i = 0; i < totalDays; i++) {
       const d = new Date(startDate);
       d.setDate(d.getDate() + i);
       const ds = getLocalDateStr(d);
       rawDates.push(ds);
-      let topics = 0;
+      let topics = 0, studied = 0, revised = 0;
       subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
         topics += completionsOn(t, ds);
+        revised += revisionCompletionsOn(t, ds);
+        if (topicTouchedOn(t, ds)) studied++;
       })));
-      const mins = getEffectiveDayMinutes(subjects, dailyLogs, ds, dbSessions);
-      raw.push({ dateStr: ds, topics, mins });
+      const mins = idx.get(ds)?.total || 0;
+      raw.push({ dateStr: ds, topics, studied, revised, mins });
     }
 
     // Aggregate into buckets if > 35 days
     if (raw.length > 35) {
       const bucketSize = Math.ceil(raw.length / 30);
-      const sampled: { date: string; fullDate: string; topics: number; hours: number }[] = [];
+      const sampled: { date: string; fullDate: string; topics: number; studied: number; revised: number; hours: number }[] = [];
       for (let i = 0; i < raw.length; i += bucketSize) {
         const chunk = raw.slice(i, i + bucketSize);
         const topics = chunk.reduce((a, d) => a + d.topics, 0);
+        const studied = chunk.reduce((a, d) => a + d.studied, 0);
+        const revised = chunk.reduce((a, d) => a + d.revised, 0);
         const totalMins = chunk.reduce((a, d) => a + d.mins, 0);
         const hours = Math.round((totalMins / 60) * 100) / 100;
         const fd = parseInt(chunk[0].dateStr.split('-')[2], 10);
@@ -118,7 +136,7 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
         const full = chunk.length > 1
           ? `${formatDate(chunk[0].dateStr)} – ${formatDate(chunk[chunk.length - 1].dateStr)}`
           : formatDate(chunk[0].dateStr);
-        sampled.push({ date: label, fullDate: full, topics, hours });
+        sampled.push({ date: label, fullDate: full, topics, studied, revised, hours });
       }
       return sampled;
     }
@@ -127,6 +145,8 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
       date: dayLabel(d.dateStr, i, rawDates),
       fullDate: formatDate(d.dateStr),
       topics: d.topics,
+      studied: d.studied,
+      revised: d.revised,
       hours: Math.round((d.mins / 60) * 100) / 100,
     }));
   }, [subjects, dailyLogs, dbSessions, from, to]);
@@ -162,50 +182,21 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
 
   // ── Subject breakdown (includes session manager time) ──
   const subjectBreakdown = useMemo(() => {
-    // Build per-subject session time for the date range
-    const sessMinsBySubject = new Map<string, number>();
-    const sessOverlapBySubject = new Map<string, number>();
+    // Per-subject time comes from the SAME engine as the header total and the day cards, so the rows always add up
     const unmappedMins = { total: 0 };
     const subjectIds = new Set(subjects.map(s => s.id));
-    if (dbSessions) {
-      dbSessions.forEach(s => {
-        if (s.date < from || s.date > to) return;
-        const sid = s.subjectId && s.subjectId !== 'general' && s.subjectId !== '_general' ? s.subjectId : '';
-        if (sid && subjectIds.has(sid)) {
-          sessMinsBySubject.set(sid, (sessMinsBySubject.get(sid) || 0) + (s.minutes || 0));
-          if (s.type === 'Topic' || s.type === 'Unit') {
-            sessOverlapBySubject.set(sid, (sessOverlapBySubject.get(sid) || 0) + (s.minutes || 0));
-          }
-        } else {
-          unmappedMins.total += s.minutes || 0;
-        }
-      });
-    }
+    const minsBySubject = new Map<string, number>();
+    indexStudyDays(subjects as any, dailyLogs, dbSessions as any, { from, to, slices: true }).forEach(day => day.slices.forEach(sl => {
+      const sid = sl.subjectId && sl.subjectId !== 'general' && sl.subjectId !== '_general' ? sl.subjectId : '';
+      if (sid && subjectIds.has(sid)) minsBySubject.set(sid, (minsBySubject.get(sid) || 0) + sl.minutes);
+      else unmappedMins.total += sl.minutes;
+    }));
 
     const result = subjects.map(s => {
       const allTopics = s.units.flatMap(u => u.subTopics);
       const doneInRange = allTopics.filter(t => t.completed && t.completedDate && t.completedDate >= from && t.completedDate <= to);
-      let topicTimeMins = 0;
-      s.units.forEach(u => {
-        topicTimeMins += u.timeSpent || 0;
-        u.subTopics.forEach(t => {
-          forEachRevisionEntry(t, e => { if (e.date >= from && e.date <= to) topicTimeMins += e.minutes; });
-          if (t.timeEntries && t.timeEntries.length > 0) {
-            topicTimeMins += t.timeEntries.filter(e => e.date >= from && e.date <= to).reduce((a, e) => a + e.minutes, 0);
-          } else if (t.completed && t.completedDate && t.completedDate >= from && t.completedDate <= to) {
-            topicTimeMins += t.timeSpent || 0;
-          } else if (isAllTime && (t.timeSpent || 0) > 0) {
-            // Include undated topic time in all-time view
-            topicTimeMins += t.timeSpent;
-          }
-        });
-      });
-      // Unified per-subject: sessions + max(0, topicTime - overlap)
-      const sessAll = sessMinsBySubject.get(s.id) || 0;
-      const sessOverlap = sessOverlapBySubject.get(s.id) || 0;
-      const timeMins = sessAll > 0
-        ? sessAll + Math.max(0, topicTimeMins - sessOverlap)
-        : topicTimeMins;
+      // undated legacy time only belongs to the all-time view
+      const timeMins = (minsBySubject.get(s.id) || 0) + (isAllTime ? undatedStudyMinutes([s] as any) : 0);
 
       const units = s.units.map(u => {
         const unitDone = u.subTopics.filter(t => t.completed && t.completedDate && t.completedDate >= from && t.completedDate <= to);
@@ -235,7 +226,7 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
     }
 
     return result;
-  }, [subjects, from, to, dbSessions, isAllTime]);
+  }, [subjects, dailyLogs, from, to, dbSessions, isAllTime]);
 
   const maxTopics = Math.max(...chartData.map(d => d.topics), 1);
   const maxHours = Math.max(...chartData.map(d => d.hours), 0.5);
@@ -261,7 +252,8 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
           <div>
             <ChartPinPanel pin={pin} className="mb-1.5" describe={(d) => ({ title: `📅 ${d.fullDate}`, rows: [
               { label: 'Study time', value: formatStudyHours(d.hours), color: 'hsl(var(--primary))' },
-              { label: 'Topics', value: `${d.topics}`, color: 'hsl(var(--chart-4))' },
+              { label: 'Topics', value: `${d.topics}${d.revised > 0 ? ` (${d.revised} revision)` : ''}`, color: 'hsl(var(--chart-4))' },
+              ...(d.studied > d.topics ? [{ label: 'Studied', value: `${d.studied} topics`, color: 'hsl(var(--muted-foreground))' }] : []),
             ] })} />
             <div className="h-[200px] cursor-pointer">
             <ResponsiveContainer width="100%" height="100%">

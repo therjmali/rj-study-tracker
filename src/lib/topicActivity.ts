@@ -134,3 +134,19 @@ export function addActivityDates(t: TopicActivityLike, into: Set<string>): void 
 export function forEachRevisionCompletion(t: TopicActivityLike, fn: (date: string, round: RevisionKey) => void): void {
   for (const c of revisionCompletions(t)) fn(c.date, c.round);
 }
+
+/** True when the topic (or one of its revision rounds) was completed OR had study time on `date`. */
+export function topicTouchedOn(t: TopicActivityLike, date: string): boolean {
+  if (completionsOn(t, date) > 0) return true;
+  if (t.timeEntries) for (const e of t.timeEntries) if (e && e.date === date && finite(e.minutes) && e.minutes > 0) return true;
+  return revisionMinutesOn(t, date) > 0;
+}
+
+/** Minutes logged on ONE revision round on ONE date. */
+export function revisionRoundMinutesOn(t: TopicActivityLike, round: RevisionKey, date: string): number {
+  const r = t.revisions?.[round];
+  if (!r?.timeEntries) return 0;
+  let n = 0;
+  for (const e of r.timeEntries) if (e && e.date === date && finite(e.minutes) && e.minutes > 0) n += e.minutes;
+  return n;
+}

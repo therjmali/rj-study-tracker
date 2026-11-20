@@ -1,6 +1,7 @@
-import type { Subject, DbStudySession, TimeEntry } from '../types';
+import type { Subject, DbStudySession } from '../types';
 import type { DayPeriod } from './dayPeriods';
 import { revisionCompletions } from './topicActivity';
+import { indexStudyDays } from './studySlices';
 
 export interface RhythmRange { from: string; to: string }
 
@@ -54,56 +55,36 @@ export function computeStudyRhythm(
   subjects: Subject[],
   dbSessions: DbStudySession[] | undefined,
   range: RhythmRange | null,
+  dailyLogs?: { date: string; hoursStudied?: number; sessions?: any[] }[],
 ): RhythmResult {
   const minutes: Record<DayPeriod, number> = { morning: 0, afternoon: 0, evening: 0, night: 0 };
   const topics: Record<DayPeriod, number> = { morning: 0, afternoon: 0, evening: 0, night: 0 };
   let unassigned = 0;
 
-  // 1) First-class sessions
-  const sessionKeys = new Set<string>();
-  (dbSessions || []).forEach(s => {
-    if (!s.minutes || s.minutes <= 0) return;
-    // keys used to avoid counting a timer entry twice (session + topic entry)
-    if (s.topicId) sessionKeys.add(`t|${s.date}|${s.topicId}|${s.minutes}`);
-    if (s.unitId) sessionKeys.add(`u|${s.date}|${s.unitId}|${s.minutes}`);
-    if (!inRange(s.date, range)) return;
-    const start = parseHHMM(s.startTime);
-    if (start == null) { unassigned += s.minutes; return; }
-    spread(start, s.minutes, minutes);
-  });
+  // Minutes come from the SAME engine as every other study-time number (topic + revision + unit entries and
+  // non-mirrored sessions), so the rhythm total always equals the period's study time. This only places
+  // each slice into its shift of the day.
+  const days = indexStudyDays(subjects as any, dailyLogs, dbSessions as any, { from: range?.from, to: range?.to, slices: true });
+  days.forEach(day => day.slices.forEach(sl => {
+    const start = parseHHMM(sl.start);
+    if (start != null) { spread(start, sl.minutes, minutes); return; }
+    const end = parseHHMM(sl.end);
+    if (end != null) { spread(end - sl.minutes, sl.minutes, minutes); return; }
+    unassigned += sl.minutes;
+  }));
 
-  // 2) Topic / unit / revision time entries
-  const addEntry = (e: TimeEntry, dupKey: string[], fallbackEnd?: string) => {
-    if (!e.minutes || e.minutes <= 0 || !inRange(e.date, range)) return;
-    if (dupKey.some(k => sessionKeys.has(k))) return;
-    const start = parseHHMM(e.time);
-    if (start != null) { spread(start, e.minutes, minutes); return; }
-    const end = parseHHMM(fallbackEnd);
-    if (end != null) { spread(end - e.minutes, e.minutes, minutes); return; }
-    unassigned += e.minutes;
-  };
-
-  subjects.forEach(s => s.units.forEach(u => {
-    u.subTopics.forEach(t => {
-      if (!t.completed || !inRange(t.completedDate, range)) return;
+  // Topics completed per shift (by completion time) — revision rounds count as topics too
+  subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
+    if (t.completed && inRange(t.completedDate, range)) {
       const c = parseHHMM(t.completedTime);
       if (c != null) topics[bucketAt(c).key]++;
-    });
-    // a completed revision round counts as a topic in its time-of-day bucket
-    u.subTopics.forEach(t => revisionCompletions(t as any).forEach(rc => {
+    }
+    revisionCompletions(t as any).forEach(rc => {
       if (!inRange(rc.date, range)) return;
       const c = parseHHMM(rc.time);
       if (c != null) topics[bucketAt(c).key]++;
-    }));
-    (u.timeEntries || []).forEach(e => addEntry(e, [`u|${e.date}|${u.id}|${e.minutes}`]));
-    u.subTopics.forEach(t => {
-      (t.timeEntries || []).forEach(e =>
-        addEntry(e, [`t|${e.date}|${t.id}|${e.minutes}`], t.completed && t.completedDate === e.date ? t.completedTime : undefined));
-      Object.values(t.revisions || {}).forEach(r =>
-        (r?.timeEntries || []).forEach(e =>
-          addEntry(e, [`t|${e.date}|${t.id}|${e.minutes}`], r?.completedDate === e.date ? r?.completedTime : undefined)));
     });
-  }));
+  })));
 
   const assigned = minutes.morning + minutes.afternoon + minutes.evening + minutes.night;
   let peak: DayPeriod | null = null;

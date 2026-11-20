@@ -7,7 +7,7 @@ import type { DailyLog } from '../../types';
 import type { DifficultyFilter } from '../../lib/studySuggestion';
 import CircularProgress from '../shared/CircularProgress';
 import AnimatedStreakNumber from '../shared/AnimatedStreakNumber';
-import { getLocalDateStr, formatStudyTime, formatStudyHours, getEffectiveDayMinutes, getUnifiedTotalMinutes, getMergedAllSessionMinutesBySubject, getMergedOverlappingSessionMinutesBySubject, normalizeSubjectId, readableInk } from '../../lib/utils';
+import { getLocalDateStr, formatStudyTime, formatStudyHours, getEffectiveDayMinutes, getUnifiedTotalMinutes, getMergedAllSessionMinutesBySubject, getMergedOverlappingSessionMinutesBySubject, normalizeSubjectId, readableInk, isOverlapSession } from '../../lib/utils';
 import { useToday } from '../../hooks/useToday';
 import { useStreak, getActiveDates } from '../../hooks/useStreak';
 import { getExamCountdown } from '../../lib/examUtils';
@@ -186,7 +186,7 @@ export default function StatCardsGrid({ subjects, dailyLogs, semesterConfig, dif
   // Non-overlapping session minutes (sessions that DON'T also count as topic time)
   const nonOverlappingSessionMins = useMemo(() => {
     if (!dbSessions) return 0;
-    const overlapping = dbSessions.filter(s => s.type === 'Topic' || s.type === 'Unit').reduce((a, s) => a + (s.minutes || 0), 0);
+    const overlapping = dbSessions.filter(s => isOverlapSession(s)).reduce((a, s) => a + (s.minutes || 0), 0);
     const allSession = dbSessions.reduce((a, s) => a + (s.minutes || 0), 0);
     return allSession - overlapping;
   }, [dbSessions]);

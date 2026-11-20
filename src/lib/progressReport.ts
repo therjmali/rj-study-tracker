@@ -10,6 +10,7 @@ import { getEffectiveDayMinutes, getLocalDateStr } from './utils';
 import { computeStreak as computeStreakInfo } from '../hooks/useStreak';
 import { completionsInRange } from './topicActivity';
 import { forEachRevisionCompletion, forEachRevisionEntry } from './topicActivity';
+import { indexStudyDays } from './studySlices';
 
 export type PeriodId = 'today' | 'yesterday' | 'week' | 'month' | 'custom' | 'all';
 
@@ -123,29 +124,18 @@ function minutesIn(input: ReportInput, from: string, to: string): { total: numbe
 
 function subjectSlices(input: ReportInput, from: string, to: string): SubjectSlice[] {
   const inRange = (d: string) => d >= from && d <= to;
+  // Minutes per subject come from the shared study-time engine, so the subject rows add up to the report total
+  const minsBySubject = new Map<string, number>();
+  indexStudyDays(input.subjects as any, input.dailyLogs as any, input.dbSessions as any, { from, to, slices: true })
+    .forEach(day => day.slices.forEach(sl => { if (sl.subjectId) minsBySubject.set(sl.subjectId, (minsBySubject.get(sl.subjectId) || 0) + sl.minutes); }));
   const out: SubjectSlice[] = [];
   input.subjects.forEach(s => {
-    let minutes = 0, topics = 0;
-    const entryTopicDays = new Set<string>();
-    s.units.forEach(u => {
-      u.timeEntries?.forEach(e => { if (inRange(e.date)) minutes += e.minutes; });
-      u.subTopics.forEach(t => {
-        let had = false;
-        t.timeEntries?.forEach(e => { if (inRange(e.date)) { minutes += e.minutes; had = true; entryTopicDays.add(`${t.id}|${e.date}`); } });
-        if (!had && (!t.timeEntries || t.timeEntries.length === 0) && t.completed && t.completedDate && inRange(t.completedDate) && (t.timeSpent || 0) > 0) {
-          minutes += t.timeSpent; entryTopicDays.add(`${t.id}|${t.completedDate}`);
-        }
-        forEachRevisionEntry(t, e => { if (inRange(e.date)) { minutes += e.minutes; entryTopicDays.add(`${t.id}|${e.date}`); } });
-        if (t.completed && t.completedDate && inRange(t.completedDate)) topics++;
-        forEachRevisionCompletion(t, d => { if (inRange(d)) topics++; });
-      });
-    });
-    (input.dbSessions ?? []).forEach(x => {
-      if (x.subjectId !== s.id || !inRange(x.date)) return;
-      if (x.topicId && entryTopicDays.has(`${x.topicId}|${x.date}`)) return;
-      if (x.type !== 'Other' && x.topicId) return; // already represented by the topic's own time
-      minutes += x.minutes || 0;
-    });
+    const minutes = minsBySubject.get(s.id) || 0;
+    let topics = 0;
+    s.units.forEach(u => u.subTopics.forEach(t => {
+      if (t.completed && t.completedDate && inRange(t.completedDate)) topics++;
+      forEachRevisionCompletion(t, d => { if (inRange(d)) topics++; });
+    }));
     if (minutes > 0 || topics > 0) out.push({ id: s.id, name: s.shortName || s.name, color: s.color, minutes, topics });
   });
   return out.sort((a, b) => b.minutes - a.minutes || b.topics - a.topics);

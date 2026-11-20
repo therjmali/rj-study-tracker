@@ -51,7 +51,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@project/components/ui/input';
 import { Label } from '@project/components/ui/label';
 import { syncDailyLogsWithSubjects } from './lib/dailyLogSync';
-import { completionsOn, revisionMinutesOn } from './lib/topicActivity';
+import { completionsOn } from './lib/topicActivity';
 
 // Lazy load ALL heavy pages
 // memo: skip re-rendering this whole page when App re-renders for unrelated reasons (sheets opening, sync status, etc.)
@@ -1400,24 +1400,10 @@ function AppInner() {
   // Sync live stats and timer status to Android Home Screen Widgets
   useEffect(() => {
     const today = getLocalDateStr();
-    let todayMins = 0;
     let todayTopics = 0;
-
-    appState.subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      todayTopics += completionsOn(t, today);
-      if (t.timeEntries) {
-        t.timeEntries.forEach(e => {
-          if (e.date === today) todayMins += e.minutes;
-        });
-      }
-      todayMins += revisionMinutesOn(t, today);
-    })));
-
-    if (dbSessions && Array.isArray(dbSessions)) {
-      dbSessions.forEach(ds => {
-        if (ds.date === today && ds.minutes) todayMins += ds.minutes;
-      });
-    }
+    appState.subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => { todayTopics += completionsOn(t, today); })));
+    // The same engine as every other screen — a timer's mirrored session is never counted twice
+    const todayMins = getEffectiveDayMinutes(appState.subjects, appState.dailyLogs, today, Array.isArray(dbSessions) ? dbSessions as any : []);
 
     const targetTopics = settings.studyGoals?.dailyTopics || 5;
 
@@ -2254,6 +2240,7 @@ function AppInner() {
           timer={timerState}
           subjects={appState.subjects}
           dailyLogs={appState.dailyLogs}
+          dbSessions={dbSessions}
           studyGoals={settings.studyGoals}
           onOpenFocusTimer={openPomodoro}
           onOpenWidgetManager={() => setWidgetModalOpen(true)}

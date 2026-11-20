@@ -1,5 +1,26 @@
 # Changelog
 
+## 21.3.0 — One engine for study time: every screen agrees
+
+**📊 No more different numbers for the same day**
+- New single study-time engine (`studySlices`): topic + revision + unit time and non-duplicate sessions. Day cards, the Trend chart, Daily Study Hub, **Study Rhythm** (was 13h 28m vs 12h 56m), Day-by-Day, subject rows, PDF report, floating hub and the Android widget all read from it — a window total is always the sum of its day cards.
+- Fixed double counting in the home-screen widget (timer sessions counted twice) and missing minutes in the floating hub (hand-logged sessions ignored).
+- Hand-logged sessions (Add Study Time) linked to a topic are now real study time: they show under **Session** and in every total (before, they vanished when that topic already had time that day).
+- "Topics" now means the same everywhere: topics **done** that day (a finished revision round counts). The day card shows `🔁 n revision · n studied`, and the Trend tooltip shows revision + studied counts, so 1 vs 5 can no longer look like a contradiction.
+- Windowed totals no longer include undated legacy minutes (all-time only).
+
+**🔁 Revision in the Study Time card**
+- Revision rows have their own amber colour, an `R1…R4` badge and a ✓ when the round was finished.
+- New filters: 🔁 Revision and R1 / R2 / R3 / R4 (only the rounds present that day); tap an active filter again to clear it.
+- **Total = Topic + Revision + Session**, with a proportional bar and three tiles.
+
+**➕ Add Study Time**
+- Activity type is now a tidy 3-column grid — **MCQ**, Self-Study, Lecture, Other, Custom — nothing scrolls sideways. (Older Video / Seminar / Practice / Revision tags still show on old sessions.)
+
+**🔥 Statistics** now shows the streak flame in its header (same streak engine as Home / Profile).
+
+**⬆ In-app update** — the app asks GitHub for releases without signing in, which only works for a *public* repository. It now says exactly that (instead of "No release yet"), and the APK workflow warns when the repository is private.
+
 ## 21.2.0 — Revision is now real study: timer, swipe, and it counts everywhere
 
 **🔁 Revision window = the topic window**

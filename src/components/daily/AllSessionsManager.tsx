@@ -60,7 +60,7 @@ interface MergedSession {
 }
 
 type FilterMode = 'all' | 'subject' | 'activity' | 'completed' | 'pending';
-const ACTIVITIES = ['Self-Study', 'Seminar', 'Revision', 'Lecture', 'Practice', 'Video', 'Quick Log', 'Other'];
+const ACTIVITIES = ['MCQ', 'Self-Study', 'Seminar', 'Revision', 'Lecture', 'Practice', 'Video', 'Quick Log', 'Other'];
 
 interface Props {
   subjects: Subject[];

@@ -22,7 +22,14 @@ interface Props {
   skipCollapsedHeader?: boolean;
 }
 
-const ACTIVITIES = ['Self-Study', 'Lecture', 'Video', 'Seminar', 'Revision', 'Practice', 'Other', 'Custom'];
+/** The five ways a student logs time by hand. Older tags (Video, Seminar, Practice, Revision …) still display on old sessions. */
+const ACTIVITY_CHOICES: { id: string; icon: string; hint: string }[] = [
+  { id: 'MCQ', icon: '📝', hint: 'Practice questions' },
+  { id: 'Self-Study', icon: '📖', hint: 'Reading & notes' },
+  { id: 'Lecture', icon: '🎓', hint: 'Class or video' },
+  { id: 'Other', icon: '📦', hint: 'Anything else' },
+  { id: 'Custom', icon: '✏️', hint: 'Your own label' },
+];
 
 interface TopicSearchResult {
   topicId: string;
@@ -551,15 +558,22 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
               {/* Activity type */}
               <div>
                 <p className="text-[10px] text-muted-foreground font-semibold mb-1.5">Activity Type</p>
-                <div className="flex flex-wrap gap-1">
-                  {ACTIVITIES.map(a => (
-                    <button key={a} onClick={() => setActivity(a)}
-                      className={`text-[9px] px-2.5 py-1 rounded-full border font-bold transition-all ${
-                        activity === a ? 'bg-secondary/15 border-secondary/25 text-secondary' : 'bg-card/30 border-border/15 text-muted-foreground'
-                      }`}>
-                      {a === 'Custom' ? '✏️ Custom' : a}
-                    </button>
-                  ))}
+                {/* A tidy 3-column grid: every option is visible at once — nothing scrolls sideways */}
+                <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="Activity type">
+                  {ACTIVITY_CHOICES.map(a => {
+                    const on = activity === a.id;
+                    return (
+                      <button key={a.id} role="radio" aria-checked={on} onClick={() => setActivity(a.id)}
+                        className={`flex flex-col items-center justify-center gap-0.5 rounded-2xl border px-1.5 py-2 min-h-[56px] transition-all active:scale-95 ${
+                          on ? 'bg-secondary/15 border-secondary/40 text-secondary shadow-[0_0_10px_hsl(var(--secondary)/0.18)]'
+                             : 'bg-card/30 border-border/15 text-muted-foreground hover:border-border/30'
+                        }`}>
+                        <span className="text-base leading-none">{a.icon}</span>
+                        <span className="text-[10px] font-black leading-tight">{a.id}</span>
+                        <span className="text-[7.5px] font-semibold opacity-60 leading-tight text-center">{a.hint}</span>
+                      </button>
+                    );
+                  })}
                 </div>
                 <AnimatePresence>
                   {activity === 'Custom' && (
