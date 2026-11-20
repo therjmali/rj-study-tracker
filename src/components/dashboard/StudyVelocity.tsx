@@ -6,6 +6,7 @@ import GlowCard from '../shared/GlowCard';
 import type { Subject, DailyLog, DbStudySession } from '../../types';
 import { getLocalDateStr, getEffectiveDayMinutes, formatStudyTime } from '../../lib/utils';
 import { useToday } from '../../hooks/useToday';
+import { completionsOn } from '../../lib/topicActivity';
 
 interface Props {
   subjects: Subject[];
@@ -21,7 +22,7 @@ export default function StudyVelocity({ subjects, dailyLogs, dbSessions }: Props
 
     let todayTopics = 0;
     subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (t.completed && t.completedDate === today) todayTopics++;
+      todayTopics += completionsOn(t, today);
     })));
 
     const perHour = todayHours > 0 ? Math.round((todayTopics / todayHours) * 10) / 10 : 0;
@@ -35,7 +36,7 @@ export default function StudyVelocity({ subjects, dailyLogs, dbSessions }: Props
       const dateStr = getLocalDateStr(d);
       let count = 0;
       subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-        if (t.completed && t.completedDate === dateStr) count++;
+        count += completionsOn(t, dateStr);
       })));
       const mins = getEffectiveDayMinutes(subjects, dailyLogs, dateStr, dbSessions);
       const parts = dateStr.split('-');

@@ -6,6 +6,7 @@ import type { DailyLog, DbStudySession, StudyGoals, Subject } from '../../types'
 import { PERIODS, buildReport, deltaLabel, fmtMinutes, verdict, type PeriodId } from '../../lib/progressReport';
 import { getLocalDateStr, formatStudyTime, getEffectiveDayMinutes } from '../../lib/utils';
 import { useCountUp } from '../../hooks/useCountUp';
+import { completionsOn } from '../../lib/topicActivity';
 
 interface Props {
   subjects: Subject[];
@@ -96,7 +97,7 @@ export default function ProgressCard({ subjects, dailyLogs, studyGoals, dbSessio
   const { todayTopicsDone, todayMinutes } = useMemo(() => {
     let topics = 0;
     subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (t.completed && t.completedDate === today) topics++;
+      topics += completionsOn(t, today);
     })));
     const mins = getEffectiveDayMinutes(subjects, dailyLogs, today, dbSessions);
     return { todayTopicsDone: topics, todayMinutes: mins };

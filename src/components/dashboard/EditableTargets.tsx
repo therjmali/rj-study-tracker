@@ -5,6 +5,7 @@ import { Input } from '@project/components/ui/input';
 import type { Subject, DailyLog, StudyGoals, DbStudySession } from '../../types';
 import { getLocalDateStr, getCurrentWeekStart, getCurrentMonthStart, formatStudyHours, getEffectiveStudyMinutes } from '../../lib/utils';
 import { useToday } from '../../hooks/useToday';
+import { completionsOn, completionsInRange } from '../../lib/topicActivity';
 
 interface Props {
   studyGoals: StudyGoals;
@@ -28,10 +29,9 @@ export default function EditableTargets({ studyGoals, subjects, dailyLogs, onUpd
 
     let todayT = 0, weekT = 0, monthT = 0;
     subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (!t.completed || !t.completedDate) return;
-      if (t.completedDate === today) todayT++;
-      if (t.completedDate >= weekStart && t.completedDate <= today) weekT++;
-      if (t.completedDate >= monthStart && t.completedDate <= today) monthT++;
+      todayT += completionsOn(t, today);
+      weekT += completionsInRange(t, weekStart, today);
+      monthT += completionsInRange(t, monthStart, today);
     })));
 
     // Get readable month name

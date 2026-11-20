@@ -9,6 +9,8 @@ import {
 import { BookOpen, Clock, Trophy, TrendingUp, ChevronDown, ChevronRight, CheckCircle2, BarChart3 } from 'lucide-react';
 import type { Subject, DailyLog, DbStudySession, SubTopic } from '../../types';
 import { formatStudyHours, formatStudyTime, getEffectiveDayMinutes, getEffectiveStudyMinutes, getUnifiedTotalMinutes, getLocalDateStr, formatDate, readableInk } from '../../lib/utils';
+import { completionsOn, completionsInRange } from '../../lib/topicActivity';
+import { forEachRevisionEntry } from '../../lib/topicActivity';
 
 type TimeFilter = 'all' | 'today' | 'weekly' | 'monthly' | 'custom';
 
@@ -92,7 +94,7 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
       rawDates.push(ds);
       let topics = 0;
       subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-        if (t.completed && t.completedDate === ds) topics++;
+        topics += completionsOn(t, ds);
       })));
       const mins = getEffectiveDayMinutes(subjects, dailyLogs, ds, dbSessions);
       raw.push({ dateStr: ds, topics, mins });
@@ -133,7 +135,7 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
   const stats = useMemo(() => {
     let totalTopics = 0;
     subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (t.completed && t.completedDate && t.completedDate >= from && t.completedDate <= to) totalTopics++;
+      totalTopics += completionsInRange(t, from, to);
     })));
 
     const totalMins = isAllTime
@@ -187,6 +189,7 @@ export default function TrendAnalysis({ subjects, dailyLogs, dbSessions, range, 
       s.units.forEach(u => {
         topicTimeMins += u.timeSpent || 0;
         u.subTopics.forEach(t => {
+          forEachRevisionEntry(t, e => { if (e.date >= from && e.date <= to) topicTimeMins += e.minutes; });
           if (t.timeEntries && t.timeEntries.length > 0) {
             topicTimeMins += t.timeEntries.filter(e => e.date >= from && e.date <= to).reduce((a, e) => a + e.minutes, 0);
           } else if (t.completed && t.completedDate && t.completedDate >= from && t.completedDate <= to) {

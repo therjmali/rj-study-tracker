@@ -1,6 +1,7 @@
 import { getActiveDates } from '../../../hooks/useStreak';
 import { getEffectiveDayMinutes } from '../../../lib/utils';
 import type { Subject, DailyLog, DbStudySession } from '../../../types';
+import { completionsOn } from '../../../lib/topicActivity';
 
 export function localDate(d?: Date): string {
   return (d ?? new Date()).toLocaleDateString('en-CA');
@@ -41,7 +42,7 @@ export interface PeriodStats {
 function countDayTopics(subjects: Subject[], date: string) {
   let n = 0;
   subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-    if (t.completed && t.completedDate === date) n++;
+    n += completionsOn(t, date);
   })));
   return n;
 }

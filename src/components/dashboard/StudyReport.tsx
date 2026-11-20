@@ -13,6 +13,7 @@ import { getLocalDateStr, formatStudyHours, formatStudyTime, formatDate, getEffe
 import { useClock } from '../../hooks/useClock';
 import { useStreak } from '../../hooks/useStreak';
 import type { Subject, DailyLog, DbStudySession, SubTopic } from '../../types';
+import { completionsInRange } from '../../lib/topicActivity';
 
 type TimeFilter = 'all' | 'today' | 'weekly' | 'monthly' | 'custom';
 
@@ -159,7 +160,7 @@ export default function StudyReport({ subjects, dailyLogs, dbSessions, timeFilte
     const prevHours = getEffectiveStudyMinutes(filteredSubjects, dailyLogs, prevStartStr, prevEndStr, dbSessions) / 60;
     let prevTopics = 0;
     filteredSubjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (t.completed && t.completedDate && t.completedDate >= prevStartStr && t.completedDate <= prevEndStr) prevTopics++;
+      prevTopics += completionsInRange(t, prevStartStr, prevEndStr);
     })));
 
     return { topicsDone, inProcessCount, avgPerDay, bestDate, bestCount, prevHours, prevTopics, bySubjectDone, bySubjectInProcess };

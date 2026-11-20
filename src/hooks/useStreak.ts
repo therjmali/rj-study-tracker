@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { getLocalDateStr, getEffectiveDayMinutes } from '../lib/utils';
 import { getStreakRules, useStreakRules, type StreakRules } from '../lib/streakRules';
+import { completionsOn } from '../lib/topicActivity';
+import { addActivityDates } from '../lib/topicActivity';
 
 interface StreakSubject {
   units: { timeEntries?: { date: string; minutes: number }[]; subTopics: { completed: boolean; completedDate?: string; timeSpent: number; timeEntries?: { date: string; minutes: number }[] }[] }[];
@@ -78,8 +80,8 @@ export function getActiveDates(
     // Unit-level timeEntries
     if (u.timeEntries) u.timeEntries.forEach(e => { if (e.minutes > 0) candidateDates.add(e.date); });
     u.subTopics.forEach(t => {
-      if (t.completed && t.completedDate) candidateDates.add(t.completedDate);
-      if (t.timeEntries) t.timeEntries.forEach(e => { if (e.minutes > 0) candidateDates.add(e.date); });
+      // completions + time entries of the topic AND its revision rounds all keep the streak alive
+      addActivityDates(t as any, candidateDates);
     });
   }));
 
@@ -151,7 +153,7 @@ export function computeStreak(
   // Step 5: Today stats
   let todayDone = 0;
   subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-    if (t.completed && t.completedDate === today) todayDone++;
+    todayDone += completionsOn(t, today);
   })));
 
   const todayHours = getEffectiveDayMinutes(subjects as any, dailyLogs, today, dbSessions) / 60;

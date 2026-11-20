@@ -51,6 +51,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@project/components/ui/input';
 import { Label } from '@project/components/ui/label';
 import { syncDailyLogsWithSubjects } from './lib/dailyLogSync';
+import { completionsOn, revisionMinutesOn } from './lib/topicActivity';
 
 // Lazy load ALL heavy pages
 // memo: skip re-rendering this whole page when App re-renders for unrelated reasons (sheets opening, sync status, etc.)
@@ -1276,8 +1277,9 @@ function AppInner() {
     });
   }, [appState.subjects, updateSubjects, addHistoryEntries, saveTopicToCloud, globalTopicDetail]);
 
-  const handlePomodoroComplete_inner = useCallback((data: { minutes: number; subjectId?: string; unitId?: string; topicId?: string; mode?: 'pomodoro' | 'countdown' | 'stopwatch'; cycle?: boolean; startedAt?: number; endedAt?: number; note?: string }) => {
+  const handlePomodoroComplete_inner = useCallback((data: { minutes: number; subjectId?: string; unitId?: string; topicId?: string; revisionKey?: import('./types').RevisionKey; mode?: 'pomodoro' | 'countdown' | 'stopwatch'; cycle?: boolean; startedAt?: number; endedAt?: number; note?: string }) => {
     const { minutes, subjectId, unitId, topicId } = data;
+    const revKey = topicId ? data.revisionKey : undefined;
     const sessionEnd = new Date(data.endedAt || Date.now());
     const sessionStart = new Date(data.startedAt || sessionEnd.getTime() - minutes * 60_000);
     const today = getLocalDateStr(sessionEnd);
@@ -1293,7 +1295,7 @@ function AppInner() {
     createStudySession({
       date: today,
       minutes,
-      description: topic ? `[${modeTag}] ${topic.name}` : subject ? `[${modeTag}] ${subject.shortName}` : `[${modeTag}] Focus Session`,
+      description: topic ? `[${revKey ? `Revision ${revKey} ` : ''}${modeTag}] ${topic.name}` : subject ? `[${modeTag}] ${subject.shortName}` : `[${modeTag}] Focus Session`,
       type: topicId ? 'Topic' : 'Other',
       subjectId: subjectId || '',
       subjectName: subject?.shortName || '',
@@ -1303,6 +1305,42 @@ function AppInner() {
       endTime: hhmm(sessionEnd),
       note: data.note,
     });
+
+    // ── Revision session: the minutes belong to ONE round (R1–R4) of the topic. They are study time like any
+    // other (stats read them through topicActivity), and saving the session marks that round Done. ──
+    if (revKey && subjectId && unitId && topicId) {
+      const hhmmEnd = hhmm(sessionEnd);
+      setAppState(prev => {
+        const prevTopic = prev.subjects.find(s => s.id === subjectId)?.units.find(u => u.id === unitId)?.subTopics.find(t => t.id === topicId);
+        if (!prevTopic) return prev;
+        const prevRound = prevTopic.revisions?.[revKey];
+        const wasDone = prevRound?.status === 'complete';
+        const entry: import('./types').TimeEntry = {
+          date: today, minutes, status: 'complete',
+          time: hhmm(sessionStart),
+          note: [`[Revision ${revKey} ${modeTag}] ${minutes}min`, data.note].filter(Boolean).join(' — '),
+          synced: true,
+        };
+        const nextRound: import('./types').RevisionData = {
+          timeEntries: [...(prevRound?.timeEntries || []), entry],
+          timeSpent: (prevRound?.timeSpent || 0) + minutes,
+          status: 'complete',
+          startedDate: prevRound?.startedDate || today,
+          // a round that was already Done keeps its original completion date/time
+          completedDate: wasDone && prevRound?.completedDate ? prevRound.completedDate : today,
+          completedTime: wasDone && prevRound?.completedTime ? prevRound.completedTime : hhmmEnd,
+        };
+        const revisions = { ...(prevTopic.revisions || {}), [revKey]: nextRound };
+        const subjects = prev.subjects.map(s => s.id !== subjectId ? s : {
+          ...s, units: s.units.map(u => u.id !== unitId ? u : {
+            ...u, subTopics: u.subTopics.map(t => t.id !== topicId ? t : { ...t, revisions }),
+          }),
+        });
+        saveTopicToCloud(topicId, { revisions } as any);
+        return { ...prev, subjects, lastUpdated: new Date().toISOString() };
+      });
+      return;
+    }
 
     // Also update topic timeSpent AND add a timeEntry so it shows in topic details
     if (subjectId && unitId && topicId) {
@@ -1366,12 +1404,13 @@ function AppInner() {
     let todayTopics = 0;
 
     appState.subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (t.completed && t.completedDate === today) todayTopics++;
+      todayTopics += completionsOn(t, today);
       if (t.timeEntries) {
         t.timeEntries.forEach(e => {
           if (e.date === today) todayMins += e.minutes;
         });
       }
+      todayMins += revisionMinutesOn(t, today);
     })));
 
     if (dbSessions && Array.isArray(dbSessions)) {
@@ -1588,7 +1627,7 @@ function AppInner() {
   const todayTopicsDone = useMemo(() => {
     const today = getLocalDateStr();
     let n = 0;
-    for (const s of appState.subjects) for (const u of s.units) for (const t of u.subTopics) if (t.completed && t.completedDate === today) n++;
+    for (const s of appState.subjects) for (const u of s.units) for (const t of u.subTopics) n += completionsOn(t, today);
     return n;
   }, [appState.subjects]);
 
@@ -2403,7 +2442,7 @@ function AppInner() {
           onUpdateReminders={setReminders}
           subjects={appState.subjects}
           streakDays={stats.streak}
-          todayTopicsDone={appState.subjects.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.filter(t => t.completed && t.completedDate === getLocalDateStr()).length, 0), 0)}
+          todayTopicsDone={appState.subjects.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.reduce((c, t) => c + completionsOn(t, getLocalDateStr()), 0), 0), 0)}
           onNavigate={(tab) => { setNotifCenterOpen(false); handleNavigate(tab); }}
           onNavigateToDate={(date) => {
             setActiveDate(date);

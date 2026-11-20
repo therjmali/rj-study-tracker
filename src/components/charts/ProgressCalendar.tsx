@@ -9,11 +9,12 @@ import CalendarAnalysis from './CalendarAnalysis';
 import DayByDayTimeline from '../dashboard/DayByDayTimeline';
 import DayDetailPanel from './DayDetailPanel';
 import type { CalendarTopicInfo } from './DayDetailPanel';
-import type { Subject, SubTopic, DailyLog, DbStudySession, ExamConfig } from '../../types';
+import type { Subject, SubTopic, DailyLog, DbStudySession, ExamConfig, RevisionKey } from '../../types';
 import { formatDate, formatStudyTime, getEffectiveDayMinutes, getLocalDateStr, readableInk } from '../../lib/utils';
 import { useStreak } from '../../hooks/useStreak';
 import { useExcludedSubjects } from '../../hooks/useExcludedSubjects';
 import type { TodoItem } from '../../hooks/useTodos';
+import { revisionCompletions, forEachRevisionEntry, revisionMinutesOn } from '../../lib/topicActivity';
 
 interface Props {
   subjects: Subject[];
@@ -107,15 +108,15 @@ export default function ProgressCalendar({ subjects, dailyLogs, onUpdateMood, on
 
   const dateMap = useMemo(() => {
     const map: Record<string, { done: number; subjects: Set<string>; topics: CalendarTopicInfo[] }> = {};
-    const addEntry = (dateStr: string, s: Subject, u: Subject['units'][0], t: SubTopic, isCompletion: boolean) => {
+    const addEntry = (dateStr: string, s: Subject, u: Subject['units'][0], t: SubTopic, isCompletion: boolean, round?: RevisionKey, roundTime?: string) => {
       if (!map[dateStr]) map[dateStr] = { done: 0, subjects: new Set(), topics: [] };
       if (isCompletion) map[dateStr].done++;
       map[dateStr].subjects.add(s.shortName);
-      const entryMins = t.timeEntries?.filter(e => e.date === dateStr).reduce((a, e) => a + e.minutes, 0) || 0;
-      const displayTime = entryMins > 0 ? entryMins : (isCompletion ? (t.timeSpent || 0) : 0);
+      const entryMins = round ? revisionMinutesOn(t, dateStr) : (t.timeEntries?.filter(e => e.date === dateStr).reduce((a, e) => a + e.minutes, 0) || 0);
+      const displayTime = entryMins > 0 ? entryMins : (isCompletion && !round ? (t.timeSpent || 0) : 0);
       map[dateStr].topics.push({
-        subjectName: s.shortName, subjectColor: s.color, unitName: u.name, topicName: t.name,
-        difficulty: t.difficulty, time: isCompletion ? t.completedTime : undefined, timeSpent: displayTime,
+        subjectName: s.shortName, subjectColor: s.color, unitName: u.name, topicName: round ? `${t.name} · ${round}` : t.name,
+        difficulty: t.difficulty, time: isCompletion ? (round ? roundTime : t.completedTime) : undefined, timeSpent: displayTime,
         topicId: t.id, subjectId: s.id, unitId: u.id,
       });
     };
@@ -129,6 +130,12 @@ export default function ProgressCalendar({ subjects, dailyLogs, onUpdateMood, on
               if (entry.minutes > 0 && !addedDates.has(entry.date)) { addEntry(entry.date, s, u, t, false); addedDates.add(entry.date); }
             });
           }
+          // Revision rounds count like topics: completions and study minutes appear on their dates
+          const revDates = new Set<string>();
+          revisionCompletions(t).forEach(c => { addEntry(c.date, s, u, t, true, c.round, c.time); revDates.add(`${c.round}|${c.date}`); });
+          forEachRevisionEntry(t, (e, round) => {
+            if (!revDates.has(`${round}|${e.date}`)) { addEntry(e.date, s, u, t, false, round); revDates.add(`${round}|${e.date}`); }
+          });
         });
         if (u.timeEntries) {
           u.timeEntries.forEach(entry => {

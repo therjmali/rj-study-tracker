@@ -9,6 +9,7 @@ import { computeStreak, getActiveDates } from '../../hooks/useStreak';
 import { computeStudyRhythm } from '../../lib/studyRhythm';
 import { DAY_PERIOD_LABELS, type DayPeriod } from '../../lib/dayPeriods';
 import { getLocalDateStr, formatStudyTime, getEffectiveStudyMinutes, getUnifiedTotalMinutes } from '../../lib/utils';
+import { completionsInRange } from '../../lib/topicActivity';
 
 type HubFilter = 'month' | '7d' | '15d' | '30d' | 'all' | 'custom';
 
@@ -110,7 +111,7 @@ export default function DailyStudyHub({ subjects, dailyLogs, studyGoals, dbSessi
     // Topics + minutes
     let topics = 0;
     subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (t.completed && t.completedDate && t.completedDate >= win.from && t.completedDate <= win.to) topics++;
+      topics += completionsInRange(t, win.from, win.to);
     })));
     const minutes = filter === 'all'
       ? getUnifiedTotalMinutes(subjects, dbSessions, dailyLogs)
@@ -129,9 +130,8 @@ export default function DailyStudyHub({ subjects, dailyLogs, studyGoals, dbSessi
     const ms = getLocalDateStr(new Date(now.getFullYear(), now.getMonth(), 1));
     let w = 0, m = 0;
     subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (!t.completed || !t.completedDate) return;
-      if (t.completedDate >= ws) w++;
-      if (t.completedDate >= ms) m++;
+      w += completionsInRange(t, ws, '9999-12-31');
+      m += completionsInRange(t, ms, '9999-12-31');
     })));
     return [
       { label: 'Daily', icon: '📅', done: allTimeStreak.todayDone, goal: studyGoals.dailyTopics, unit: '' },

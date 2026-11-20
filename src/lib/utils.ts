@@ -1,3 +1,5 @@
+import { revisionMinutes, revisionMinutesOn, forEachRevisionEntry, completionsOn } from './topicActivity';
+
 /**
  * Normalize a session's subjectId — empty string, null, undefined, 'general'
  * all map to '' (no subject). Use this everywhere to avoid _general/__other__ mismatches.
@@ -185,6 +187,12 @@ function _getTopicUnitDayMinutes(
     unitMin += uEntryMins;
     u.subTopics.forEach(t => {
       const entryMins = t.timeEntries?.filter(e => e.date === dateStr).reduce((a, e) => a + e.minutes, 0) || 0;
+      // Revision rounds (R1–R4) are study time too — same pool, same de-duplication as the topic itself
+      const revMins = revisionMinutesOn(t as any, dateStr);
+      if (revMins > 0) {
+        topicMin += revMins;
+        if (t.id) topicIds.add(t.id);
+      }
       if (entryMins > 0) {
         topicMin += entryMins;
         if (t.id) topicIds.add(t.id);
@@ -311,6 +319,7 @@ export function getTotalTopicMinutes(
     total += u.timeSpent || 0;
     u.subTopics.forEach(t => {
       total += t.timeSpent || 0;
+      total += revisionMinutes(t as any); // revision rounds are study time too
     });
   }));
   return total;
@@ -469,6 +478,11 @@ export function getEffectiveStudyMinutes(
       });
     }
     u.subTopics.forEach(t => {
+      forEachRevisionEntry(t as any, e => {
+        if (dateFrom && e.date < dateFrom) return;
+        if (dateTo && e.date > dateTo) return;
+        topicMinByDate.set(e.date, (topicMinByDate.get(e.date) || 0) + e.minutes);
+      });
       if (t.timeEntries && t.timeEntries.length > 0) {
         t.timeEntries.forEach(e => {
           if (dateFrom && e.date < dateFrom) return;
@@ -614,6 +628,8 @@ export function getLastActiveUnit(subj: import('../types').Subject | undefined):
           }
         }
       }
+      // revising a unit counts as activity there too
+      forEachRevisionEntry(t, e => { if (e.date > latestDate) { latestDate = e.date; latestUnit = u; } });
     }
   }
   if (latestUnit) return latestUnit;
@@ -634,13 +650,13 @@ export function getSubjectStudyMinutes(
   overlapSessMins: Map<string, number>,
 ): number {
   let topicUnit = 0;
-  subject.units.forEach(u => { topicUnit += u.timeSpent || 0; u.subTopics.forEach(t => { topicUnit += t.timeSpent || 0; }); });
+  subject.units.forEach(u => { topicUnit += u.timeSpent || 0; u.subTopics.forEach(t => { topicUnit += (t.timeSpent || 0) + revisionMinutes(t as any); }); });
   return (allSessMins.get(subject.id) || 0) + Math.max(0, topicUnit - (overlapSessMins.get(subject.id) || 0));
 }
 
 /** Study minutes + topics completed on ONE date, from the same engine as every other screen (for chart readouts). */
 export function getDayStudyStats(subjects: any[], dailyLogs: any[], date: string, dbSessions?: any[]) {
   let topics = 0;
-  subjects.forEach(s => s.units.forEach((u: any) => u.subTopics.forEach((t: any) => { if (t.completed && t.completedDate === date) topics++; })));
+  subjects.forEach(s => s.units.forEach((u: any) => u.subTopics.forEach((t: any) => { topics += completionsOn(t, date); })));
   return { mins: Math.round(getEffectiveDayMinutes(subjects, dailyLogs, date, dbSessions)), topics };
 }

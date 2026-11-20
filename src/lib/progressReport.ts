@@ -8,6 +8,8 @@
 import type { DailyLog, DbStudySession, StudyGoals, Subject } from '../types';
 import { getEffectiveDayMinutes, getLocalDateStr } from './utils';
 import { computeStreak as computeStreakInfo } from '../hooks/useStreak';
+import { completionsInRange } from './topicActivity';
+import { forEachRevisionCompletion, forEachRevisionEntry } from './topicActivity';
 
 export type PeriodId = 'today' | 'yesterday' | 'week' | 'month' | 'custom' | 'all';
 
@@ -80,7 +82,7 @@ function firstActiveDate(input: ReportInput, today: string): string {
   const consider = (d?: string) => { if (d && /^\d{4}-\d{2}-\d{2}/.test(d) && d.slice(0, 10) < min) min = d.slice(0, 10); };
   input.subjects.forEach(s => s.units.forEach(u => {
     u.timeEntries?.forEach(e => consider(e.date));
-    u.subTopics.forEach(t => { consider(t.completedDate); t.timeEntries?.forEach(e => consider(e.date)); });
+    u.subTopics.forEach(t => { consider(t.completedDate); t.timeEntries?.forEach(e => consider(e.date)); forEachRevisionEntry(t, e => consider(e.date)); forEachRevisionCompletion(t, d => consider(d)); });
   }));
   input.dbSessions?.forEach(s => consider(s.date));
   input.dailyLogs.forEach(l => { if (l.hoursStudied > 0) consider(l.date); });
@@ -104,7 +106,7 @@ export function resolveRange(period: PeriodId, input: ReportInput, custom?: { fr
 function topicsIn(input: ReportInput, from: string, to: string): number {
   let n = 0;
   input.subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-    if (t.completed && t.completedDate && t.completedDate >= from && t.completedDate <= to) n++;
+    n += completionsInRange(t, from, to);
   })));
   return n;
 }
@@ -133,7 +135,9 @@ function subjectSlices(input: ReportInput, from: string, to: string): SubjectSli
         if (!had && (!t.timeEntries || t.timeEntries.length === 0) && t.completed && t.completedDate && inRange(t.completedDate) && (t.timeSpent || 0) > 0) {
           minutes += t.timeSpent; entryTopicDays.add(`${t.id}|${t.completedDate}`);
         }
+        forEachRevisionEntry(t, e => { if (inRange(e.date)) { minutes += e.minutes; entryTopicDays.add(`${t.id}|${e.date}`); } });
         if (t.completed && t.completedDate && inRange(t.completedDate)) topics++;
+        forEachRevisionCompletion(t, d => { if (inRange(d)) topics++; });
       });
     });
     (input.dbSessions ?? []).forEach(x => {
@@ -152,6 +156,7 @@ function buildSeries(from: string, to: string, perDay: Map<string, number>, inpu
   const topicsByDay = new Map<string, number>();
   input.subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
     if (t.completed && t.completedDate && t.completedDate >= from && t.completedDate <= to) topicsByDay.set(t.completedDate, (topicsByDay.get(t.completedDate) ?? 0) + 1);
+    forEachRevisionCompletion(t, (d) => { if (d >= from && d <= to) topicsByDay.set(d, (topicsByDay.get(d) ?? 0) + 1); });
   })));
   if (days.length === 1) {
     // single day: hour-of-day is not tracked reliably, so show a flat marker bar

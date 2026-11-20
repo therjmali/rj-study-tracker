@@ -26,6 +26,7 @@ import SubjectReport from './charts/SubjectReport';
 import DailyStudyHub from './charts/DailyStudyHub';
 import TimeFilterPills from './shared/TimeFilterPills';
 import { Input } from '@project/components/ui/input';
+import { completionsInRange } from '../lib/topicActivity';
 
 const DailyTracker = lazy(() => import('./DailyTracker'));
 
@@ -821,7 +822,7 @@ function DailyTrendSection({ subjects, filteredSubjects, dailyLogs, dbSessions, 
   const quickStats = useMemo(() => {
     let topics = 0;
     filteredSubjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (t.completed && t.completedDate && t.completedDate >= effectiveRange.from && t.completedDate <= effectiveRange.to) topics++;
+      topics += completionsInRange(t, effectiveRange.from, effectiveRange.to);
     })));
     const mins = isAllTime
       ? getUnifiedTotalMinutes(filteredSubjects, dbSessions, dailyLogs)

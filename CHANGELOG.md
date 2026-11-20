@@ -1,5 +1,18 @@
 # Changelog
 
+## 21.2.0 — Revision is now real study: timer, swipe, and it counts everywhere
+
+**🔁 Revision window = the topic window**
+- **Same timer:** the manual "+10m / +30m / +1h" log is replaced by the same Stopwatch / Countdown card as the topic window, logging the selected round (R1–R4). Manual add / edit / delete stays inside the card, collapsed, so wrong entries can still be fixed.
+- **Save = Done:** saving a revision session adds the time to that round and marks it Done automatically (a round already Done keeps its original completion date).
+- **Swipe left / right** (plus ‹ › buttons and a 3/12 counter) switches topics, using one shared gesture with the topic window — same lock angle, distance, velocity and animation.
+
+**📊 Revision counts like a topic, everywhere**
+- Revision minutes join the day's study time (Home, Stats, Progress Calendar, Daily Study Hub, Trends, Study Report, widgets, totals, per-subject totals).
+- A completed revision round counts as one topic done on its date — daily/weekly/monthly goals, floating pill, Folder sparklines, Compare, reports, milestones, study-rhythm buckets.
+- Revision days keep the streak alive; revisions appear in the calendar day detail and the day-by-day timeline as "Topic · R1".
+- Tests added for the revision rules (day minutes, topics, no double counting with timer sessions, streak).
+
 ## 21.1.0 — Filters that turn off, bars that scroll, folders that look like folders, a real Rearrange
 
 **🧹 Filters (bug fixes, whole app)**

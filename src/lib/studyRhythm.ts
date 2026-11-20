@@ -1,5 +1,6 @@
 import type { Subject, DbStudySession, TimeEntry } from '../types';
 import type { DayPeriod } from './dayPeriods';
+import { revisionCompletions } from './topicActivity';
 
 export interface RhythmRange { from: string; to: string }
 
@@ -88,6 +89,12 @@ export function computeStudyRhythm(
       const c = parseHHMM(t.completedTime);
       if (c != null) topics[bucketAt(c).key]++;
     });
+    // a completed revision round counts as a topic in its time-of-day bucket
+    u.subTopics.forEach(t => revisionCompletions(t as any).forEach(rc => {
+      if (!inRange(rc.date, range)) return;
+      const c = parseHHMM(rc.time);
+      if (c != null) topics[bucketAt(c).key]++;
+    }));
     (u.timeEntries || []).forEach(e => addEntry(e, [`u|${e.date}|${u.id}|${e.minutes}`]));
     u.subTopics.forEach(t => {
       (t.timeEntries || []).forEach(e =>

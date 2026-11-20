@@ -79,6 +79,7 @@ function SectionHeader({ icon, title, subtitle }: { icon: React.ReactNode; title
 }
 
 import TimeFilterPills from './shared/TimeFilterPills';
+import { completionsInRange } from '../lib/topicActivity';
 
 export default function Dashboard({
   subjects, dailyLogs, studyGoals, trackingMode, onNavigate, onUpdateLogs, semesterConfig,
@@ -173,7 +174,7 @@ export default function Dashboard({
 
     let topicCount = 0;
     filteredSubs.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (t.completed && t.completedDate && t.completedDate >= range.from && t.completedDate <= range.to) topicCount++;
+      topicCount += completionsInRange(t, range.from, range.to);
     })));
 
     const hours = timeFilter === 'all'

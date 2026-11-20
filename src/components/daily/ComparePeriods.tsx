@@ -30,6 +30,7 @@ import CircularProgress from '../shared/CircularProgress';
 import GlowCard from '../shared/GlowCard';
 import type { Subject, DailyLog, DbStudySession } from '../../types';
 import type { PeriodStats } from './compare/utils';
+import { completionsOn } from '../../lib/topicActivity';
 
 const TT: React.CSSProperties = {
   background: 'hsl(var(--card)/0.95)',
@@ -125,7 +126,7 @@ export default function ComparePeriods({ subjects, dailyLogs, dbSessions }: Prop
       const d = new Date(); d.setDate(d.getDate() - i);
       let tc = 0;
       subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-        if (t.completed && t.completedDate === localDate(d)) tc++;
+        tc += completionsOn(t, localDate(d));
       })));
       return tc > 0 ? 1 : 0;
     }).reduce((a, b) => a + b, 0);

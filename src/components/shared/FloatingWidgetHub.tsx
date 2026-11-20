@@ -6,6 +6,7 @@ import { useTimerTick } from '../../hooks/useGlobalTimer';
 import type { GlobalTimerState } from '../../hooks/useGlobalTimer';
 import type { Subject, DailyLog, StudyGoals } from '../../types';
 import { getLocalDateStr, formatStudyTime } from '../../lib/utils';
+import { completionsOn, revisionMinutesOn } from '../../lib/topicActivity';
 
 function fmt(sec: number) {
   const h = Math.floor(sec / 3600);
@@ -59,12 +60,13 @@ export default function FloatingWidgetHub({
     let topics = 0;
     let mins = 0;
     subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (t.completed && t.completedDate === today) topics++;
+      topics += completionsOn(t, today);
       if (t.timeEntries) {
         t.timeEntries.forEach(e => {
           if (e.date === today) mins += e.minutes;
         });
       }
+      mins += revisionMinutesOn(t, today);
     })));
     return { todayTopicsDone: topics, todayMinutes: mins };
   }, [subjects, today]);

@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CalendarIcon, Timer, Save, Pencil, Trash2, RotateCcw, Hash, Clock, Flame } from 'lucide-react';
+import { X, CalendarIcon, Hash, Clock, Flame, ChevronLeft, ChevronRight, Repeat } from 'lucide-react';
 import { Input } from '@project/components/ui/input';
 import { Label } from '@project/components/ui/label';
-import { Button } from '@project/components/ui/button';
 import BottomSheet from '../shared/BottomSheet';
+import StudyTimeCard from './topicSheet/StudyTimeCard';
+import { useSwipeNav, useSwipeHint } from '../../hooks/useSwipeNav';
 import { REVISION_KEYS } from '../../types';
 import type { SubTopic, RevisionKey, RevisionData, RevisionStatus, TimeEntry } from '../../types';
 import { formatStudyTime, formatDateRelative, getLocalDateStr, getCleanName } from '../../lib/utils';
@@ -18,12 +19,22 @@ interface Props {
   onUpdate: (fn: (prev: RevisionMap) => RevisionMap) => void;
   subjectName?: string;
   subjectColor?: string;
+  subjectId?: string;
+  unitId?: string;
   unitName?: string;
   /** All topics of the current unit (the open topic may be un-saved — it is substituted with `topic`) */
   unitTopics: SubTopic[];
   /** All topics of the current subject */
   subjectTopics: SubTopic[];
   zIndex: number;
+  /** Swipe / arrow navigation between topics — the same list and gesture as the topic window. */
+  onNavigate?: (direction: 'prev' | 'next') => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
+  topicIndex?: number;
+  totalTopics?: number;
+  /** Saves the host's unsaved draft right before a timer session is written. */
+  onFlush?: () => void;
 }
 
 const ORDINAL: Record<RevisionKey, string> = { R1: '1st', R2: '2nd', R3: '3rd', R4: '4th' };
@@ -65,7 +76,7 @@ function ProgressRow({ label, done, total, barClass }: { label: string; done: nu
   );
 }
 
-export default function RevisionSheet({ open, onClose, topic, onUpdate, subjectName, subjectColor, unitName, unitTopics, subjectTopics, zIndex }: Props) {
+export default function RevisionSheet({ open, onClose, topic, onUpdate, subjectName, subjectColor, subjectId, unitId, unitName, unitTopics, subjectTopics, zIndex, onNavigate, hasPrev, hasNext, topicIndex, totalTopics, onFlush }: Props) {
   const revisions: RevisionMap = topic.revisions || {};
   const getRev = (k: RevisionKey): RevisionData => revisions[k] || emptyRevision();
 
@@ -95,36 +106,37 @@ export default function RevisionSheet({ open, onClose, topic, onUpdate, subjectN
     navigator.vibrate?.(10);
   };
 
-  /* ───────── Time log ───────── */
-  const addTime = (k: RevisionKey, mins: number, date: string, note?: string) => {
-    update(k, r => ({
+  /* ───────── Time log — the SAME stopwatch / countdown card as the topic window, for the selected round ───────── */
+  const addTime = (mins: number, date?: string, note?: string, time?: string) => {
+    const day = date || getLocalDateStr(new Date());
+    update(selected, r => ({
       ...r,
       timeSpent: r.timeSpent + mins,
-      timeEntries: [...r.timeEntries, { date, minutes: mins, note, status: 'complete', ...(() => {
-        const now = new Date();
-        if (date !== getLocalDateStr(now)) return {};
-        const m = Math.max(0, now.getHours() * 60 + now.getMinutes() - mins);
-        return { time: `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}` };
-      })() } as TimeEntry],
+      timeEntries: [...r.timeEntries, { date: day, minutes: mins, note: note || undefined, time: time || undefined, status: 'complete' } as TimeEntry],
     }));
   };
-  const deleteEntry = (k: RevisionKey, idx: number) => {
-    update(k, r => {
+  const deleteEntry = (idx: number) => {
+    update(selected, r => {
       const entries = [...r.timeEntries];
       const removed = entries.splice(idx, 1)[0];
       return { ...r, timeSpent: Math.max(0, r.timeSpent - (removed?.minutes || 0)), timeEntries: entries };
     });
   };
-  const editEntry = (k: RevisionKey, idx: number, mins: number, note: string, date: string) => {
-    update(k, r => {
+  const editEntry = (idx: number, mins: number, note?: string, date?: string, time?: string) => {
+    update(selected, r => {
       const entries = [...r.timeEntries];
       const old = entries[idx];
       if (!old) return r;
-      entries[idx] = { ...old, minutes: mins, note: note || undefined, date };
+      entries[idx] = { ...old, minutes: mins, note: note || undefined, date: date || old.date, time: time || undefined };
       return { ...r, timeSpent: Math.max(0, r.timeSpent + (mins - old.minutes)), timeEntries: entries };
     });
   };
-  const resetTime = (k: RevisionKey) => update(k, r => ({ ...r, timeSpent: 0, timeEntries: [] }));
+  /** Adapter so the shared card's "Override total" / "Reset all" act on the selected round. */
+  const setRoundField = <K extends keyof SubTopic>(k: K, v: SubTopic[K]) => {
+    if (k === 'timeSpent') update(selected, r => ({ ...r, timeSpent: Math.max(0, Number(v) || 0) }));
+    else if (k === 'timeEntries') update(selected, r => ({ ...r, timeEntries: (Array.isArray(v) ? (v as TimeEntry[]) : []) }));
+  };
+  const roundDraft = useMemo<SubTopic>(() => ({ ...topic, timeSpent: rev.timeSpent, timeEntries: rev.timeEntries }), [topic, rev]);
 
   /* ───────── Progress numbers (current topic substituted by the live draft) ───────── */
   const progress = useMemo(() => {
@@ -146,6 +158,22 @@ export default function RevisionSheet({ open, onClose, topic, onUpdate, subjectN
   const ringR = 11;
   const ringC = 2 * Math.PI * ringR;
 
+  /* ───────── Swipe left / right → previous / next topic (same gesture as the topic window) ───────── */
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+  const topAnchor = useRef<HTMLDivElement>(null);
+  const navigate = (direction: 'prev' | 'next') => {
+    if (!onNavigate) return;
+    navigator.vibrate?.(20);
+    setSwipeDirection(direction === 'prev' ? 'right' : 'left');
+    requestAnimationFrame(() => {
+      onNavigate(direction);
+      setSwipeDirection(null);
+      topAnchor.current?.scrollIntoView({ block: 'start' });
+    });
+  };
+  const { dragX, contentOpacity, contentScale, handlers: swipeHandlers } = useSwipeNav({ hasPrev: !!onNavigate && hasPrev, hasNext: !!onNavigate && hasNext, onNavigate: navigate });
+  useSwipeHint(open && !!onNavigate && !!(hasPrev || hasNext), 'revision-swipe-hint-v1', '👆 Swipe left / right to switch revision topics');
+
   return (
     <BottomSheet open={open} onClose={onClose} zIndex={zIndex}>
       {/* ═══ Sticky top bar ═══ */}
@@ -155,10 +183,24 @@ export default function RevisionSheet({ open, onClose, topic, onUpdate, subjectN
           className="w-9 h-9 rounded-full bg-muted/50 flex items-center justify-center hover:bg-muted/70 transition-all shrink-0 shadow-sm">
           <X className="w-4 h-4 text-muted-foreground" />
         </motion.button>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-black text-foreground tracking-tight flex items-center gap-1.5">🔁 Revision</h3>
-          <p className="text-[9px] text-muted-foreground/60 font-semibold">{roundsDone} of 4 rounds done</p>
+        {onNavigate && (
+          <motion.button whileTap={{ scale: 0.88 }} onClick={() => hasPrev && navigate('prev')} disabled={!hasPrev}
+            className="w-8 h-8 rounded-full bg-muted/30 flex items-center justify-center disabled:opacity-25 transition-opacity shrink-0 text-foreground/70" aria-label="Previous topic" title="Previous topic">
+            <ChevronLeft className="w-4 h-4" />
+          </motion.button>
+        )}
+        <div className="flex-1 min-w-0 text-center">
+          <h3 className="text-sm font-black text-foreground tracking-tight flex items-center justify-center gap-1.5"><Repeat className="w-3.5 h-3.5 text-primary" /> Revision</h3>
+          <p className="text-[9px] text-muted-foreground/60 font-semibold whitespace-nowrap">
+            {roundsDone} of 4 rounds done{topicIndex != null && totalTopics != null ? <> · <span className="font-bold text-foreground/60">{topicIndex + 1}/{totalTopics}</span></> : null}
+          </p>
         </div>
+        {onNavigate && (
+          <motion.button whileTap={{ scale: 0.88 }} onClick={() => hasNext && navigate('next')} disabled={!hasNext}
+            className="w-8 h-8 rounded-full bg-muted/30 flex items-center justify-center disabled:opacity-25 transition-opacity shrink-0 text-foreground/70" aria-label="Next topic" title="Next topic">
+            <ChevronRight className="w-4 h-4" />
+          </motion.button>
+        )}
         <svg width="30" height="30" viewBox="0 0 30 30" className="shrink-0">
           <circle cx="15" cy="15" r={ringR} fill="none" stroke="hsl(var(--muted) / 0.3)" strokeWidth="3" />
           <circle cx="15" cy="15" r={ringR} fill="none" stroke="hsl(var(--secondary))" strokeWidth="3"
@@ -168,7 +210,18 @@ export default function RevisionSheet({ open, onClose, topic, onUpdate, subjectN
         </svg>
       </div>
 
-      <div className="space-y-3.5">
+      <div ref={topAnchor} aria-hidden style={{ scrollMarginTop: 56 }} />
+      <AnimatePresence mode="wait" custom={swipeDirection}>
+      <motion.div
+        key={topic.id}
+        {...swipeHandlers}
+        style={{ x: dragX, opacity: contentOpacity, scale: contentScale }}
+        initial={swipeDirection === 'left' ? { x: 250, opacity: 0 } : swipeDirection === 'right' ? { x: -250, opacity: 0 } : { opacity: 1 }}
+        animate={{ x: 0, opacity: 1, scale: 1 }}
+        exit={swipeDirection === 'left' ? { x: -250, opacity: 0 } : swipeDirection === 'right' ? { x: 250, opacity: 0 } : { opacity: 0 }}
+        transition={{ type: 'spring', damping: 30, stiffness: 350 }}
+        className="space-y-3.5 touch-pan-y"
+      >
         {/* ═══ 1. Topic name & details ═══ */}
         <div className="rounded-2xl bg-card/80 border border-border/12 overflow-hidden relative"
           style={{ borderLeft: `3px solid ${color}`, boxShadow: '0 2px 12px hsl(var(--foreground) / 0.03)' }}>
@@ -205,6 +258,11 @@ export default function RevisionSheet({ open, onClose, topic, onUpdate, subjectN
               <span className="text-[9px] font-mono font-bold px-2 py-1 rounded-lg bg-chart-5/10 text-chart-5 flex items-center gap-1">
                 <Clock className="w-2.5 h-2.5" /> {formatStudyTime(topic.timeSpent)}
               </span>
+              {allRoundsTime > 0 && (
+                <span className="text-[9px] font-mono font-bold px-2 py-1 rounded-lg bg-primary/10 text-primary flex items-center gap-1">
+                  <Repeat className="w-2.5 h-2.5" /> {formatStudyTime(allRoundsTime)}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -322,189 +380,28 @@ export default function RevisionSheet({ open, onClose, topic, onUpdate, subjectN
           </p>
         </Card>
 
-        {/* ═══ 4. LOG STUDY TIME — for the selected revision round ═══ */}
-        <RevisionTimeLog
+        {/* ═══ 4. STUDY TIMER — the same Stopwatch / Countdown card as the topic window, logging the selected round ═══ */}
+        <StudyTimeCard
           key={selected}
-          roundKey={selected}
-          rev={rev}
-          allRoundsTime={allRoundsTime}
-          onAdd={(mins, date, note) => addTime(selected, mins, date, note)}
-          onDelete={idx => deleteEntry(selected, idx)}
-          onEdit={(idx, mins, note, date) => editEntry(selected, idx, mins, note, date)}
-          onReset={() => resetTime(selected)}
+          draft={roundDraft}
+          revisionKey={selected}
+          subjectId={subjectId}
+          unitId={unitId}
+          subjectName={subjectName}
+          addTime={addTime}
+          deleteTimeEntry={deleteEntry}
+          editTimeEntry={editEntry}
+          setField={setRoundField}
+          onBeforeSave={onFlush}
         />
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[9px] text-muted-foreground/50 font-bold">All revision rounds</span>
+          <span className="text-[10px] font-mono font-bold text-muted-foreground">{formatStudyTime(allRoundsTime)}</span>
+        </div>
 
         <div className="h-4" />
-      </div>
-    </BottomSheet>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════
-   LOG STUDY TIME (per revision round)
-   ═══════════════════════════════════════════════════════════ */
-function RevisionTimeLog({ roundKey, rev, allRoundsTime, onAdd, onDelete, onEdit, onReset }: {
-  roundKey: RevisionKey;
-  rev: RevisionData;
-  allRoundsTime: number;
-  onAdd: (mins: number, date: string, note?: string) => void;
-  onDelete: (idx: number) => void;
-  onEdit: (idx: number, mins: number, note: string, date: string) => void;
-  onReset: () => void;
-}) {
-  const [addDate, setAddDate] = useState(() => getLocalDateStr(new Date()));
-  const [addNote, setAddNote] = useState('');
-  const [showCustom, setShowCustom] = useState(false);
-  const [customMinStr, setCustomMinStr] = useState('25');
-  const [editIdx, setEditIdx] = useState<number | null>(null);
-  const [editMin, setEditMin] = useState(0);
-  const [editNote, setEditNote] = useState('');
-  const [editDate, setEditDate] = useState('');
-  const [confirmReset, setConfirmReset] = useState(false);
-
-  const entries = rev.timeEntries || [];
-  const grouped = entries.reduce((acc, e, idx) => {
-    (acc[e.date] ||= []).push({ ...e, _idx: idx });
-    return acc;
-  }, {} as Record<string, (TimeEntry & { _idx: number })[]>);
-  const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
-
-  const quickAdd = (mins: number) => { onAdd(mins, addDate, addNote.trim() || undefined); setAddNote(''); setShowCustom(false); };
-  const startEdit = (idx: number) => { const e = entries[idx]; if (!e) return; setEditIdx(idx); setEditMin(e.minutes); setEditNote(e.note || ''); setEditDate(e.date); };
-  const saveEdit = () => { if (editIdx === null || editMin <= 0) return; onEdit(editIdx, editMin, editNote, editDate); setEditIdx(null); };
-  const customMins = parseInt(customMinStr, 10);
-
-  return (
-    <Card className="!p-0 overflow-hidden">
-      <div className="flex items-center justify-between p-4 pb-2.5">
-        <Label className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] flex items-center gap-1.5">
-          <Timer className="w-3.5 h-3.5 text-chart-5" /> Log Study Time
-          <span className="text-[9px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded-md normal-case tracking-normal">{roundKey}</span>
-        </Label>
-        <span className="text-[10px] font-mono font-bold text-chart-5 bg-chart-5/8 px-2.5 py-1 rounded-lg">Total: {formatStudyTime(rev.timeSpent)}</span>
-      </div>
-
-      <div className="px-4 pb-2.5">
-        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-chart-5/6 border border-chart-5/12">
-          <CalendarIcon className="w-3.5 h-3.5 text-chart-5 shrink-0" />
-          <span className="text-[10px] font-bold text-chart-5">Logging for:</span>
-          <div className="flex-1 flex items-center gap-1.5 min-w-0">
-            <Input type="date" value={addDate} onChange={e => setAddDate(e.target.value)}
-              className="h-6 text-[10px] bg-transparent border-none shadow-none p-0 font-mono text-chart-5 focus-visible:ring-0 w-[110px]" />
-            <span className="text-[10px] font-bold text-chart-5/80 truncate">{formatDateRelative(addDate)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-4 pb-2.5">
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setConfirmReset(p => !p)} title="Reset time for this round"
-            className="shrink-0 w-9 h-9 rounded-full border border-destructive/20 bg-destructive/8 flex items-center justify-center text-destructive">
-            <RotateCcw className="w-3.5 h-3.5" />
-          </motion.button>
-          {[{ label: '+10m', value: 10 }, { label: '+30m', value: 30 }, { label: '+1h', value: 60 }].map(p => (
-            <motion.button key={p.label} whileTap={{ scale: 0.9 }} onClick={() => quickAdd(p.value)}
-              className="shrink-0 h-9 px-4 rounded-full border text-xs font-bold bg-chart-5/8 border-chart-5/20 text-chart-5 hover:bg-chart-5/15">
-              {p.label}
-            </motion.button>
-          ))}
-          <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowCustom(p => !p)}
-            className={`shrink-0 h-9 px-4 rounded-full border text-xs font-bold ${showCustom ? 'bg-chart-5/20 border-chart-5/30 text-chart-5' : 'bg-muted/20 border-border/15 text-muted-foreground'}`}>
-            ✏️ Custom
-          </motion.button>
-        </div>
-      </div>
-
-      <AnimatePresence initial={false}>
-        {confirmReset && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="mx-4 mb-2.5 p-2.5 rounded-xl bg-destructive/6 border border-destructive/15 flex items-center gap-2">
-              <span className="flex-1 text-[10px] font-semibold text-destructive">Clear all {roundKey} time entries?</span>
-              <Button size="sm" variant="ghost" className="h-7 text-[10px] px-2" onClick={() => setConfirmReset(false)}>Cancel</Button>
-              <Button size="sm" variant="destructive" className="h-7 text-[10px] px-2.5" onClick={() => { onReset(); setConfirmReset(false); }}>Clear</Button>
-            </div>
-          </motion.div>
-        )}
-        {showCustom && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="px-4 pb-2.5 flex items-center gap-2">
-              <Input type="text" inputMode="numeric" pattern="[0-9]*" value={customMinStr}
-                onChange={e => setCustomMinStr(e.target.value.replace(/[^0-9]/g, ''))}
-                className="w-16 h-9 text-xs font-bold text-center bg-card border-chart-5/20 rounded-xl" />
-              <span className="text-[10px] text-muted-foreground">min</span>
-              <motion.button whileTap={{ scale: 0.9 }}
-                onClick={() => { if (!isNaN(customMins) && customMins >= 1 && customMins <= 600) quickAdd(customMins); }}
-                disabled={isNaN(customMins) || customMins < 1 || customMins > 600}
-                className="h-9 px-4 rounded-full bg-chart-5 text-primary-foreground text-xs font-bold shadow-sm disabled:opacity-40">
-                + Add {!isNaN(customMins) && customMins > 0 ? customMins : ''}m
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
+      </motion.div>
       </AnimatePresence>
-
-      <div className="px-4 pb-3">
-        <Input placeholder="Note (optional)..." value={addNote} onChange={e => setAddNote(e.target.value)}
-          className="h-8 text-[10px] bg-muted/15 border-border/10 rounded-xl" />
-      </div>
-
-      {entries.length > 0 ? (
-        <div className="border-t border-border/10">
-          <div className="px-4 py-2 flex items-center justify-between">
-            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
-              {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
-            </span>
-          </div>
-          <div className="px-4 pb-3 space-y-1 max-h-72 overflow-y-auto">
-            {sortedDates.map(date => (
-              <div key={date} className="space-y-0.5">
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-[9px] font-bold text-foreground/50 uppercase tracking-wider">{formatDateRelative(date)}</span>
-                  <span className="text-[9px] font-mono font-bold text-chart-5/70">{formatStudyTime(grouped[date].reduce((a, e) => a + e.minutes, 0))}</span>
-                </div>
-                {grouped[date].map(entry => (
-                  <div key={entry._idx}>
-                    {editIdx === entry._idx ? (
-                      <div className="p-2 rounded-xl bg-chart-5/5 border border-chart-5/15 space-y-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <Input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="h-6 text-[10px] flex-1 bg-card border-border/15 font-mono rounded-lg" />
-                          <Input type="text" inputMode="numeric" pattern="[0-9]*" value={editMin === 0 ? '' : String(editMin)}
-                            onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setEditMin(v === '' ? 0 : parseInt(v, 10)); }}
-                            className="w-14 h-6 text-[10px] font-mono text-center bg-card border-border/15 rounded-lg" />
-                          <span className="text-[9px] text-muted-foreground">m</span>
-                        </div>
-                        <Input placeholder="Note..." value={editNote} onChange={e => setEditNote(e.target.value)} className="h-6 text-[10px] bg-card border-border/15 rounded-lg" />
-                        <div className="flex gap-1 justify-end">
-                          <Button size="sm" variant="ghost" onClick={() => setEditIdx(null)} className="h-5 text-[9px] px-2">Cancel</Button>
-                          <Button size="sm" onClick={saveEdit} disabled={editMin <= 0} className="h-5 text-[9px] px-2.5"><Save className="w-2.5 h-2.5 mr-0.5" /> Save</Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border-l-[3px] border-l-chart-5/60 bg-card/30 hover:bg-card/50 transition-colors">
-                        <span className="text-[10px] font-mono font-bold text-chart-5 shrink-0 w-12">{formatStudyTime(entry.minutes)}</span>
-                        <span className="flex-1 text-[9px] text-muted-foreground truncate">{entry.note || '—'}</span>
-                        <div className="flex items-center shrink-0">
-                          <button onClick={() => startEdit(entry._idx)} className="p-1.5 rounded hover:bg-primary/10" aria-label="Edit entry"><Pencil className="w-3 h-3 text-muted-foreground/50 hover:text-primary" /></button>
-                          <button onClick={() => onDelete(entry._idx)} className="p-1.5 rounded hover:bg-destructive/10" aria-label="Delete entry"><Trash2 className="w-3 h-3 text-muted-foreground/50 hover:text-destructive" /></button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="border-t border-border/10 px-4 py-3">
-          <p className="text-[10px] text-muted-foreground/45 italic text-center">No time logged for {roundKey} yet</p>
-        </div>
-      )}
-
-      <div className="border-t border-border/10 px-4 py-2.5 flex items-center justify-between">
-        <span className="text-[9px] text-muted-foreground/50 font-bold">All revision rounds</span>
-        <span className="text-[10px] font-mono font-bold text-muted-foreground">{formatStudyTime(allRoundsTime)}</span>
-      </div>
-    </Card>
+    </BottomSheet>
   );
 }

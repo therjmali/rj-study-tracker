@@ -12,6 +12,7 @@ import { useToday } from '../../hooks/useToday';
 import { useStreak, getActiveDates } from '../../hooks/useStreak';
 import { getExamCountdown } from '../../lib/examUtils';
 import { useCountUp } from '../../hooks/useCountUp';
+import { revisionCompletionsOn } from '../../lib/topicActivity';
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.04 } } };
 const fadeUp = { hidden: { opacity: 0, y: 10, scale: 0.98 }, show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] } } };
@@ -90,8 +91,8 @@ export default function StatCardsGrid({ subjects, dailyLogs, semesterConfig, dif
         topicTimeSpent += t.timeSpent || 0;
         if (t.completed) {
           done++;
-          if (t.completedDate === today) todayDone++;
         }
+        todayDone += revisionCompletionsOn(t, today);
         if (t.important) { impTotal++; if (t.completed) impDone++; }
         if (t.status === 'in_process') inProcess++;
       });

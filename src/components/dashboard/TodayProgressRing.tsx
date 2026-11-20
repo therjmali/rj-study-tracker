@@ -4,6 +4,7 @@ import { CheckCircle2, Target } from 'lucide-react';
 import type { Subject, StudyGoals, DailyLog, DbStudySession } from '../../types';
 import { getLocalDateStr, formatStudyTime, getEffectiveDayMinutes } from '../../lib/utils';
 import { useCountUp } from '../../hooks/useCountUp';
+import { completionsOn } from '../../lib/topicActivity';
 
 interface Props {
   subjects: Subject[];
@@ -40,7 +41,7 @@ export default function TodayProgressRing({ subjects, dailyLogs, studyGoals, dbS
   const { topicsDone, hoursToday } = useMemo(() => {
     let topicsDone = 0;
     subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-      if (t.completed && t.completedDate === today) topicsDone++;
+      topicsDone += completionsOn(t, today);
     })));
     // Unified time: topic + unit + manually-logged sessions
     const totalMins = getEffectiveDayMinutes(subjects, dailyLogs, today, dbSessions);

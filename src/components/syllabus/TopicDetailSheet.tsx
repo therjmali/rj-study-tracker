@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Plus, X, CalendarIcon, Hash, Undo2, Redo2, Timer, Clock, ChevronDown, ChevronRight, ChevronLeft, CheckCircle2, Circle, Flame, Target, BookOpen, AlertTriangle, Eye, Play, Pause, RotateCcw, Save, Link2, ExternalLink, Youtube, FileText, Pencil, ClipboardCopy, Sparkles, Zap, Trophy, Minus, Star } from 'lucide-react';
 // The rich-text editor (~100 KB gzipped) only loads when the Notes section is opened
 const loadEditor = () => import('@project/components/markdown-editor');
@@ -21,6 +21,7 @@ import RevisionSheet from './RevisionSheet';
 import type { RevisionMap } from './RevisionSheet';
 import { REVISION_KEYS } from '../../types';
 import { toast } from 'sonner';
+import { useSwipeNav, useSwipeHint } from '../../hooks/useSwipeNav';
 import { DifficultyDots, SectionRow, CompactStatus } from './topicSheet/CompactParts';
 import StudyTimeCard from './topicSheet/StudyTimeCard';
 import ResourceManager from './topicSheet/ResourceManager';
@@ -167,10 +168,6 @@ export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelet
   }, [draft, open]);
 
   draftRef.current = draft;
-  const dragX = useMotionValue(0);
-  const contentOpacity = useTransform(dragX, [-120, 0, 120], [0.4, 1, 0.4]);
-  const contentScale = useTransform(dragX, [-120, 0, 120], [0.96, 1, 0.96]);
-  const swipeThreshold = 70;
 
   const saveAndNavigate = useCallback((direction: 'prev' | 'next') => {
     clearTimeout(autoSaveTimer.current);
@@ -216,70 +213,12 @@ export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelet
     setResyncTick(t => t + 1);
   }, [flushDraft, onRedo]);
 
-  // ── Swipe left / right to change topic ──────────────────────────────────────
-  // Native touch handling (instead of a framer drag) so it works anywhere on the sheet and
-  // never fights vertical scrolling. Ignored on inputs, sliders, the notes editor and
-  // horizontally scrolling rows, so editing / scrolling those is never mistaken for a swipe.
-  const touchRef = useRef<{ x: number; y: number; t: number; lock: 'h' | 'v' | null } | null>(null);
-
-  const isSwipeBlocked = (target: EventTarget | null) => {
-    let el = target as HTMLElement | null;
-    while (el && el !== document.body) {
-      if (el.matches?.('input, textarea, select, [role="slider"], [contenteditable="true"], .ProseMirror, [data-no-swipe]')) return true;
-      const cs = getComputedStyle(el);
-      // a short, horizontally scrolling strip (chip rows) owns horizontal gestures; the tall sheet scroller itself does not
-      if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && el.clientHeight < 160 && el.scrollWidth > el.clientWidth + 8) return true;
-      el = el.parentElement;
-    }
-    return false;
-  };
-
-  const onSwipeStart = (e: React.TouchEvent) => {
-    if (!(hasPrev || hasNext) || e.touches.length !== 1 || isSwipeBlocked(e.target)) { touchRef.current = null; return; }
-    const t = e.touches[0];
-    touchRef.current = { x: t.clientX, y: t.clientY, t: Date.now(), lock: null };
-  };
-  const onSwipeMove = (e: React.TouchEvent) => {
-    const st = touchRef.current;
-    if (!st) return;
-    const t = e.touches[0];
-    const dx = t.clientX - st.x, dy = t.clientY - st.y;
-    if (!st.lock) {
-      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.4) st.lock = 'h';
-      else if (Math.abs(dy) > 10) st.lock = 'v';
-    }
-    if (st.lock === 'h') {
-      const atEdge = (dx > 0 && !hasPrev) || (dx < 0 && !hasNext);
-      dragX.set(dx * (atEdge ? 0.1 : 0.45)); // finger-following feedback, resists at the ends
-    }
-  };
-  const onSwipeEnd = (e: React.TouchEvent) => {
-    const st = touchRef.current;
-    touchRef.current = null;
-    if (!st || st.lock !== 'h') { if (dragX.get() !== 0) animate(dragX, 0, { type: 'spring', stiffness: 420, damping: 36 }); return; }
-    const dx = e.changedTouches[0].clientX - st.x;
-    const speed = Math.abs(dx) / Math.max(Date.now() - st.t, 1);
-    animate(dragX, 0, { type: 'spring', stiffness: 420, damping: 36 });
-    const committed = Math.abs(dx) > swipeThreshold * 0.85 || (Math.abs(dx) > 34 && speed > 0.45);
-    if (!committed) return;
-    if (dx > 0 && hasPrev) saveAndNavigate('prev');
-    else if (dx < 0 && hasNext) saveAndNavigate('next');
-    else {
-      navigator.vibrate?.(10);
-      toast(dx > 0 ? '⏮ This is the first topic in the list' : '⏭ That was the last topic in the list', { id: 'topic-list-end', duration: 1400 });
-    }
-  };
-
-  // One-time hint so the gesture is discoverable
-  useEffect(() => {
-    if (!open || !(hasPrev || hasNext)) return;
-    try {
-      if (localStorage.getItem('topic-swipe-hint-v1')) return;
-      localStorage.setItem('topic-swipe-hint-v1', '1');
-    } catch { return; }
-    const id = setTimeout(() => toast('👆 Swipe left / right to switch topics', { duration: 2600 }), 700);
-    return () => clearTimeout(id);
-  }, [open, hasPrev, hasNext]);
+  // ── Swipe left / right to change topic (shared with the Revision window) ──
+  const { dragX, contentOpacity, contentScale, handlers: swipeHandlers } = useSwipeNav({
+    hasPrev, hasNext,
+    onNavigate: dir => saveAndNavigate(dir),
+  });
+  useSwipeHint(open && !!(hasPrev || hasNext), 'topic-swipe-hint-v1');
 
   useEffect(() => {
     if (!open) return;
@@ -580,10 +519,7 @@ export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelet
       <AnimatePresence mode="wait" custom={swipeDirection}>
       <motion.div
         key={topic?.id || 'empty'}
-        onTouchStart={onSwipeStart}
-        onTouchMove={onSwipeMove}
-        onTouchEnd={onSwipeEnd}
-        onTouchCancel={onSwipeEnd}
+        {...swipeHandlers}
         style={{ x: dragX, opacity: contentOpacity, scale: contentScale }}
         initial={swipeDirection === 'left' ? { x: 250, opacity: 0 } : swipeDirection === 'right' ? { x: -250, opacity: 0 } : { opacity: 1 }}
         animate={{ x: 0, opacity: 1, scale: 1 }}
@@ -765,10 +701,18 @@ export default function TopicDetailSheet({ open, onClose, topic, onSave, onDelet
       onUpdate={(fn) => setDraft(d => d ? { ...d, revisions: fn((d.revisions || {}) as RevisionMap) } : d)}
       subjectName={selSubject?.name || subjectName}
       subjectColor={selSubject?.color}
+      subjectId={selectedSubjectId || subjectId}
+      unitId={selectedUnitId || unitId}
       unitName={selUnit?.name || unitName}
       unitTopics={selUnit?.subTopics || []}
       subjectTopics={(selSubject?.units || []).flatMap(u => u.subTopics)}
       zIndex={(sheetZIndex ?? 55) + 10}
+      onNavigate={saveAndNavigate}
+      hasPrev={hasPrev}
+      hasNext={hasNext}
+      topicIndex={topicIndex}
+      totalTopics={totalTopics}
+      onFlush={flushDraft}
     />
 
     {/* Delete confirmation — rendered OUTSIDE BottomSheet to avoid z-index conflict */}

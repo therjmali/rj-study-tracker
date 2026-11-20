@@ -8,6 +8,7 @@ import type { Folder, Subject } from '../../types';
 import { getLocalDateStr, readableInk } from '../../lib/utils';
 import { toast } from 'sonner';
 import StatusFilterPills, { type StatusFilter } from '../shared/StatusFilterPills';
+import { completionsOn } from '../../lib/topicActivity';
 
 interface Props {
   folder: Folder;
@@ -66,7 +67,7 @@ export default function FolderCard({ folder, subjects, onOpen, onEdit, onDelete,
       const ds = getLocalDateStr(d);
       let count = 0;
       subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-        if (t.completed && t.completedDate === ds) count++;
+        count += completionsOn(t, ds);
       })));
       days.push(count);
     }

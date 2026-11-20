@@ -7,6 +7,7 @@
  * so no field is ever dropped, duplicated or orphaned by a sync.
  */
 import { STORE, idbClear, idbDelete, idbDeleteMany, idbGet, idbGetAll, idbPut, idbPutMany } from './idb';
+import { completionsOn } from '../lib/topicActivity';
 
 /* ───────────────────────────── helpers ───────────────────────────── */
 
@@ -124,7 +125,7 @@ export async function syncData(): Promise<SyncDataResult> {
     const computedHours = sd ? Math.round((sd.totalMinutes / 60) * 100) / 100 : 0;
     const topicsDone = subjects.reduce((a, s) =>
       a + (s.units || []).reduce((b: number, u: AnyRec) =>
-        b + (u.subTopics || []).filter((t: AnyRec) => t.completed && t.completedDate === date).length, 0), 0);
+        b + (u.subTopics || []).reduce((c: number, t: AnyRec) => c + completionsOn(t as any, date), 0), 0), 0);
     const hasSessionData = !!sd && sd.totalMinutes > 0;
     return {
       date,

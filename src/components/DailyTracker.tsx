@@ -20,6 +20,7 @@ import ComparePeriods from './daily/ComparePeriods';
 import SubjectLink from './shared/SubjectLink';
 import QuotesManager from './daily/QuotesManager';
 import type { UserSettings } from '../types';
+import { completionsOn } from '../lib/topicActivity';
 
 const TT = { contentStyle: { background: 'hsl(var(--card)/0.95)', border: '1px solid hsl(var(--border)/0.2)', borderRadius: 12, fontSize: 12, color: 'hsl(var(--foreground))' } };
 const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
@@ -89,7 +90,7 @@ export default function DailyTracker({ dailyLogs, subjects, onUpdate, onDateChan
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return logs.map(l => {
       const d = new Date(l.date + 'T00:00:00');
-      const topicsDone = subjects.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.filter(t => t.completed && t.completedDate === l.date).length, 0), 0);
+      const topicsDone = subjects.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.reduce((c, t) => c + completionsOn(t, l.date), 0), 0), 0);
       return { day: dayNames[d.getDay()], topics: topicsDone, date: l.date, fullDate: d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }), mins: Math.round(getEffectiveDayMinutes(subjects as any, dailyLogs as any, l.date, dbSessions as any)) };
     });
   }, [dailyLogs, subjects, dbSessions]);

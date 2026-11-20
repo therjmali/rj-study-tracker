@@ -4,6 +4,7 @@ import { Star, Clock, ChevronDown, AlertTriangle, Trophy, Calendar, Zap } from '
 import CircularProgress from '../shared/CircularProgress';
 import { getLocalDateStr, formatStudyTime, readableInk } from '../../lib/utils';
 import type { Subject, Folder } from '../../types';
+import { completionsOn } from '../../lib/topicActivity';
 
 interface Props {
   folder: Folder;
@@ -66,7 +67,7 @@ export default function FolderAnalytics({ folder, subjects, onOpenSubject }: Pro
       const ds = getLocalDateStr(d);
       let count = 0;
       subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-        if (t.completed && t.completedDate === ds) count++;
+        count += completionsOn(t, ds);
       })));
       days.push(count);
     }

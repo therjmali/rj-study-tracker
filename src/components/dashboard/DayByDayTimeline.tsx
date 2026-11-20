@@ -4,6 +4,7 @@ import { CalendarDays, ChevronDown, Clock, BookOpen, ExternalLink, Moon, ArrowUp
 import type { Subject, SubTopic, DailyLog, DbStudySession } from '../../types';
 import { getLocalDateStr, formatStudyHours, formatStudyTime, getEffectiveDayMinutes, normalizeSubjectId, readableInk } from '../../lib/utils';
 import { useToday } from '../../hooks/useToday';
+import { revisionCompletions, revisionMinutesOn } from '../../lib/topicActivity';
 interface Props {
   subjects: Subject[];
   dailyLogs: DailyLog[];
@@ -435,12 +436,20 @@ export default function DayByDayTimeline({ subjects, dailyLogs, dbSessions, onOp
               entry.topics.push({ topic: t, unitId: u.id });
               topicDetails.push({ topic: t, subjectId: s.id, unitId: u.id, shortName: s.shortName, color: s.color, completedTime: t.completedTime, timeSpent: t.timeSpent || 0, difficulty: t.difficulty || 'Medium' });
             }
+            // Revision rounds completed on this day are topics done too (shown as "Topic · R1")
+            revisionCompletions(t).filter(c => c.date === dateStr).forEach(c => {
+              let entry = subjectMap.get(s.id);
+              if (!entry) { entry = { subjectId: s.id, subjectName: s.name, shortName: s.shortName, color: s.color, topics: [] }; subjectMap.set(s.id, entry); }
+              const rt = { ...t, name: `${t.name} · ${c.round}`, completedTime: c.time, completed: true, completedDate: dateStr } as SubTopic;
+              entry.topics.push({ topic: rt, unitId: u.id });
+              topicDetails.push({ topic: rt, subjectId: s.id, unitId: u.id, shortName: s.shortName, color: s.color, completedTime: c.time, timeSpent: t.revisions?.[c.round]?.timeSpent || 0, difficulty: t.difficulty || 'Medium' });
+            });
           });
           // FIX: Also pick up topics that have timeEntries on this date but were NOT completed on this date.
           // This ensures days with study-time-only (no completion) still show in subjectGroups.
           u.subTopics.forEach(t => {
             if (t.completedDate === dateStr) return; // already added above
-            const entryMins = t.timeEntries?.filter(e => e.date === dateStr).reduce((a, e) => a + e.minutes, 0) || 0;
+            const entryMins = (t.timeEntries?.filter(e => e.date === dateStr).reduce((a, e) => a + e.minutes, 0) || 0) + revisionMinutesOn(t, dateStr);
             if (entryMins > 0) {
               if (!subjectMap.has(s.id)) {
                 subjectMap.set(s.id, { subjectId: s.id, subjectName: s.name, shortName: s.shortName, color: s.color, topics: [] });
@@ -493,6 +502,7 @@ export default function DayByDayTimeline({ subjects, dailyLogs, dbSessions, onOp
             s.units.forEach(u => {
               // Topic timeEntries for this date
               u.subTopics.forEach(t => {
+                topicTimeForDate += revisionMinutesOn(t, dateStr);
                 const entryMins = t.timeEntries?.filter(e => e.date === dateStr).reduce((a, e) => a + e.minutes, 0) || 0;
                 if (entryMins > 0) {
                   topicTimeForDate += entryMins;

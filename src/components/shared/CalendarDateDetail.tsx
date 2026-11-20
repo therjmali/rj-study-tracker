@@ -5,6 +5,7 @@ import type { Subject, DailyLog, DbStudySession } from '../../types';
 import type { TodoItem } from '../../hooks/useTodos';
 import BottomSheet from './BottomSheet';
 import { formatStudyTime, getEffectiveDayMinutes } from '../../lib/utils';
+import { REVISION_KEYS } from '../../types';
 
 const MOOD_MAP: Record<string, { emoji: string; label: string; color: string }> = {
   Sad: { emoji: '😔', label: 'Sad', color: 'text-blue-400' },
@@ -72,6 +73,21 @@ export default function CalendarDateDetail({ open, onClose, date, subjects, dail
             difficulty: t.difficulty, timeSpent: t.timeSpent || 0,
             completedTime: undefined, status: t.status || (t.completed ? 'complete' : 'incomplete'), dateMinutes: dateMinutesFromEntries, timeNotes,
             unitName: u.name,
+          });
+        }
+        // Revision rounds studied / completed on this date — listed like any other topic
+        for (const k of REVISION_KEYS) {
+          const r = t.revisions?.[k];
+          if (!r) continue;
+          const rEntries = r.timeEntries?.filter(e => e.date === date && e.minutes > 0) || [];
+          const rMins = rEntries.reduce((a, e) => a + e.minutes, 0);
+          const doneToday = r.status === 'complete' && r.completedDate === date;
+          if (!doneToday && rMins === 0) continue;
+          results.push({
+            name: `${t.name} · ${k} revision`, subjectName: s.shortName, subjectColor: s.color,
+            difficulty: t.difficulty, timeSpent: r.timeSpent || 0,
+            completedTime: doneToday ? r.completedTime : undefined, status: doneToday ? 'complete' : 'in_process',
+            dateMinutes: rMins, timeNotes: rEntries.map(e => ({ minutes: e.minutes, note: e.note })), unitName: u.name,
           });
         }
       });

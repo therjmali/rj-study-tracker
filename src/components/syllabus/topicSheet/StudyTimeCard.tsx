@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { CalendarIcon, Clock, ChevronDown, RotateCcw, Pencil, Trash2, Save, Play, Pause, ExternalLink } from 'lucide-react';
 import { Input } from '@project/components/ui/input';
 import { Button } from '@project/components/ui/button';
-import type { SubTopic, TimeEntry, TopicStatus } from '../../../types';
+import type { SubTopic, TimeEntry, TopicStatus, RevisionKey } from '../../../types';
 import { formatDateRelative, formatStudyTime, getLocalDateStr, formatTime12h, formatTimeRange12h } from '../../../lib/utils';
 import { SheetCard } from './CompactParts';
 import { useTimer } from '../../../contexts/TimerContext';
@@ -63,8 +63,12 @@ function SaveButton({ stopwatch, enabled, onSave }: { stopwatch: boolean; enable
   );
 }
 
-export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTimeEntry, setField, subjectId, unitId, subjectName, onOpenFull }: {
+export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTimeEntry, setField, subjectId, unitId, subjectName, onOpenFull, revisionKey, onBeforeSave }: {
   subjectId?: string; unitId?: string; subjectName?: string; onOpenFull?: () => void;
+  /** Set when this card logs a REVISION round (R1–R4) instead of the main topic — same timer, same controls. */
+  revisionKey?: RevisionKey;
+  /** Called right before a running timer is saved (the host flushes its unsaved draft first). */
+  onBeforeSave?: () => void;
   draft: SubTopic;
   addTime: (mins: number, targetDate?: string, note?: string, time?: string) => void;
   deleteTimeEntry: (idx: number) => void;
@@ -89,7 +93,7 @@ export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTim
   const { state: timer, actions: ta } = useTimer();
   const canTime = !!(subjectId && unitId);
   const busy = timer.active || timer.hasProgress;
-  const isThis = timer.topicId === draft.id;
+  const isThis = timer.topicId === draft.id && (timer.revisionKey || '') === (revisionKey || '');
   const runningOther = busy && !isThis;
   const stopwatch = timer.appMode === 'stopwatch';
   const isBreak = timer.cycle && timer.phase !== 'focus';
@@ -99,7 +103,8 @@ export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTim
     : timer.hasProgress && isThis ? 'text-amber-600 bg-amber-500/10 border-amber-500/25'
     : 'text-muted-foreground bg-muted/20 border-border/15';
   const primaryLabel = timer.active ? 'Pause' : timer.hasProgress ? 'Resume' : 'Start';
-  const onPrimary = () => { if (!isThis) ta.linkTopic(subjectId!, unitId!, draft.id, draft.name, subjectName || ''); ta.toggle(); navigator.vibrate?.(10); };
+  const onPrimary = () => { if (!isThis) ta.linkTopic(subjectId!, unitId!, draft.id, draft.name, subjectName || '', revisionKey || ''); ta.toggle(); navigator.vibrate?.(10); };
+  const saveRunning = () => { onBeforeSave?.(); ta.stopAndSave(); };
 
   const entries = draft.timeEntries || [];
   const grouped = entries.reduce((acc, e, idx) => {
@@ -128,7 +133,8 @@ export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTim
     <SheetCard className="!p-0 overflow-hidden">
       <div className="flex items-center gap-2 px-3.5 pt-3 pb-2">
         <span className="text-[15px] leading-none shrink-0" aria-hidden>⏱️</span>
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Study time</span>
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{revisionKey ? 'Revision time' : 'Study time'}</span>
+        {revisionKey && <span className="text-[9px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">{revisionKey}</span>}
         {canTime && (
           <span className={`inline-flex items-center gap-1 h-5 px-2 rounded-full border text-[9px] font-black uppercase tracking-wider ${statusTone}`}>
             {(timer.active && isThis) && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}{statusLabel}
@@ -148,9 +154,9 @@ export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTim
             <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/6 px-3 py-2">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-amber-600">Timer is running for another topic</p>
-                <p className="text-xs text-foreground/60 truncate font-medium">{timer.topicName || timer.subjectName || 'Free study'}</p>
+                <p className="text-xs text-foreground/60 truncate font-medium">{timer.topicName || timer.subjectName || 'Free study'}{timer.topicId && timer.revisionKey ? ` · ${timer.revisionKey} revision` : ''}</p>
               </div>
-              <button type="button" onClick={() => { ta.stopAndSave(); ta.linkTopic(subjectId!, unitId!, draft.id, draft.name, subjectName || ''); }}
+              <button type="button" onClick={() => { onBeforeSave?.(); ta.stopAndSave(); ta.linkTopic(subjectId!, unitId!, draft.id, draft.name, subjectName || '', revisionKey || ''); }}
                 className="text-[10px] px-3 py-1.5 rounded-xl bg-amber-500/12 text-amber-600 font-bold border border-amber-500/25 active:scale-95 transition">Save &amp; switch</button>
             </div>
           ) : (
@@ -196,8 +202,14 @@ export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTim
                   style={{ boxShadow: '0 4px 16px hsl(var(--primary) / 0.35)' }}>
                   {timer.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" fill="currentColor" />} {primaryLabel}
                 </motion.button>
-                <SaveButton stopwatch={stopwatch} enabled={isThis && busy && !isBreak} onSave={() => ta.stopAndSave()} />
+                <SaveButton stopwatch={stopwatch} enabled={isThis && busy && !isBreak} onSave={saveRunning} />
               </div>
+
+              {revisionKey && (
+                <p className="text-center text-[10px] font-semibold text-muted-foreground/70 -mt-0.5">
+                  ✅ Saving a session marks <strong className="text-foreground/70">{revisionKey}</strong> as Done and adds the time to today's study
+                </p>
+              )}
 
               <div className="flex items-center justify-between">
                 {!stopwatch && !busy ? (

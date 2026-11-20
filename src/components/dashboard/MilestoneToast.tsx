@@ -3,6 +3,7 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import type { Subject, DailyLog, StudyGoals } from '../../types';
 import { getLocalDateStr, formatStudyHours } from '../../lib/utils';
 import { useToday } from '../../hooks/useToday';
+import { completionsOn } from '../../lib/topicActivity';
 
 interface Props {
   subjects: Subject[];
@@ -15,7 +16,7 @@ export default function MilestoneToast({ subjects, dailyLogs, studyGoals }: Prop
   const shownRef = useRef<Set<string>>(new Set());
   const today = useToday();
 
-  const todayTopics = subjects.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.filter(t => t.completed && t.completedDate === today).length, 0), 0);
+  const todayTopics = subjects.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.reduce((c, t) => c + completionsOn(t, today), 0), 0), 0);
   const todayLog = dailyLogs.find(l => l.date === today);
   const todayHours = todayLog?.hoursStudied ?? 0;
 

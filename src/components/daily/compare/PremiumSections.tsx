@@ -20,6 +20,7 @@ import {
 import { getEffectiveDayMinutes } from '../../../lib/utils';
 import type { PersonalRecords, MomentumData, SubjectCompare, StreakData, CumulativeData } from './utils';
 import type { Subject, DailyLog, DbStudySession } from '../../../types';
+import { completionsOn } from '../../../lib/topicActivity';
 
 const TT: React.CSSProperties = {
   background: 'hsl(var(--card)/0.95)',
@@ -425,7 +426,7 @@ export function PeriodLeaderboardSection({ subjects, dailyLogs, dbSessions, open
     sorted.forEach(date => {
       let topics = 0;
       subjects.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
-        if (t.completed && t.completedDate === date) topics++;
+        topics += completionsOn(t, date);
       })));
       dayMap.set(date, { topics, minutes: getEffectiveDayMinutes(subjects, dailyLogs, date, dbSessions) });
     });
