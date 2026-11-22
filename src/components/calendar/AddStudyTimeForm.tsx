@@ -1,14 +1,17 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Save, ChevronDown, Clock, Trash2, Edit2, Check, X, Search, BookOpen } from 'lucide-react';
+import { Plus, ChevronDown, Clock, Check, X, Search, BookOpen } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@project/components/ui/select';
 import { toast } from 'sonner';
-import type { DailyLog, Subject, StudySession, DbStudySession, SubTopic } from '../../types';
-import { formatStudyTime, normalizeSubjectId } from '../../lib/utils';
-import BottomSheet from '../shared/BottomSheet';
+import type { DailyLog, Subject, StudySession, DbStudySession } from '../../types';
+import { formatStudyTime } from '../../lib/utils';
 import DuplicateSessionDialog from '../shared/DuplicateSessionDialog';
+import DurationPicker from '../shared/DurationPicker';
+import StudyTimerPanel from '../shared/StudyTimerPanel';
+import SessionEditSheet from '../sessions/SessionEditSheet';
+import type { SessionChanges } from '../sessions/SessionEditSheet';
+import { ACTIVITY_CHOICES } from '../../lib/activities';
 
 interface Props {
   date: string;
@@ -21,15 +24,6 @@ interface Props {
   dbSessions?: DbStudySession[];
   skipCollapsedHeader?: boolean;
 }
-
-/** The five ways a student logs time by hand. Older tags (Video, Seminar, Practice, Revision …) still display on old sessions. */
-const ACTIVITY_CHOICES: { id: string; icon: string; hint: string }[] = [
-  { id: 'MCQ', icon: '📝', hint: 'Practice questions' },
-  { id: 'Self-Study', icon: '📖', hint: 'Reading & notes' },
-  { id: 'Lecture', icon: '🎓', hint: 'Class or video' },
-  { id: 'Other', icon: '📦', hint: 'Anything else' },
-  { id: 'Custom', icon: '✏️', hint: 'Your own label' },
-];
 
 interface TopicSearchResult {
   topicId: string;
@@ -55,8 +49,6 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
   const [useCustomSubject, setUseCustomSubject] = useState(false);
   const [editingSession, setEditingSession] = useState<StudySession | null>(null);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
-  const [customTimeOpen, setCustomTimeOpen] = useState(false);
-  const [customTimeValue, setCustomTimeValue] = useState('');
 
   // Topic search state
   const [topicSearchOpen, setTopicSearchOpen] = useState(false);
@@ -69,6 +61,19 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
   const [pendingSessionData, setPendingSessionData] = useState<any>(null);
 
   const existingLog = dailyLogs.find(l => l.date === date);
+
+  // What the live timer would save: the activity / topic / subject picked below
+  const timerActivity = activity === 'Custom' ? (customActivity.trim() || 'Custom') : activity;
+  const timerSubjectId = selectedTopic?.subjectId ?? (useCustomSubject ? '' : subjectId);
+  const timerTarget = useMemo(() => ({
+    subjectId: timerSubjectId || '',
+    unitId: selectedTopic?.unitId ?? '',
+    topicId: selectedTopic?.topicId ?? '',
+    topicName: selectedTopic?.topicName ?? '',
+    subjectName: subjects.find(s => s.id === timerSubjectId)?.shortName || '',
+    revisionKey: '' as const,
+    activity: timerActivity,
+  }), [timerSubjectId, selectedTopic, subjects, timerActivity]);
 
   // Build searchable topic index
   const allTopics = useMemo<TopicSearchResult[]>(() => {
@@ -123,18 +128,6 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
     ];
     return merged;
   }, [dbSessions, existingLog, date]);
-
-  // Topic time is tracked separately on topics — NOT shown as sessions here.
-  // Sessions are ONLY created via the "Add Study Time" form below.
-  const topicSessions: (StudySession & { _type: 'topic'; _color?: string })[] = [];
-
-  const allSessions = useMemo(() => {
-    const manual = manualSessions.map(s => ({ ...s, _type: 'logged' as const, _color: subjects.find(sub => sub.id === s.subjectId)?.color }));
-    return [...manual, ...topicSessions];
-  }, [manualSessions, topicSessions, subjects]);
-
-  const sessions = manualSessions;
-  const totalSessionMins = allSessions.reduce((a, s) => a + s.durationMinutes, 0);
 
   // Select a topic and auto-fill subject
   const handleSelectTopic = useCallback((topic: TopicSearchResult) => {
@@ -293,54 +286,15 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
     setPendingSessionData(null);
   }, []);
 
-  const handleDeleteSession = useCallback((sessionId: string) => {
-    if (onDeleteSession) {
-      onDeleteSession(sessionId);
-      return;
-    }
-    if (!existingLog) return;
-    const session = sessions.find(s => s.id === sessionId);
-    if (!session) return;
-    const remainingSessions = sessions.filter(s => s.id !== sessionId);
-    const removedH = session.durationMinutes / 60;
-    const updated = dailyLogs.map(l => l.date !== date ? l : {
-      ...l,
-      hoursStudied: Math.max(0, Math.round((l.hoursStudied - removedH) * 100) / 100),
-      sessions: remainingSessions,
-    });
-    onUpdateLogs(updated);
-    toast.success('Session deleted');
-  }, [existingLog, sessions, dailyLogs, date, onUpdateLogs, onDeleteSession]);
-
-  const handleUpdateSession = useCallback((updatedSession: StudySession) => {
-    if (onUpdateSession) {
-      onUpdateSession(updatedSession.id, {
-        minutes: updatedSession.durationMinutes,
-        subjectId: updatedSession.subjectId,
-        subjectName: updatedSession.subjectName,
-        startTime: updatedSession.startTime,
-        endTime: updatedSession.endTime,
-        note: updatedSession.note,
-      });
-      setEditSheetOpen(false);
-      setEditingSession(null);
+  /** Saved from the shared editor (date, subject, activity, duration, times, notes) — it already confirmed with the user. */
+  const handleSessionEditSave = useCallback((changes: SessionChanges) => {
+    if (editingSession && onUpdateSession) {
+      onUpdateSession(editingSession.id, changes);
       toast.success('Session updated');
-      return;
     }
-    if (!existingLog) return;
-    const oldSession = sessions.find(s => s.id === updatedSession.id);
-    if (!oldSession) return;
-    const diffMins = updatedSession.durationMinutes - oldSession.durationMinutes;
-    const updated = dailyLogs.map(l => l.date !== date ? l : {
-      ...l,
-      hoursStudied: Math.max(0, Math.round((l.hoursStudied + diffMins / 60) * 100) / 100),
-      sessions: (l.sessions || []).map(s => s.id === updatedSession.id ? updatedSession : s),
-    });
-    onUpdateLogs(updated);
     setEditSheetOpen(false);
     setEditingSession(null);
-    toast.success('Session updated');
-  }, [existingLog, sessions, dailyLogs, date, onUpdateLogs, onUpdateSession]);
+  }, [editingSession, onUpdateSession]);
 
   return (
     <div className="rounded-2xl bg-card/50 border border-border/15 overflow-hidden shadow-sm">
@@ -352,11 +306,6 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
         <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex-1 text-left">
           Add Study Time
         </span>
-        {totalSessionMins > 0 && (
-          <span className="text-[10px] font-bold font-mono text-secondary bg-secondary/10 px-2 py-0.5 rounded-full">
-            {formatStudyTime(totalSessionMins)}
-          </span>
-        )}
         <motion.div animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
           <ChevronDown className="w-4 h-4 text-muted-foreground/50" />
         </motion.div>
@@ -371,188 +320,19 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
             className="overflow-hidden"
           >
             <div className="px-3 pb-3 space-y-3">
-              {/* ── Existing Sessions List ── */}
-              {allSessions.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    📋 All Sessions ({allSessions.length})
-                  </p>
-                  {allSessions.map(session => {
-                    const isManual = session._type === 'logged';
-                    const clr = (session as any)._color || subjects.find(s => s.id === session.subjectId)?.color;
-                    return (
-                      <motion.div
-                        key={session.id}
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-card/40 border border-border/10 hover:bg-card/60 transition-colors group"
-                      >
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0 shadow-[0_0_4px_currentColor]"
-                          style={{ backgroundColor: clr || 'hsl(var(--primary))', color: clr || 'hsl(var(--primary))' }} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-bold text-foreground truncate">{session.subjectName}</span>
-                            {session.startTime && (
-                              <span className="text-[9px] font-mono text-muted-foreground/60">
-                                {session.startTime.slice(0, 5)}
-                              </span>
-                            )}
-                          </div>
-                          {session.note && (
-                            <p className="text-[9px] text-muted-foreground truncate mt-0.5">{session.note}</p>
-                          )}
-                        </div>
-                        {session._type === 'topic' && (
-                          <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/20 shrink-0">📚 Topic</span>
-                        )}
-                        {session._type === 'logged' && (session.subjectId === 'general' || !subjects.find(s => s.id === session.subjectId)) && (
-                          <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-full bg-muted/25 text-muted-foreground border border-border/20 shrink-0">Other</span>
-                        )}
-                        {session._type === 'logged' && session.subjectId !== 'general' && subjects.find(s => s.id === session.subjectId) && (
-                          <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-full bg-secondary/15 text-secondary border border-secondary/20 shrink-0">📝 Logged</span>
-                        )}
-                        <span className="text-[11px] font-bold font-mono text-secondary shrink-0">
-                          {formatStudyTime(session.durationMinutes)}
-                        </span>
-                        {isManual && (
-                          <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => { setEditingSession(session); setEditSheetOpen(true); }}
-                              className="p-1 rounded-lg hover:bg-primary/10 transition-colors">
-                              <Edit2 className="w-3 h-3 text-muted-foreground/50 hover:text-primary" />
-                            </button>
-                            <button onClick={() => handleDeleteSession(session.id)}
-                              className="p-1 rounded-lg hover:bg-destructive/10 transition-colors">
-                              <Trash2 className="w-3 h-3 text-muted-foreground/50 hover:text-destructive" />
-                            </button>
-                          </div>
-                        )}
-                      </motion.div>
-                    );
-                  })}
-                  <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-secondary/5 border border-secondary/10">
-                    <span className="text-[10px] font-bold text-muted-foreground">Total</span>
-                    <span className="text-[11px] font-black font-mono text-secondary">{formatStudyTime(totalSessionMins)}</span>
-                  </div>
-                </div>
-              )}
-
               {/* ── Add New Session — Premium Duration Picker ── */}
               <div className="pt-2 border-t border-border/10">
                 <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-3">Duration</p>
-                <div className="flex items-center justify-center gap-4">
-                  <button
-                    onClick={() => {
-                      const total = Math.max(0, hours * 60 + mins - 15);
-                      setHours(Math.floor(total / 60));
-                      setMins(total % 60);
-                      setCustomTimeOpen(false);
-                    }}
-                    className="w-11 h-11 rounded-2xl bg-card/60 border border-border/20 flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/25 active:scale-90 transition-all shadow-sm"
-                  >
-                    −
-                  </button>
-                  <AnimatePresence mode="wait">
-                    {customTimeOpen ? (
-                      <motion.div
-                        key="custom-input"
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.8, opacity: 0 }}
-                        className="flex items-center gap-1.5 min-w-[140px] justify-center"
-                      >
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={customTimeValue}
-                          onChange={e => setCustomTimeValue(e.target.value.replace(/[^0-9]/g, ''))}
-                          placeholder="min"
-                          className="h-12 w-20 text-center text-xl font-black font-mono bg-card/60 border-primary/30 rounded-xl"
-                          autoFocus
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              const v = parseInt(customTimeValue, 10);
-                              if (!isNaN(v) && v >= 1 && v <= 600) {
-                                setHours(Math.floor(v / 60));
-                                setMins(v % 60);
-                                setCustomTimeOpen(false);
-                                setCustomTimeValue('');
-                              }
-                            } else if (e.key === 'Escape') {
-                              setCustomTimeOpen(false);
-                              setCustomTimeValue('');
-                            }
-                          }}
-                        />
-                        <button
-                          onClick={() => {
-                            const v = parseInt(customTimeValue, 10);
-                            if (!isNaN(v) && v >= 1 && v <= 600) {
-                              setHours(Math.floor(v / 60));
-                              setMins(v % 60);
-                            }
-                            setCustomTimeOpen(false);
-                            setCustomTimeValue('');
-                          }}
-                          className="h-10 px-3 rounded-xl bg-primary text-primary-foreground text-[10px] font-bold active:scale-95 transition-all"
-                        >
-                          Set
-                        </button>
-                      </motion.div>
-                    ) : (
-                      <motion.button
-                        key="display"
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.8, opacity: 0 }}
-                        onClick={() => { setCustomTimeOpen(true); setCustomTimeValue(String(hours * 60 + mins)); }}
-                        className="relative flex items-baseline gap-0.5 select-none min-w-[120px] justify-center px-3 py-1.5 rounded-xl hover:bg-card/50 active:scale-95 transition-all cursor-pointer group"
-                        title="Tap to type exact minutes"
-                      >
-                        <span className="font-display-digit text-4xl font-black text-foreground tracking-tight leading-none tabular-nums">{hours}</span>
-                        <span className="text-sm font-bold text-muted-foreground/50 mr-1">h</span>
-                        <span className="font-display-digit text-4xl font-black text-foreground tracking-tight leading-none tabular-nums">{String(mins).padStart(2, '0')}</span>
-                        <span className="text-sm font-bold text-muted-foreground/50">m</span>
-                        <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 text-[7px] font-bold text-primary/0 group-hover:text-primary/60 transition-colors">tap to edit</span>
-                      </motion.button>
-                    )}
-                  </AnimatePresence>
-                  <button
-                    onClick={() => {
-                      const total = hours * 60 + mins + 15;
-                      setHours(Math.floor(total / 60));
-                      setMins(total % 60);
-                      setCustomTimeOpen(false);
-                    }}
-                    className="w-11 h-11 rounded-2xl bg-card/60 border border-border/20 flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-secondary/10 hover:text-secondary hover:border-secondary/25 active:scale-90 transition-all shadow-sm"
-                  >
-                    +
-                  </button>
+                <DurationPicker value={hours * 60 + mins} onChange={v => { setHours(Math.floor(v / 60)); setMins(v % 60); }} />
+              </div>
+
+              {/* ── Live: the SAME Stopwatch · Countdown timer as every topic window ── */}
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="h-px flex-1 bg-border/15" /><span className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/60">or study live with the timer</span><span className="h-px flex-1 bg-border/15" />
                 </div>
-                <div className="flex justify-center gap-1.5 mt-3 flex-wrap">
-                  {[15, 30, 45, 60, 90, 120].map(m => {
-                    const isActive = hours * 60 + mins === m;
-                    return (
-                      <button key={m} onClick={() => { setHours(Math.floor(m / 60)); setMins(m % 60); setCustomTimeOpen(false); }}
-                        className={`text-[9px] font-bold px-2.5 py-1 rounded-full border transition-all ${
-                          isActive
-                            ? 'bg-primary/15 border-primary/30 text-primary shadow-[0_0_8px_hsl(var(--primary)/0.2)]'
-                            : 'bg-card/30 border-border/15 text-muted-foreground hover:border-primary/20 hover:text-primary/70'
-                        }`}>
-                        {m >= 60 ? `${m / 60}h` : `${m}m`}
-                      </button>
-                    );
-                  })}
-                  <button
-                    onClick={() => { setCustomTimeOpen(true); setCustomTimeValue(String(hours * 60 + mins)); }}
-                    className={`text-[9px] font-bold px-2.5 py-1 rounded-full border transition-all ${
-                      customTimeOpen
-                        ? 'bg-chart-4/15 border-chart-4/30 text-chart-4 shadow-[0_0_8px_hsl(var(--chart-4)/0.2)]'
-                        : 'bg-card/30 border-border/15 text-muted-foreground hover:border-chart-4/20 hover:text-chart-4/70'
-                    }`}>
-                    ✏️ Custom
-                  </button>
-                </div>
+                <StudyTimerPanel target={timerTarget}
+                  hint={<>Saves as <strong className="text-foreground/70">{ACTIVITY_CHOICES.find(a => a.id === activity)?.icon} {timerActivity}</strong> · {selectedTopic ? selectedTopic.topicName : timerTarget.subjectName || 'Free study'} <span className="opacity-70">(change below)</span></>} />
               </div>
 
               {/* Activity type */}
@@ -719,15 +499,14 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
         )}
       </AnimatePresence>
 
-      {/* Edit Session Sheet */}
-      {editingSession && (
-        <EditSessionSheet
+      {/* Edit Session Sheet (shared editor, confirms before saving) */}
+      {editingSession && editSheetOpen && (
+        <SessionEditSheet
           key={editingSession.id}
-          open={editSheetOpen}
-          onClose={() => { setEditSheetOpen(false); setEditingSession(null); }}
-          session={editingSession}
+          session={{ ...editingSession, date: (dbSessions || []).find(x => x.id === editingSession.id)?.date || date, description: (dbSessions || []).find(x => x.id === editingSession.id)?.description }}
           subjects={subjects}
-          onSave={handleUpdateSession}
+          onSave={handleSessionEditSave}
+          onClose={() => { setEditSheetOpen(false); setEditingSession(null); }}
         />
       )}
 
@@ -745,116 +524,5 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
         />
       )}
     </div>
-  );
-}
-
-function EditSessionSheet({ open, onClose, session, subjects, onSave }: {
-  open: boolean; onClose: () => void; session: StudySession; subjects: Subject[];
-  onSave: (s: StudySession) => void;
-}) {
-  const [subjectId, setSubjectId] = useState(session.subjectId || 'general');
-  const [startTime, setStartTime] = useState(session.startTime?.slice(0, 5) || '09:00');
-  const [endTime, setEndTime] = useState(session.endTime?.slice(0, 5) || '');
-  const [durationMins, setDurationMins] = useState(session.durationMinutes);
-  const [note, setNote] = useState(session.note || '');
-  const [editCustomOpen, setEditCustomOpen] = useState(false);
-  const [editCustomValue, setEditCustomValue] = useState('');
-
-  const handleSave = () => {
-    const subject = subjects.find(s => s.id === subjectId);
-    onSave({
-      ...session,
-      subjectId,
-      subjectName: subject?.shortName || session.subjectName,
-      durationMinutes: durationMins,
-      startTime,
-      endTime: endTime || undefined,
-      note: note.trim() || undefined,
-    });
-  };
-
-  return (
-    <BottomSheet open={open} onClose={onClose} title="✏️ Edit Study Session">
-      <div className="space-y-4 pt-2">
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">Subject</p>
-          <Select value={subjectId} onValueChange={setSubjectId}>
-            <SelectTrigger className="h-9 text-xs">
-              <SelectValue placeholder="Choose subject..." />
-            </SelectTrigger>
-            <SelectContent>
-              {subjects.map(s => (
-                <SelectItem key={s.id} value={s.id}>
-                  <span className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-                    {s.shortName} — {s.name}
-                  </span>
-                </SelectItem>
-              ))}
-              <SelectItem value="general">General</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-3">Duration</p>
-          <div className="flex items-center justify-center gap-4">
-            <button onClick={() => { setDurationMins(Math.max(5, durationMins - 15)); setEditCustomOpen(false); }}
-              className="w-11 h-11 rounded-2xl bg-card/60 border border-border/20 flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/25 active:scale-90 transition-all shadow-sm">−</button>
-            {editCustomOpen ? (
-              <div className="flex items-center gap-1.5 min-w-[140px] justify-center">
-                <Input type="text" inputMode="numeric" pattern="[0-9]*" value={editCustomValue} onChange={e => setEditCustomValue(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="min" className="h-12 w-20 text-center text-xl font-black font-mono bg-card/60 border-primary/30 rounded-xl" autoFocus
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') { const v = parseInt(editCustomValue, 10); if (!isNaN(v) && v >= 1 && v <= 600) { setDurationMins(v); setEditCustomOpen(false); setEditCustomValue(''); } }
-                    else if (e.key === 'Escape') { setEditCustomOpen(false); setEditCustomValue(''); }
-                  }} />
-                <button onClick={() => { const v = parseInt(editCustomValue, 10); if (!isNaN(v) && v >= 1 && v <= 600) setDurationMins(v); setEditCustomOpen(false); setEditCustomValue(''); }}
-                  className="h-10 px-3 rounded-xl bg-primary text-primary-foreground text-[10px] font-bold active:scale-95">Set</button>
-              </div>
-            ) : (
-              <button onClick={() => { setEditCustomOpen(true); setEditCustomValue(String(durationMins)); }}
-                className="flex items-baseline gap-0.5 min-w-[120px] justify-center select-none px-3 py-1.5 rounded-xl hover:bg-card/50 active:scale-95 transition-all cursor-pointer"
-                title="Tap to type exact minutes">
-                <span className="font-display-digit text-4xl font-black text-foreground tracking-tight leading-none tabular-nums">{Math.floor(durationMins / 60)}</span>
-                <span className="text-sm font-bold text-muted-foreground/50 mr-1">h</span>
-                <span className="font-display-digit text-4xl font-black text-foreground tracking-tight leading-none tabular-nums">{String(durationMins % 60).padStart(2, '0')}</span>
-                <span className="text-sm font-bold text-muted-foreground/50">m</span>
-              </button>
-            )}
-            <button onClick={() => { setDurationMins(durationMins + 15); setEditCustomOpen(false); }}
-              className="w-11 h-11 rounded-2xl bg-card/60 border border-border/20 flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-secondary/10 hover:text-secondary hover:border-secondary/25 active:scale-90 transition-all shadow-sm">+</button>
-          </div>
-          <div className="flex justify-center gap-1.5 mt-3 flex-wrap">
-            {[15, 30, 45, 60, 90, 120].map(m => (
-              <button key={m} onClick={() => { setDurationMins(m); setEditCustomOpen(false); }}
-                className={`text-[9px] font-bold px-2.5 py-1 rounded-full border transition-all ${durationMins === m ? 'bg-primary/15 border-primary/30 text-primary shadow-[0_0_8px_hsl(var(--primary)/0.2)]' : 'bg-card/30 border-border/15 text-muted-foreground hover:border-primary/20'}`}>
-                {m >= 60 ? `${m / 60}h` : `${m}m`}
-              </button>
-            ))}
-            <button onClick={() => { setEditCustomOpen(true); setEditCustomValue(String(durationMins)); }}
-              className={`text-[9px] font-bold px-2.5 py-1 rounded-full border transition-all ${editCustomOpen ? 'bg-chart-4/15 border-chart-4/30 text-chart-4' : 'bg-card/30 border-border/15 text-muted-foreground hover:border-chart-4/20'}`}>
-              ✏️ Custom
-            </button>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Start Time</p>
-            <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="h-9 text-xs" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">End Time</p>
-            <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="h-9 text-xs" />
-          </div>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">Notes</p>
-          <Input value={note} onChange={e => setNote(e.target.value)} placeholder="Study notes..." className="h-9 text-xs" />
-        </div>
-        <Button onClick={handleSave} className="w-full h-10 text-sm font-semibold gap-2 rounded-xl">
-          <Check className="w-4 h-4" /> Update Session
-        </Button>
-      </div>
-    </BottomSheet>
   );
 }

@@ -5,6 +5,8 @@ import { Button } from '@project/components/ui/button';
 interface Props {
   children: ReactNode;
   fallbackTitle?: string;
+  /** Small inline fallback for one section of a screen (the rest of the screen keeps working). */
+  compact?: boolean;
 }
 
 interface State {
@@ -24,6 +26,18 @@ export default class ErrorBoundary extends Component<Props, State> {
   };
 
   render() {
+    if (this.state.hasError && this.props.compact) {
+      return (
+        <div role="alert" className="rounded-2xl border border-destructive/15 bg-destructive/5 px-4 py-3 flex items-center gap-3">
+          <AlertTriangle className="w-4 h-4 text-destructive/80 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-foreground">{this.props.fallbackTitle || 'This section could not load'}</p>
+            {this.state.error && <p className="text-[10px] text-muted-foreground/60 font-mono truncate">{this.state.error.message}</p>}
+          </div>
+          <Button variant="outline" size="sm" onClick={this.handleRetry} className="h-8 px-3 text-[11px] rounded-xl gap-1"><RefreshCw className="w-3 h-3" /> Retry</Button>
+        </div>
+      );
+    }
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center py-16 px-6 text-center gap-5">

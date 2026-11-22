@@ -70,3 +70,42 @@ test('trend "studied" vs "completed" topics are both derived from the same rules
   assert.equal(a.completionsOn(t2, D0), 0);
   assert.equal(a.completionsOn(t1, D0), 2);        // main completion + R1 revision
 });
+
+test('timer sessions saved from Add Study Time carry the activity and stay mirrors of their topic entry', async () => {
+  const sl = await loadTs('src/lib/studySlices.ts');
+  const act = await loadTs('src/lib/activities.ts');
+  assert.equal(sl.isTimerSession('[Stopwatch · MCQ] Heart'), true);
+  assert.equal(sl.isIndependentSession({ description: '[Countdown · Lecture] Heart' }), false);
+  assert.equal(act.activityLabel('[Stopwatch · MCQ] Heart'), 'MCQ');
+  assert.equal(act.activityLabel('[Stopwatch] Heart'), 'Stopwatch');
+  assert.equal(act.activityLabel('[Self-Study] Other'), 'Self-Study');
+  assert.equal(act.activityLabel('plain note'), null);
+  assert.equal(act.stripActivityTag('[Self-Study] Other'), 'Other');
+});
+
+test('cached index equals a fresh index and is reused for the same data', async () => {
+  const sl = await loadTs('src/lib/studySlices.ts');
+  const { subs, sessions } = world();
+  const a = sl.getDayIndex(subs, [], sessions);
+  const b = sl.getDayIndex(subs, [], sessions);
+  assert.equal(a, b);                                   // same snapshot → same object (O(1) lookups)
+  const fresh = sl.indexStudyDays(subs, [], sessions, {});
+  assert.equal(a.get(D0).total, fresh.get(D0).total);
+  assert.notEqual(sl.getDayIndex(subs, [], [...sessions]), a); // new data array → rebuilt
+  assert.ok(sl.getDayIndex(subs, [], sessions, true).get(D0).slices.length > 0);
+});
+
+test('a free timer session (no topic) is counted once as session time', async () => {
+  const u = await loadTs('src/lib/utils.ts');
+  const { subs } = world();
+  const free = [{ id: 'f1', date: D0, minutes: 20, type: 'Other', subjectId: 's1', description: '[Stopwatch · MCQ] FON' }];
+  assert.equal(u.getEffectiveDayMinutes(subs, [], D0, free), 30 + 10 + 25 + 5 + 20);
+});
+
+test('deleting a topic time entry does not resurrect its leftover timer session', async () => {
+  const u = await loadTs('src/lib/utils.ts');
+  const t = topic({ id: 'tZ', completed: true, completedDate: D0, timeSpent: 0, timeEntries: [] });
+  const subs = [subject([t])];
+  const orphan = [{ id: 'o1', date: D0, minutes: 46, type: 'Topic', topicId: 'tZ', subjectId: 's1', description: '[Stopwatch] Z' }];
+  assert.equal(u.getEffectiveDayMinutes(subs, [], D0, orphan), 0);
+});

@@ -35,6 +35,8 @@ export interface TimerSessionData {
   topicId?: string;
   /** Set when the time was studied as a revision round (R1–R4) of `topicId`. */
   revisionKey?: RevisionKey;
+  /** Activity picked in Add Study Time (MCQ, Lecture …) — shown on the saved session. */
+  activity?: string;
   subjectName?: string;
   topicName?: string;
   note?: string;
@@ -67,6 +69,8 @@ export interface GlobalTimerState {
   topicId: string;
   /** '' = main topic study; R1–R4 = the running session is a revision of that round. */
   revisionKey: '' | RevisionKey;
+  /** '' = none; otherwise the activity label the session is saved with (MCQ, Lecture …). */
+  activity: string;
   topicName: string;
   subjectName: string;
   note: string;
@@ -96,7 +100,7 @@ export interface GlobalTimerActions {
   selectPreset: (mins: number) => void;
   setCustomMinutes: (v: number) => void;
   applyCustom: () => void;
-  linkTopic: (sId: string, uId: string, tId: string, tName: string, sName: string, revisionKey?: '' | RevisionKey) => void;
+  linkTopic: (sId: string, uId: string, tId: string, tName: string, sName: string, revisionKey?: '' | RevisionKey, activity?: string) => void;
   setSubjectId: (id: string) => void;
   setUnitId: (id: string) => void;
   setTopicId: (id: string, name?: string) => void;
@@ -133,6 +137,7 @@ export interface TimerCore {
   unitId: string;
   topicId: string;
   revisionKey: '' | RevisionKey;
+  activity: string;
   topicName: string;
   subjectName: string;
   note: string;
@@ -189,7 +194,7 @@ function defaultCore(s: PomodoroSettings): TimerCore {
     appMode: 'countdown', phase: 'focus', cycle: false, focusDuration: s.focusMin, countdownMin: s.focusMin, customMinutes: s.focusMin, sessions: 0,
     cdRunning: false, cdEndAt: 0, cdRemMs: s.focusMin * 60_000,
     swRunning: false, swStartAt: 0, swElapsedMs: 0,
-    subjectId: '', unitId: '', topicId: '', revisionKey: '', topicName: '', subjectName: '', note: '',
+    subjectId: '', unitId: '', topicId: '', revisionKey: '', activity: '', topicName: '', subjectName: '', note: '',
     sessionStartedAt: 0, lastLoggedEnd: 0,
   };
 }
@@ -218,6 +223,7 @@ function loadCore(s: PomodoroSettings): TimerCore {
       swElapsedMs: Math.max(0, num(p.swElapsedMs, 0)),
       subjectId: str(p.subjectId), unitId: str(p.unitId), topicId: str(p.topicId),
       revisionKey: (REV_KEYS as string[]).includes(str(p.revisionKey)) ? (p.revisionKey as RevisionKey) : '',
+      activity: str(p.activity).slice(0, 40),
       topicName: str(p.topicName), subjectName: str(p.subjectName), note: str(p.note),
       sessionStartedAt: num(p.sessionStartedAt, 0), lastLoggedEnd: num(p.lastLoggedEnd, 0),
     };
@@ -283,7 +289,7 @@ export function useGlobalTimer(
         ? !c.swRunning && c.swElapsedMs > 0
         : !c.cdRunning && c.cdRemMs < phaseMs(c),
       focusDuration: c.focusDuration, customMinutes: c.customMinutes, sessions: c.sessions,
-      subjectId: c.subjectId, unitId: c.unitId, topicId: c.topicId, revisionKey: c.revisionKey, topicName: c.topicName, subjectName: c.subjectName,
+      subjectId: c.subjectId, unitId: c.unitId, topicId: c.topicId, revisionKey: c.revisionKey, activity: c.activity, topicName: c.topicName, subjectName: c.subjectName,
       note: c.note, sessionStartedAt: c.sessionStartedAt,
     });
 
@@ -328,6 +334,7 @@ export function useGlobalTimer(
         minutes, seconds, mode: c.appMode, cycle: isCycleCore(c) || undefined, startedAt, endedAt,
         subjectId: c.subjectId || undefined, unitId: c.unitId || undefined, topicId: c.topicId || undefined,
         revisionKey: c.topicId && c.revisionKey ? c.revisionKey : undefined,
+        activity: c.activity || undefined,
         subjectName: c.subjectName || undefined, topicName: c.topicName || undefined,
         note: c.note.trim() || undefined,
       };
@@ -532,17 +539,18 @@ export function useGlobalTimer(
         c.cdRemMs = phaseMs(c);
         commit();
       },
-      linkTopic: (sId, uId, tId, tName, sName, revisionKey = '') => {
+      linkTopic: (sId, uId, tId, tName, sName, revisionKey = '', activity = '') => {
         const c = core();
         c.subjectId = sId; c.unitId = uId; c.topicId = tId; c.topicName = tName; c.subjectName = sName;
         c.revisionKey = tId ? revisionKey : '';
+        c.activity = activity;
         commit();
       },
-      setSubjectId: (id) => { const c = core(); c.subjectId = id; c.unitId = ''; c.topicId = ''; c.revisionKey = ''; c.topicName = ''; commit(); },
+      setSubjectId: (id) => { const c = core(); c.subjectId = id; c.unitId = ''; c.topicId = ''; c.revisionKey = ''; c.activity = ''; c.topicName = ''; commit(); },
       setUnitId: (id) => { const c = core(); c.unitId = id; c.topicId = ''; c.revisionKey = ''; c.topicName = ''; commit(); },
       setTopicId: (id, name) => { const c = core(); if (c.topicId !== id) c.revisionKey = ''; c.topicId = id; if (name) c.topicName = name; commit(); },
       setSubjectName: (n) => { const c = core(); c.subjectName = n; commit(); },
-      clearLink: () => { const c = core(); c.subjectId = ''; c.unitId = ''; c.topicId = ''; c.revisionKey = ''; c.topicName = ''; c.subjectName = ''; commit(); },
+      clearLink: () => { const c = core(); c.subjectId = ''; c.unitId = ''; c.topicId = ''; c.revisionKey = ''; c.activity = ''; c.topicName = ''; c.subjectName = ''; commit(); },
       setNote: (n) => { const c = core(); c.note = n.slice(0, 500); commit(); },
 
       toggleTimer: () => actions.toggle(),

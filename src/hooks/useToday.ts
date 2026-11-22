@@ -1,24 +1,13 @@
-import { useRef } from 'react';
-import { useClock } from './useClock';
+import { useClockSelector } from './useClock';
 import { getLocalDateStr } from '../lib/utils';
 
 /**
- * Returns the current local date string (YYYY-MM-DD).
+ * The current local date (YYYY-MM-DD).
  *
- * Derives from the shared `useClock()` (ticks every second + on tab
- * refocus).  The returned string only changes when the local calendar
- * date actually changes (midnight rollover, timezone shift, DST, or
- * app resume after sleeping through midnight), so downstream memos
- * keyed on `today` won't recompute every second.
+ * Subscribes to the shared clock through a selector, so a component using this re-renders ONLY when the
+ * calendar date changes (midnight, timezone / DST shift, resume after sleeping through midnight) — not
+ * every second. (It used to re-render the whole Home dashboard once per second.)
  */
 export function useToday(): string {
-  const now = useClock();
-  const ref = useRef(getLocalDateStr(now));
-
-  const next = getLocalDateStr(now);
-  if (next !== ref.current) {
-    ref.current = next;
-  }
-
-  return ref.current;
+  return useClockSelector(getLocalDateStr);
 }

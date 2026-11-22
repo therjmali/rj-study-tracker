@@ -21,6 +21,12 @@ interface Props {
   month: number;
 }
 
+const TrendIcon = ({ val }: { val: number }) => {
+  if (val > 0) return <TrendingUp className="w-3 h-3 text-diff-easy" />;
+  if (val < 0) return <TrendingDown className="w-3 h-3 text-destructive" />;
+  return <Minus className="w-3 h-3 text-muted-foreground" />;
+};
+
 export default function CalendarAnalysis({ subjects, dailyLogs, dbSessions, dateMap, rangeFrom, rangeTo, year, month }: Props) {
   const [expanded, setExpanded] = useState(true);
 
@@ -130,12 +136,6 @@ export default function CalendarAnalysis({ subjects, dailyLogs, dbSessions, date
       productivityScore,
     };
   }, [dateMap, dailyLogs, rangeFrom, rangeTo, subjects, dbSessions]);
-
-  const TrendIcon = ({ val }: { val: number }) => {
-    if (val > 0) return <TrendingUp className="w-3 h-3 text-diff-easy" />;
-    if (val < 0) return <TrendingDown className="w-3 h-3 text-destructive" />;
-    return <Minus className="w-3 h-3 text-muted-foreground" />;
-  };
 
   const trendColor = (val: number) => val > 0 ? 'text-diff-easy' : val < 0 ? 'text-destructive' : 'text-muted-foreground';
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 
 /* ── Shared singleton clock ──────────────────────────────────────────
    One setInterval(1 s) drives all subscribers.
@@ -63,4 +63,31 @@ export function useClock(): Date {
     need the current time without subscribing to updates. */
 export function getNow(): Date {
   return currentTime;
+}
+
+/**
+ * Subscribe to the shared clock WITHOUT re-rendering every second: the component re-renders only when the
+ * value picked by `select` changes (a date string → once a day, a minute string → once a minute …).
+ * Use this instead of `useClock()` whenever you only need a coarse value derived from the time.
+ */
+export function useClockSelector<T extends string | number | boolean>(select: (d: Date) => T): T {
+  return useSyncExternalStore(
+    (onChange) => {
+      const listener = () => onChange();
+      listeners.add(listener);
+      if (listeners.size === 1) {
+        startClock();
+        document.addEventListener('visibilitychange', handleVisibility);
+      }
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size === 0) {
+          stopClock();
+          document.removeEventListener('visibilitychange', handleVisibility);
+        }
+      };
+    },
+    () => select(currentTime),
+    () => select(currentTime),
+  );
 }

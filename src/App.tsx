@@ -1277,13 +1277,13 @@ function AppInner() {
     });
   }, [appState.subjects, updateSubjects, addHistoryEntries, saveTopicToCloud, globalTopicDetail]);
 
-  const handlePomodoroComplete_inner = useCallback((data: { minutes: number; subjectId?: string; unitId?: string; topicId?: string; revisionKey?: import('./types').RevisionKey; mode?: 'pomodoro' | 'countdown' | 'stopwatch'; cycle?: boolean; startedAt?: number; endedAt?: number; note?: string }) => {
+  const handlePomodoroComplete_inner = useCallback((data: { minutes: number; subjectId?: string; unitId?: string; topicId?: string; revisionKey?: import('./types').RevisionKey; activity?: string; mode?: 'pomodoro' | 'countdown' | 'stopwatch'; cycle?: boolean; startedAt?: number; endedAt?: number; note?: string }) => {
     const { minutes, subjectId, unitId, topicId } = data;
     const revKey = topicId ? data.revisionKey : undefined;
     const sessionEnd = new Date(data.endedAt || Date.now());
     const sessionStart = new Date(data.startedAt || sessionEnd.getTime() - minutes * 60_000);
     const today = getLocalDateStr(sessionEnd);
-    const modeTag = data.mode === 'stopwatch' ? 'Stopwatch' : 'Countdown';
+    const modeTag = (data.mode === 'stopwatch' ? 'Stopwatch' : 'Countdown') + (data.activity ? ` · ${data.activity}` : '');
 
     // Find subject/topic names for the session
     const subject = subjectId ? appState.subjects.find(s => s.id === subjectId) : undefined;

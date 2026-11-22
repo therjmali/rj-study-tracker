@@ -5,7 +5,7 @@ import type { Subject, SubTopic, DailyLog, DbStudySession } from '../../types';
 import { getLocalDateStr, formatStudyHours, formatStudyTime, getEffectiveDayMinutes, normalizeSubjectId, readableInk } from '../../lib/utils';
 import { useToday } from '../../hooks/useToday';
 import { revisionCompletions, revisionMinutesOn } from '../../lib/topicActivity';
-import { indexStudyDays } from '../../lib/studySlices';
+import { getDayIndex } from '../../lib/studySlices';
 interface Props {
   subjects: Subject[];
   dailyLogs: DailyLog[];
@@ -471,7 +471,7 @@ export default function DayByDayTimeline({ subjects, dailyLogs, dbSessions, onOp
 
       // ONE engine (lib/studySlices) decides which minutes belong to this day — the same slices the day card, Trend and
       // Study Rhythm use — so every subject row below adds up to the day's total.
-      const dayAgg = indexStudyDays(filteredSubjects as any, dailyLogs, dbSessions as any, { from: dateStr, to: dateStr, slices: true }).get(dateStr);
+      const dayAgg = getDayIndex(filteredSubjects as any, dailyLogs, dbSessions as any, true).get(dateStr);
       const sliceTotalBySubject = new Map<string, number>();
       const sessionTimeBySubject = new Map<string, number>();
       const allSessionTimeBySubject = new Map<string, number>();

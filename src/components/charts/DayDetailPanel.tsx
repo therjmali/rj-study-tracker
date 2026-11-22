@@ -1,20 +1,22 @@
 import FitText from '../shared/FitText';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  BookOpen, Clock, ListChecks, Plus, Pencil,
+  BookOpen, ListChecks, Plus,
   Sparkles, SmilePlus, Save, StickyNote,
-  CalendarDays, X, Timer, Check, Edit2, Trash2,
-  Copy, ArrowRightLeft, ChevronDown, ChevronUp,
-  Layers, AlertCircle, Star, Filter, ChevronLeft, ChevronRight, Repeat, CheckCircle2
+  CalendarDays, X, Timer, Check, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import { toast } from 'sonner';
 import TodoList from '../calendar/TodoList';
 import AddStudyTimeForm from '../calendar/AddStudyTimeForm';
+import StudyTimeSection from './StudyTimeSection';
+import ErrorBoundary from '../shared/ErrorBoundary';
+import type { DaySession } from './StudyTimeSection';
+import SessionEditSheet from '../sessions/SessionEditSheet';
+import type { SessionChanges } from '../sessions/SessionEditSheet';
 import type { Subject, SubTopic, DailyLog, DbStudySession, RevisionKey } from '../../types';
-import { formatDate, formatStudyTime, getEffectiveDayMinutes, getDayStudyBreakdown, getLocalDateStr, readableInk } from '../../lib/utils';
-import { indexStudyDays } from '../../lib/studySlices';
+import { formatStudyTime, getEffectiveDayMinutes, getLocalDateStr } from '../../lib/utils';
 import type { TodoItem } from '../../hooks/useTodos';
 import BottomSheet from '../shared/BottomSheet';
 import {
@@ -105,6 +107,8 @@ interface Props {
   dbSessions?: DbStudySession[];
 }
 
+const EMPTY_TOPICS: CalendarTopicInfo[] = [];
+
 export default function DayDetailPanel({
   selectedDate, subjects, dailyLogs, dateMap, logMap, onClose, onChangeDate,
   onUpdateMood, onUpdateLogs, onOpenTopicDetail, onNavigateToCalendar,
@@ -115,7 +119,7 @@ export default function DayDetailPanel({
   const today = getLocalDateStr();
   const dayLog = logMap[selectedDate];
   const data = dateMap[selectedDate];
-  const topics = data?.topics || [];
+  const topics = data?.topics || EMPTY_TOPICS;
   const topicCount = topics.length;
   const effMins = getEffectiveDayMinutes(subjects, dailyLogs, selectedDate, dbSessions);
   const dateTodos = getTodosForDate(selectedDate);
@@ -159,16 +163,6 @@ export default function DayDetailPanel({
     return merged;
   }, [dbSessions, dayLog, selectedDate, subjects]);
 
-  const groupedTopics = useMemo(() => {
-    const map: Record<string, { subjectName: string; subjectColor: string; subjectId: string; units: Record<string, { unitName: string; unitId: string; topics: CalendarTopicInfo[] }> }> = {};
-    topics.forEach(t => {
-      if (!map[t.subjectName]) map[t.subjectName] = { subjectName: t.subjectName, subjectColor: t.subjectColor, subjectId: t.subjectId, units: {} };
-      if (!map[t.subjectName].units[t.unitName]) map[t.subjectName].units[t.unitName] = { unitName: t.unitName, unitId: t.unitId, topics: [] };
-      map[t.subjectName].units[t.unitName].topics.push(t);
-    });
-    return Object.values(map);
-  }, [topics]);
-
   const motivationalQuote = useMemo(() => MOTIVATIONAL[Math.floor(Math.random() * MOTIVATIONAL.length)], [selectedDate]);
 
   // Mood state
@@ -178,12 +172,9 @@ export default function DayDetailPanel({
   const [calNoteText, setCalNoteText] = useState(calendarNotes[selectedDate] || '');
   const [moodDirty, setMoodDirty] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [expandedSessId, setExpandedSessId] = useState<string | null>(null);
   const [editingSess, setEditingSess] = useState<typeof manualSessions[0] | null>(null);
   const [deleteSessTarget, setDeleteSessTarget] = useState<typeof manualSessions[0] | null>(null);
   const [moveSess, setMoveSess] = useState<typeof manualSessions[0] | null>(null);
-  const [sessFilter, setSessFilter] = useState<'all' | 'topics' | 'revision' | 'sessions' | 'subject'>('all');
-  const [sessFilterVal, setSessFilterVal] = useState('');
   const undoSessRef = useRef<{ timer: ReturnType<typeof setTimeout> } | null>(null);
   useEffect(() => {
     setMoodVal(logMap[selectedDate]?.mood);
@@ -191,10 +182,7 @@ export default function DayDetailPanel({
     setCalNoteText(calendarNotes[selectedDate] || '');
     setMoodDirty(false);
     setShowAddForm(false);
-    setExpandedSessId(null);
     setEditingSess(null);
-    setSessFilter('all');
-    setSessFilterVal('');
   }, [selectedDate]);
 
   const handleMoodSelect = (m: DailyLog['mood']) => { setMoodVal(m); setMoodDirty(true); };
@@ -209,13 +197,13 @@ export default function DayDetailPanel({
     toast.success('Saved');
   };
 
-  const handleEditTopic = (t: CalendarTopicInfo) => {
+  const handleEditTopic = useCallback((t: CalendarTopicInfo) => {
     if (!onOpenTopicDetail) return;
     const s = subjects.find(x => x.id === t.subjectId);
     const u = s?.units.find(x => x.id === t.unitId);
     const topic = u?.subTopics.find(x => x.id === t.topicId);
     if (topic) onOpenTopicDetail(topic, t.subjectId, t.unitId);
-  };
+  }, [subjects, onOpenTopicDetail]);
 
   /* ── session helpers ── */
   function extractAct(desc?: string): string | null {
@@ -253,13 +241,14 @@ export default function DayDetailPanel({
     toast.success(`Moved to ${sub.shortName}`);
   }, [onUpdateSession, subjects]);
 
-  const handleSaveSessEdit = useCallback((updated: { subjectId: string; subjectName: string; durationMinutes: number; description: string; startTime: string; endTime?: string; note?: string; _activity: string }) => {
+  /** Saved from the shared editor — it already asked the user to confirm. A changed date moves the session to that day. */
+  const handleSaveSessEdit = useCallback((changes: SessionChanges) => {
     if (onUpdateSession && editingSess) {
-      onUpdateSession(editingSess.id, { minutes: updated.durationMinutes, subjectId: updated.subjectId, subjectName: updated.subjectName, description: updated.description, startTime: updated.startTime, endTime: updated.endTime, note: updated.note });
+      onUpdateSession(editingSess.id, changes);
+      toast.success(changes.date !== selectedDate ? 'Session moved & updated' : 'Session updated');
     }
     setEditingSess(null);
-    toast.success('Session updated');
-  }, [onUpdateSession, editingSess]);
+  }, [onUpdateSession, editingSess, selectedDate]);
 
   const dateLabel = (() => {
     const d = new Date(selectedDate + 'T12:00:00');
@@ -385,254 +374,21 @@ export default function DayDetailPanel({
       {/* ════════════════════════════════════════════════════
           3) STUDY TIME — Topic Time vs Session Time
          ════════════════════════════════════════════════════ */}
-      {(() => {
-        // ONE engine (lib/studySlices): topic + revision + unit entries and every session that is not the timer's
-        // mirror — so this card, the summary tile above and every chart always show the same minutes.
-        const bd = getDayStudyBreakdown(subjects, selectedDate, dbSessions || [], dailyLogs);
-        const dayIdx = indexStudyDays(subjects as any, dailyLogs, dbSessions as any, { from: selectedDate, to: selectedDate, slices: true }).get(selectedDate);
-        const countedSessionIds = new Set((dayIdx?.slices || []).filter(sl => sl.kind === 'session' && sl.sessionId).map(sl => sl.sessionId as string));
-        const sessionOnly = manualSessions.filter(s => s.id && countedSessionIds.has(s.id));
-        const sessionMinsVal = sessionOnly.reduce((a, s) => a + s.durationMinutes, 0);
-        const mainRows = topics.filter(t => !t.revision);
-        const revRows = topics.filter(t => t.revision);
-        const topicMins = bd.topicMins, revisionMins = bd.revisionMins;
-        const allMins = bd.totalMins;
-        const rounds = (['R1', 'R2', 'R3', 'R4'] as RevisionKey[]).map(k => ({ k, rows: revRows.filter(t => t.revision === k) })).filter(r => r.rows.length > 0);
-
-        // Subject grouping — combine both topic records and session records
-        const subjectMap: Record<string, { name: string; color: string; topicMins: number; sessionMins: number; topics: CalendarTopicInfo[]; sessions: typeof sessionOnly }> = {};
-        topics.forEach(t => {
-          const key = t.subjectId || 'general';
-          if (!subjectMap[key]) subjectMap[key] = { name: t.subjectName, color: t.subjectColor, topicMins: 0, sessionMins: 0, topics: [], sessions: [] };
-          subjectMap[key].topicMins += t.timeSpent || 0;
-          subjectMap[key].topics.push(t);
-        });
-        sessionOnly.forEach(s => {
-          const key = s.subjectId || 'general';
-          const sub = subjects.find(x => x.id === key);
-          if (!subjectMap[key]) subjectMap[key] = { name: sub?.shortName || s.subjectName || 'Other', color: sub?.color || 'hsl(var(--foreground))', topicMins: 0, sessionMins: 0, topics: [], sessions: [] };
-          subjectMap[key].sessionMins += s.durationMinutes;
-          subjectMap[key].sessions.push(s);
-        });
-        const subjectGroups = Object.entries(subjectMap).sort((a, b) => (b[1].topicMins + b[1].sessionMins) - (a[1].topicMins + a[1].sessionMins));
-
-        const rowsMins = (rows: CalendarTopicInfo[]) => rows.reduce((a, t) => a + (t.timeSpent || 0), 0);
-        const roundSel = sessFilter === 'revision' && sessFilterVal ? sessFilterVal as RevisionKey : null;
-        const revisionShown = roundSel ? revRows.filter(t => t.revision === roundSel) : revRows;
-        const activeTotal = sessFilter === 'topics' ? topicMins
-          : sessFilter === 'revision' ? rowsMins(revisionShown)
-          : sessFilter === 'sessions' ? sessionMinsVal
-          : sessFilter === 'subject' && sessFilterVal ? (subjectMap[sessFilterVal]?.topicMins || 0) + (subjectMap[sessFilterVal]?.sessionMins || 0)
-          : allMins;
-        const hasRecords = topics.length > 0 || sessionOnly.length > 0;
-        // tapping the active chip again clears the filter (back to All)
-        const pick = (f: typeof sessFilter, v = '') => {
-          if (f !== 'all' && sessFilter === f && sessFilterVal === v) { setSessFilter('all'); setSessFilterVal(''); }
-          else { setSessFilter(f); setSessFilterVal(v); }
-        };
-
-        const groupRows = (rows: CalendarTopicInfo[]) => {
-          const map: Record<string, { subjectName: string; subjectColor: string; units: Record<string, { unitName: string; topics: CalendarTopicInfo[] }> }> = {};
-          rows.forEach(t => {
-            if (!map[t.subjectName]) map[t.subjectName] = { subjectName: t.subjectName, subjectColor: t.subjectColor, units: {} };
-            if (!map[t.subjectName].units[t.unitName]) map[t.subjectName].units[t.unitName] = { unitName: t.unitName, topics: [] };
-            map[t.subjectName].units[t.unitName].topics.push(t);
-          });
-          return Object.values(map);
-        };
-
-        /** One topic / revision row — revision rounds get their own amber badge, tint and a ✓ when the round was finished. */
-        const TopicRow = ({ t, color, idx }: { t: CalendarTopicInfo; color: string; idx: number }) => (
-          <motion.button onClick={() => handleEditTopic(t)}
-            initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.02 }}
-            className={`flex items-center gap-2 w-full text-left py-1.5 px-2.5 rounded-xl transition-all group active:scale-[0.99] ${t.revision ? 'bg-amber-500/[0.07] hover:bg-amber-500/12' : 'hover:bg-primary/5'}`}
-            style={{ borderLeftWidth: 3, borderLeftColor: t.revision ? 'hsl(38 92% 50%)' : color }}>
-            <span className="text-[10px] flex-1 truncate font-medium text-foreground group-hover:text-primary transition-colors">{t.revision ? t.topicName.replace(` · ${t.revision}`, '') : t.topicName}</span>
-            {t.revision ? (
-              <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-amber-500/18 text-amber-600 dark:text-amber-400 font-black shrink-0 flex items-center gap-0.5 border border-amber-500/25">
-                <Repeat className="w-2 h-2" />{t.revision}
-              </span>
-            ) : (
-              <span className="text-[7px] px-1 py-0.5 rounded bg-primary/8 text-primary font-bold shrink-0">Topic</span>
-            )}
-            {t.done && <CheckCircle2 className={`w-3 h-3 shrink-0 ${t.revision ? 'text-amber-500' : 'text-diff-easy'}`} aria-label="Done" />}
-            {t.timeSpent > 0 && <span className={`text-[9px] font-mono font-bold shrink-0 ${t.revision ? 'text-amber-600 dark:text-amber-400' : 'text-secondary'}`}>{formatStudyTime(t.timeSpent)}</span>}
-            {t.time && <span className="text-[8px] font-mono text-muted-foreground/50 shrink-0">{formatTime12h(t.time)}</span>}
-          </motion.button>
-        );
-
-        const GroupedList = ({ rows, header }: { rows: CalendarTopicInfo[]; header?: React.ReactNode }) => (
-          <div>
-            {header}
-            {groupRows(rows).map(subj => (
-              <div key={subj.subjectName}>
-                <div className="flex items-center gap-2 mb-1 px-1">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: subj.subjectColor }} />
-                  <span className="text-[9px] font-black uppercase tracking-wider" style={{ color: subj.subjectColor }}>{subj.subjectName}</span>
-                </div>
-                {Object.values(subj.units).map(unit => (
-                  <div key={unit.unitName} className="ml-3 mb-1.5">
-                    <p className="text-[8px] text-muted-foreground/50 font-bold mb-0.5 uppercase tracking-wider">{unit.unitName}</p>
-                    {unit.topics.map((t, idx) => <TopicRow key={`${t.topicId}|${t.revision || ''}|${idx}`} t={t} color={subj.subjectColor} idx={idx} />)}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        );
-
-        const SessionRow = ({ s, color, idx }: { s: typeof sessionOnly[0]; color: string; idx: number }) => {
-          const act = extractAct(s.description) || s.type || 'Other';
-          return (
-            <div key={s.id || idx} className="flex items-center gap-2 py-1.5 px-2.5 rounded-xl hover:bg-card/40 transition-colors"
-              style={{ borderLeftWidth: 3, borderLeftColor: color }}>
-              <span className="text-[10px] font-medium text-foreground flex-1 truncate">{s.subjectName || 'Study'}</span>
-              <span className="text-[7px] px-1 py-0.5 rounded bg-accent/10 text-accent font-bold shrink-0">{act}</span>
-              <span className="text-[9px] font-mono font-bold text-secondary shrink-0">{formatStudyTime(s.durationMinutes)}</span>
-              {s.startTime && <span className="text-[8px] font-mono text-muted-foreground/50 shrink-0">{formatTime12h(s.startTime as string)}</span>}
-            </div>
-          );
-        };
-
-        /** Total = Topic + Revision + Session, with a proportional bar so each kind of study is visible at a glance. */
-        const Breakdown = () => {
-          const parts = [
-            { key: 'topic', label: 'Topic', icon: '📖', mins: topicMins, bar: 'bg-primary', ink: 'text-primary' },
-            { key: 'rev', label: 'Revision', icon: '🔁', mins: revisionMins, bar: 'bg-amber-500', ink: 'text-amber-600 dark:text-amber-400' },
-            { key: 'sess', label: 'Session', icon: '⏱', mins: sessionMinsVal, bar: 'bg-accent', ink: 'text-accent' },
-          ];
-          return (
-            <div className="rounded-xl bg-secondary/5 border border-secondary/10 mt-1 px-2.5 py-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-muted-foreground">Total</span>
-                <span className="text-[11px] font-black font-mono text-secondary">{formatStudyTime(allMins)}</span>
-              </div>
-              {allMins > 0 && (
-                <div className="flex h-1.5 rounded-full overflow-hidden bg-muted/30 mt-1.5 gap-px" role="img" aria-label="Topic, revision and session time">
-                  {parts.filter(x => x.mins > 0).map(x => <div key={x.key} className={x.bar} style={{ width: `${(x.mins / allMins) * 100}%` }} />)}
-                </div>
-              )}
-              <div className="grid grid-cols-3 gap-1.5 mt-1.5">
-                {parts.map(x => (
-                  <div key={x.key} className={`rounded-lg px-1.5 py-1 text-center ${x.mins > 0 ? 'bg-card/50' : 'bg-card/20 opacity-50'}`}>
-                    <p className="text-[8px] font-bold text-muted-foreground/70 whitespace-nowrap">{x.icon} {x.label}</p>
-                    <p className={`text-[10px] font-black font-mono ${x.ink}`}>{x.mins > 0 ? formatStudyTime(x.mins) : '—'}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        };
-
-        return (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="rounded-2xl overflow-hidden border border-border/20 shadow-lg">
-            <div className="relative px-3.5 py-2.5 bg-gradient-to-r from-primary/12 via-secondary/8 to-accent/6 border-b border-border/10">
-              <div className="relative flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-primary/15 border border-primary/20 flex items-center justify-center">
-                  <BookOpen className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <span className="text-[11px] font-bold text-foreground uppercase tracking-wide flex-1">Study Time</span>
-                <span className="text-[10px] font-mono font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-lg">
-                  {formatStudyTime(activeTotal)}
-                </span>
-              </div>
-            </div>
-
-            {/* ── Filter tabs (wrap — never scroll sideways) ── */}
-            <div className="px-3 pt-2 pb-1.5 flex gap-1 flex-wrap border-b border-border/5">
-              <SessFilterPill active={sessFilter === 'all'} onClick={() => pick('all')} label="All" count={topics.length + sessionOnly.length} />
-              <SessFilterPill active={sessFilter === 'topics'} onClick={() => pick('topics')} label="📖 Topic" count={mainRows.length} />
-              {revRows.length > 0 && (
-                <SessFilterPill active={sessFilter === 'revision' && !sessFilterVal} onClick={() => pick('revision')} label="🔁 Revision" count={revRows.length} tone="amber" />
-              )}
-              {rounds.length > 0 && rounds.map(r => (
-                <SessFilterPill key={r.k} active={sessFilter === 'revision' && sessFilterVal === r.k}
-                  onClick={() => pick('revision', r.k)} label={r.k} count={r.rows.length} tone="amber" />
-              ))}
-              <SessFilterPill active={sessFilter === 'sessions'} onClick={() => pick('sessions')} label="⏱ Session" count={sessionOnly.length} />
-              {subjectGroups.length > 1 && subjectGroups.map(([id, g]) => (
-                <SessFilterPill key={id} active={sessFilter === 'subject' && sessFilterVal === id}
-                  onClick={() => pick('subject', id)} label={g.name} color={g.color} count={g.topics.length + g.sessions.length} />
-              ))}
-            </div>
-
-            <div className="bg-card/20 backdrop-blur-sm">
-              {hasRecords ? (
-                <div className="p-2.5 space-y-1.5 max-h-[420px] overflow-y-auto">
-                  {/* ── Topic + revision records ── */}
-                  {sessFilter === 'all' && topics.length > 0 && (
-                    <GroupedList rows={topics} header={<p className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 px-1 flex items-center gap-1"><BookOpen className="w-3 h-3" /> Topic &amp; Revision Time</p>} />
-                  )}
-                  {sessFilter === 'topics' && mainRows.length > 0 && (
-                    <div>
-                      <GroupedList rows={mainRows} />
-                      <div className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-primary/5 border border-primary/10 mt-1">
-                        <span className="text-[10px] font-bold text-muted-foreground">Topic Total</span>
-                        <span className="text-[10px] font-black font-mono text-primary">{formatStudyTime(topicMins)}</span>
-                      </div>
-                    </div>
-                  )}
-                  {sessFilter === 'revision' && (
-                    <div>
-                      {revisionShown.length > 0 ? <GroupedList rows={revisionShown} /> : <p className="text-[10px] text-muted-foreground/50 text-center py-3">No {roundSel || 'revision'} on this day</p>}
-                      <div className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-amber-500/8 border border-amber-500/20 mt-1">
-                        <span className="text-[10px] font-bold text-muted-foreground">{roundSel ? `${roundSel} Total` : 'Revision Total'}</span>
-                        <span className="text-[10px] font-black font-mono text-amber-600 dark:text-amber-400">{formatStudyTime(rowsMins(revisionShown))}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Divider between types in All view */}
-                  {sessFilter === 'all' && topics.length > 0 && sessionOnly.length > 0 && <div className="h-px bg-border/15 my-1" />}
-
-                  {/* ── Session records (Add Study Time, timer without a topic) ── */}
-                  {(sessFilter === 'all' || sessFilter === 'sessions') && sessionOnly.length > 0 && (
-                    <div>
-                      {sessFilter === 'all' && <p className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 px-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Session Time</p>}
-                      {sessionOnly.map((s, idx) => <SessionRow key={s.id || idx} s={s} color={s._color || 'hsl(var(--foreground))'} idx={idx} />)}
-                      {sessFilter === 'sessions' && (
-                        <div className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-accent/5 border border-accent/10 mt-1">
-                          <span className="text-[10px] font-bold text-muted-foreground">Session Total</span>
-                          <span className="text-[10px] font-black font-mono text-accent">{formatStudyTime(sessionMinsVal)}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* ── Subject view ── */}
-                  {sessFilter === 'subject' && sessFilterVal && (() => {
-                    const g = subjectMap[sessFilterVal];
-                    if (!g) return null;
-                    return (
-                      <div>
-                        <div className="flex items-center gap-2 mb-1.5 px-1">
-                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: g.color }} />
-                          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: readableInk(g.color) }}>{g.name}</span>
-                        </div>
-                        {g.topics.map((t, idx) => <TopicRow key={`${t.topicId}|${t.revision || ''}|${idx}`} t={t} color={g.color} idx={idx} />)}
-                        {g.sessions.map((s, idx) => <SessionRow key={s.id || idx} s={s} color={g.color} idx={idx} />)}
-                        <div className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-secondary/5 border border-secondary/10 mt-1">
-                          <span className="text-[10px] font-bold text-muted-foreground">{g.name} Total</span>
-                          <span className="text-[10px] font-black font-mono text-secondary">{formatStudyTime(g.topicMins + g.sessionMins)}</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Footer total for All view: Topic + Revision + Session */}
-                  {sessFilter === 'all' && <Breakdown />}
-                </div>
-              ) : (
-                <div className="py-6 text-center">
-                  <BookOpen className="w-6 h-6 text-muted-foreground/15 mx-auto mb-2" />
-                  <p className="text-[11px] text-muted-foreground/50">No study time recorded</p>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        );
-      })()}
+      {/* Study Time: topics, revisions and sessions — one engine, tap a session to edit / duplicate / delete */}
+      <ErrorBoundary compact fallbackTitle="Study Time could not load" key={selectedDate}>
+      <StudyTimeSection
+        selectedDate={selectedDate}
+        subjects={subjects}
+        dailyLogs={dailyLogs}
+        dbSessions={dbSessions}
+        topics={topics}
+        manualSessions={manualSessions as DaySession[]}
+        onOpenTopic={handleEditTopic}
+        onEditSession={setEditingSess as any}
+        onDuplicateSession={handleDuplicateSess as any}
+        onDeleteSession={setDeleteSessTarget as any}
+      />
+      </ErrorBoundary>
 
       {/* ════════════════════════════════════════════════════
           5) ADD TIME — opens form directly, no intermediate state
@@ -646,10 +402,12 @@ export default function DayDetailPanel({
             </button>
           ) : (
             <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}>
-              <AddStudyTimeForm date={selectedDate} subjects={subjects} dailyLogs={dailyLogs}
-                onUpdateLogs={onUpdateLogs} onCreateSession={onCreateSession}
-                onUpdateSession={onUpdateSession} onDeleteSession={onDeleteSession}
-                dbSessions={dbSessions} skipCollapsedHeader />
+              <ErrorBoundary compact fallbackTitle="Add Study Time could not load">
+                <AddStudyTimeForm date={selectedDate} subjects={subjects} dailyLogs={dailyLogs}
+                  onUpdateLogs={onUpdateLogs} onCreateSession={onCreateSession}
+                  onUpdateSession={onUpdateSession} onDeleteSession={onDeleteSession}
+                  dbSessions={dbSessions} skipCollapsedHeader />
+              </ErrorBoundary>
               <button onClick={() => setShowAddForm(false)}
                 className="w-full py-2 mt-1 text-[10px] font-bold text-muted-foreground/40 hover:text-muted-foreground transition-colors text-center">
                 ▲ Collapse
@@ -731,8 +489,9 @@ export default function DayDetailPanel({
 
       {/* ── Session Edit Sheet ── */}
       {editingSess && (
-        <SessEditSheet
-          session={editingSess}
+        <SessionEditSheet
+          key={editingSess.id}
+          session={{ ...editingSess, date: selectedDate }}
           subjects={subjects}
           onSave={handleSaveSessEdit}
           onClose={() => setEditingSess(null)}
@@ -783,87 +542,6 @@ function SummaryCard({ icon, iconColor, bgColor, value, label, sub }: {
       <span className="text-[9px] text-muted-foreground font-semibold mt-1">{label}</span>
       {sub && <span className="text-[8px] text-muted-foreground/60 font-mono">{sub}</span>}
     </motion.div>
-  );
-}
-
-function SessFilterPill({ active, onClick, label, count, color, tone }: {
-  active: boolean; onClick: () => void; label: string; count?: number; color?: string; tone?: 'amber';
-}) {
-  return (
-    <button onClick={onClick}
-      className={`text-[8px] font-bold px-2 py-1 rounded-full border transition-all flex items-center gap-1 active:scale-95 ${
-        active
-          ? (tone === 'amber' ? 'bg-amber-500/18 border-amber-500/40 text-amber-600 dark:text-amber-400 shadow-[0_0_6px_hsl(38_92%_50%/0.2)]' : 'bg-primary/15 border-primary/25 text-primary shadow-[0_0_6px_hsl(var(--primary)/0.15)]')
-          : (tone === 'amber' ? 'bg-amber-500/[0.06] border-amber-500/20 text-amber-600/70 dark:text-amber-400/70 hover:border-amber-500/40' : 'bg-card/30 border-border/15 text-muted-foreground/60 hover:border-border/30')
-      }`}>
-      {color && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />}
-      <span className="truncate max-w-[60px]">{label}</span>
-      {count !== undefined && <span className="opacity-60">{count}</span>}
-    </button>
-  );
-}
-
-const SESS_ACTIVITIES = ['MCQ', 'Self-Study', 'Lecture', 'Seminar', 'Revision', 'Practice', 'Video', 'Other'];
-
-function SessEditSheet({ session, subjects, onSave, onClose }: {
-  session: any; subjects: Subject[];
-  onSave: (u: any) => void; onClose: () => void;
-}) {
-  const [subId, setSubId] = useState(session.subjectId || '');
-  const extractAct = (desc?: string): string => { if (!desc) return 'Self-Study'; const m = desc.match(/^\[([^\]]+)\]/); return m ? m[1] : 'Self-Study'; };
-  const [activity, setActivity] = useState(extractAct(session.description));
-  const [startTime, setStartTime] = useState((session.startTime || '09:00').toString().slice(0, 5));
-  const [endTime, setEndTime] = useState((session.endTime || '').toString().slice(0, 5));
-  const [durMins, setDurMins] = useState(session.durationMinutes || 30);
-  const [note, setNote] = useState(session.note || '');
-
-  const save = () => {
-    const sub = subjects.find(s => s.id === subId);
-    onSave({ subjectId: subId, subjectName: sub?.shortName || session.subjectName || 'Study', durationMinutes: durMins, description: `[${activity}] ${sub?.shortName || session.subjectName || 'Study'}`, startTime, endTime: endTime || undefined, note: note.trim() || undefined, _activity: activity });
-  };
-
-  return (
-    <BottomSheet open onClose={onClose} title="✏️ Edit Session">
-      <div className="space-y-4 pt-2">
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">Subject</p>
-          <select value={subId} onChange={e => setSubId(e.target.value)} className="w-full h-9 text-xs rounded-xl border border-border bg-card px-3">
-            <option value="">General</option>
-            {subjects.map(s => <option key={s.id} value={s.id}>{s.shortName} — {s.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground mb-2">Activity</p>
-          <div className="flex gap-1.5 flex-wrap">
-            {SESS_ACTIVITIES.map(a => (
-              <button key={a} onClick={() => setActivity(a)}
-                className={`text-[10px] font-bold px-2.5 py-1.5 rounded-xl border transition-all ${
-                  activity === a ? 'bg-primary/15 border-primary/30 text-primary' : 'bg-card/30 border-border/15 text-muted-foreground'
-                }`}>{a}</button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-2">Duration</p>
-          <div className="flex items-center justify-center gap-4">
-            <button onClick={() => setDurMins(Math.max(5, durMins - 15))} className="w-10 h-10 rounded-xl bg-card/60 border border-border/20 flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-destructive/10 active:scale-90 transition-all">−</button>
-            <span className="font-display-digit text-3xl font-black text-foreground min-w-[80px] text-center">{Math.floor(durMins / 60)}h {String(durMins % 60).padStart(2, '0')}m</span>
-            <button onClick={() => setDurMins(durMins + 15)} className="w-10 h-10 rounded-xl bg-card/60 border border-border/20 flex items-center justify-center text-lg font-bold text-muted-foreground hover:bg-secondary/10 active:scale-90 transition-all">+</button>
-          </div>
-          <div className="flex justify-center gap-1.5 mt-2 flex-wrap">
-            {[15, 30, 45, 60, 90, 120].map(m => (
-              <button key={m} onClick={() => setDurMins(m)} className={`text-[9px] font-bold px-2.5 py-1 rounded-full border transition-all ${durMins === m ? 'bg-primary/15 border-primary/30 text-primary' : 'bg-card/30 border-border/15 text-muted-foreground'}`}>{m >= 60 ? `${m / 60}h` : `${m}m`}</button>
-            ))}
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><p className="text-xs text-muted-foreground mb-1">Start</p><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full h-9 text-xs rounded-xl border border-border bg-card px-3" /></div>
-          <div><p className="text-xs text-muted-foreground mb-1">End</p><input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full h-9 text-xs rounded-xl border border-border bg-card px-3" /></div>
-        </div>
-        <div><p className="text-xs text-muted-foreground mb-1">Notes</p><input value={note} onChange={e => setNote(e.target.value)} placeholder="Study notes…" className="w-full h-9 text-xs rounded-xl border border-border bg-card px-3" /></div>
-        <Button onClick={save} className="w-full h-10 text-sm font-semibold gap-2 rounded-xl"><Check className="w-4 h-4" /> Update Session</Button>
-      </div>
-    </BottomSheet>
   );
 }
 

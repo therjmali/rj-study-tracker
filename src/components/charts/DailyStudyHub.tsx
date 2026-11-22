@@ -1,6 +1,6 @@
 import FitText from '../shared/FitText';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Flame, CalendarRange, Check } from 'lucide-react';
 import GlowCard from '../shared/GlowCard';
@@ -47,6 +47,18 @@ interface Props {
   studyGoals?: StudyGoals;
   dbSessions?: DbStudySession[];
 }
+
+/** Module-level (NOT inside the hub's render): a component declared inside render is a new type each time, so React
+    remounts it on every update and its auto-fit text re-measures — the numbers visibly flickered. */
+const Kpi = memo(function Kpi({ label, value, sub, tone }: { label: string; value: ReactNode; sub: string; tone?: string }) {
+  return (
+    <div className="rounded-xl border border-border/10 bg-card/35 px-2.5 py-2.5 min-w-0">
+      <FitText max={9} min={7} className="font-black uppercase tracking-[0.12em] text-muted-foreground/70">{label}</FitText>
+      <FitText max={22} min={11} className={`leading-tight font-black font-mono ${tone || 'text-foreground'}`}>{value}</FitText>
+      <FitText max={10} min={7.5} className="font-semibold text-muted-foreground">{sub}</FitText>
+    </div>
+  );
+});
 
 export default function DailyStudyHub({ subjects, dailyLogs, studyGoals, dbSessions }: Props) {
   const [open, setOpen] = useState(true);
@@ -161,14 +173,6 @@ export default function DailyStudyHub({ subjects, dailyLogs, studyGoals, dbSessi
   const rangeText = `${fmtShort(win.from)} – ${fmtShort(win.to)} · ${totalDays} ${totalDays === 1 ? 'day' : 'days'}`;
   
   const rhythmTopics = rhythm.topics.morning + rhythm.topics.afternoon + rhythm.topics.evening + rhythm.topics.night;
-
-  const Kpi = ({ label, value, sub, tone }: { label: string; value: ReactNode; sub: string; tone?: string }) => (
-    <div className="rounded-xl border border-border/10 bg-card/35 px-2.5 py-2.5 min-w-0">
-      <FitText max={9} min={7} className="font-black uppercase tracking-[0.12em] text-muted-foreground/70">{label}</FitText>
-      <FitText max={22} min={11} className={`leading-tight font-black font-mono ${tone || 'text-foreground'}`}>{value}</FitText>
-      <FitText max={10} min={7.5} className="font-semibold text-muted-foreground">{sub}</FitText>
-    </div>
-  );
 
   return (
     <GlowCard paper className="overflow-hidden">

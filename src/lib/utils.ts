@@ -1,5 +1,5 @@
 import { revisionMinutes, revisionMinutesOn, forEachRevisionEntry, completionsOn } from './topicActivity';
-import { indexStudyDays, undatedStudyMinutes, isIndependentSession } from './studySlices';
+import { indexStudyDays, getDayIndex, undatedStudyMinutes, isIndependentSession } from './studySlices';
 
 /** A Topic/Unit session that merely mirrors topic time (the timer's copy) — NOT one logged by hand via Add Study Time. */
 export function isOverlapSession(s: { type?: string; description?: string; topicId?: string }): boolean {
@@ -256,7 +256,7 @@ export function getEffectiveDayMinutes(
   dbSessions?: { date: string; minutes: number; type: string; topicId?: string; unitId?: string; description?: string }[],
 ): number {
   // One engine for every screen: topic + revision + unit entries + non-mirrored sessions (see studySlices.ts)
-  return indexStudyDays(subjects as any, dailyLogs, dbSessions as any, { from: dateStr, to: dateStr }).get(dateStr)?.total || 0;
+  return getDayIndex(subjects as any, dailyLogs, dbSessions as any).get(dateStr)?.total || 0;
 }
 
 /**
@@ -274,7 +274,7 @@ export function getDayStudyBreakdown(
   dbSessions: { date: string; minutes: number; type: string; topicId?: string; unitId?: string; description?: string }[],
   dailyLogs?: { date: string; hoursStudied: number; sessions?: any[] }[],
 ): { topicMins: number; revisionMins: number; sessionMins: number; totalMins: number } {
-  const a = indexStudyDays(subjects as any, dailyLogs || [], dbSessions as any, { from: dateStr, to: dateStr }).get(dateStr);
+  const a = getDayIndex(subjects as any, dailyLogs, dbSessions as any).get(dateStr);
   if (!a) return { topicMins: 0, revisionMins: 0, sessionMins: 0, totalMins: 0 };
   return { topicMins: a.topicMin + a.unitMin, revisionMins: a.revisionMin, sessionMins: a.sessionMin, totalMins: a.total };
 }
@@ -463,7 +463,9 @@ export function getEffectiveStudyMinutes(
 ): number {
   // Exactly the sum of the per-day totals (same engine as getEffectiveDayMinutes), plus undated legacy time
   let total = 0;
-  indexStudyDays(subjects as any, dailyLogs, dbSessions as any, { from: dateFrom, to: dateTo }).forEach(a => { total += a.total; });
+  getDayIndex(subjects as any, dailyLogs, dbSessions as any).forEach(a => {
+    if ((!dateFrom || a.date >= dateFrom) && (!dateTo || a.date <= dateTo)) total += a.total;
+  });
   // Undated legacy time belongs to the all-time view only — a dated window must equal the sum of its day cards
   return total + (!dateFrom && !dateTo ? undatedStudyMinutes(subjects as any) : 0);
 }

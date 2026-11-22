@@ -1,5 +1,27 @@
 # Changelog
 
+## 21.4.0 — Smooth & stable: no more flicker, one timer + duration look everywhere, tap-to-edit sessions
+
+**⚡ Flicker, lag & crashes**
+- **Root cause of the Home/Stats flicker found:** `useToday()` re-rendered every dashboard card once per second (it listened to the 1-second clock). It now re-renders only when the date changes.
+- The Study Time rows in v21.3.0 were declared inside the render function, so every update recreated and re-animated them — fixed (module-level, memoised rows). Same fix for the Daily Study Hub KPI tiles; `FitText` no longer re-measures and re-creates its observer on every render.
+- The Home exam poster no longer walks every topic once per second (only the live countdown ticks); study-time lookups use a cached index (O(1) per day instead of re-walking all data per day).
+- Crash containment: Study Time and Add Study Time sit in their own error boundaries (a failure shows a small Retry card, not a blank screen).
+- Bottom bar stays opaque in Liquid Glass so page text never ghosts through it.
+
+**⏱ Add Study Time = the topic time window**
+- New shared **Duration picker** (− / 0h 30m / +, wrapping chips) and shared **Stopwatch · Countdown timer**, used by Add Study Time, the topic window and the Revision window — identical look and behaviour, Duration first, timer below.
+- The timer in Add Study Time saves a real session with the chosen activity (MCQ, Lecture …) to the picked topic / subject, or as a free session.
+- The "All sessions" list is gone from Add Study Time (its header total — which wrongly included the timer's mirror copies — went with it).
+
+**✏️ Edit & delete study sessions — any date**
+- In **Study Time**, tap a session to reveal **Edit · Duplicate · Delete**. Delete asks first (with Undo); Edit shows what will change and asks to confirm.
+- One shared editor: date (move a session to another day), duration picker, activity, subject, start/end, clean notes (no more `[Self-Study]` tag text).
+
+**📊 Accuracy**
+- Deleting a topic's time entry no longer resurrects its leftover timer session as "session time".
+- Session colour in the Topic · Revision · Session bar is now teal (it looked like revision's amber).
+
 ## 21.3.0 — One engine for study time: every screen agrees
 
 **📊 No more different numbers for the same day**

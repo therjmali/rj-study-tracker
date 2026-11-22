@@ -150,13 +150,17 @@ export function indexStudyDays(
   }
 
   // 2) sessions — database sessions are canonical; legacy daily-log sessions only fill days that have none
+  // The timer saves a session AND a topic entry together. If the entry was later deleted/edited away, the leftover
+  // timer session is an orphan of a topic that still exists — it must not come back to life as "session time".
+  const liveTopicIds = new Set<string>();
+  for (const s of subjects) for (const u of s.units) for (const t of u.subTopics) if (t.id) liveTopicIds.add(t.id);
   const dbDates = new Set<string>();
   for (const s of dbSessions || []) {
     if (!s || !s.date) continue;
     dbDates.add(s.date);
     if (!finite(s.minutes) || !inRange(s.date)) continue;
     const a = day(s.date);
-    if (s.topicId && a.topicIds.has(s.topicId) && !isIndependentSession(s)) { a.mirroredMin += s.minutes; continue; }
+    if (s.topicId && !isIndependentSession(s) && (a.topicIds.has(s.topicId) || (isTimerSession(s.description) && liveTopicIds.has(s.topicId)))) { a.mirroredMin += s.minutes; continue; }
     a.sessionMin += s.minutes;
     push(a, { date: s.date, minutes: s.minutes, kind: 'session', start: s.startTime || undefined, subjectId: s.subjectId, unitId: s.unitId, topicId: s.topicId, sessionId: s.id, activity: sessionActivity(s.description) ?? undefined });
   }
@@ -190,4 +194,32 @@ export function undatedStudyMinutes(subjects: SubjectLike[]): number {
     }
   }
   return n;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// Cached whole-history index. Screens ask for many days one by one (a month grid, a 90-day chart, every
+// card on Home): building the index once per data snapshot makes each of those lookups O(1) instead of
+// re-walking every topic and session per day. Keyed by array IDENTITY — app state is immutable, so a new
+// array always means new data.
+const EMPTY: readonly never[] = Object.freeze([]) as readonly never[];
+const indexCache = new WeakMap<object, WeakMap<object, WeakMap<object, Map<string, DayAgg>>>>();
+const sliceCache = new WeakMap<object, WeakMap<object, WeakMap<object, Map<string, DayAgg>>>>();
+
+export function getDayIndex(
+  subjects: SubjectLike[],
+  dailyLogs: LogLike[] | undefined,
+  dbSessions: DbSessionLike[] | undefined,
+  withSlices = false,
+): Map<string, DayAgg> {
+  const cache = withSlices ? sliceCache : indexCache;
+  const sess = (dbSessions && dbSessions.length ? dbSessions : EMPTY) as object;
+  const logs = (dailyLogs && dailyLogs.length ? dailyLogs : EMPTY) as object;
+  let l1 = cache.get(subjects);
+  if (!l1) { l1 = new WeakMap(); cache.set(subjects, l1); }
+  let l2 = l1.get(sess);
+  if (!l2) { l2 = new WeakMap(); l1.set(sess, l2); }
+  let hit = l2.get(logs);
+  if (!hit) { hit = indexStudyDays(subjects, dailyLogs, dbSessions, { slices: withSlices }); l2.set(logs, hit); }
+  return hit;
 }

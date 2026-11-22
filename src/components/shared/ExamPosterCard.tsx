@@ -62,21 +62,27 @@ export interface ExamPosterData {
   linkedSubs: { id: string; name: string; color: string; pct: number }[];
 }
 
-/** Compute poster data from exam + subjects + current time */
-export function computeExamPosterData(exam: ExamConfig, subjects: Subject[], now: Date | number): ExamPosterData {
-  const t = exam.time || '00:00';
-  const target = new Date(`${exam.date}T${t}:00`).getTime();
-  const nowMs = typeof now === 'number' ? now : now.getTime();
-  const diff = Math.max(0, target - nowMs);
-  const isPast = target - nowMs <= 0;
+/** The parts of the poster that only change when the syllabus changes (heavy: walks every topic). */
+interface PosterStatic {
+  total: number; done: number; pct: number; avgTopicMin: number; recentPace: number;
+  linkedSubs: { id: string; name: string; color: string; pct: number }[];
+}
+// Cached per `subjects` array identity + exam + calendar day — the poster re-renders every second for its live
+// seconds, so the topic walk must NOT repeat every second.
+const posterStaticCache = new WeakMap<object, Map<string, PosterStatic>>();
+
+function computePosterStatic(exam: ExamConfig, subjects: Subject[], nowMs: number): PosterStatic {
+  const cutoff = new Date(nowMs); cutoff.setDate(cutoff.getDate() - 14);
+  const cutoffStr = cutoff.toLocaleDateString('en-CA');
+  const key = `${exam.id ?? ''}|${exam.date}|${exam.subjects.join(',')}|${cutoffStr}`;
+  let perSubjects = posterStaticCache.get(subjects);
+  if (!perSubjects) { perSubjects = new Map(); posterStaticCache.set(subjects, perSubjects); }
+  const hit = perSubjects.get(key);
+  if (hit) return hit;
   const linked = subjects.filter(s => exam.subjects.includes(s.id));
   const total = linked.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.length, 0), 0);
   const done = linked.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.filter(x => x.completed).length, 0), 0);
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  const days = Math.floor(diff / 86400000);
-  const hours = Math.floor((diff % 86400000) / 3600000);
-  const minutes = Math.floor((diff % 3600000) / 60000);
-  const seconds = Math.floor((diff % 60000) / 1000);
   const linkedSubs = linked.map(s => {
     const st = s.units.reduce((a, u) => a + u.subTopics.length, 0);
     const sd = s.units.reduce((a, u) => a + u.subTopics.filter(x => x.completed).length, 0);
@@ -84,15 +90,30 @@ export function computeExamPosterData(exam: ExamConfig, subjects: Subject[], now
   });
   // pace & effort estimates for the plan panel
   let doneMinutes = 0, doneCount = 0, recent = 0;
-  const cutoff = new Date(nowMs); cutoff.setDate(cutoff.getDate() - 14);
-  const cutoffStr = cutoff.toLocaleDateString('en-CA');
   linked.forEach(s => s.units.forEach(u => u.subTopics.forEach(t => {
     if (!t.completed) return;
     if ((t.timeSpent || 0) > 0) { doneMinutes += t.timeSpent; doneCount++; }
     if (t.completedDate && t.completedDate >= cutoffStr) recent++;
   })));
   const avgTopicMin = doneCount > 0 ? Math.round(doneMinutes / doneCount) : 0;
-  return { exam, days, hours, minutes, seconds, isPast, total, done, pct, avgTopicMin, recentPace: recent / 14, linkedSubs };
+  const out: PosterStatic = { total, done, pct, avgTopicMin, recentPace: recent / 14, linkedSubs };
+  perSubjects.set(key, out);
+  return out;
+}
+
+/** Compute poster data from exam + subjects + current time (cheap per tick: only the countdown is recomputed) */
+export function computeExamPosterData(exam: ExamConfig, subjects: Subject[], now: Date | number): ExamPosterData {
+  const t = exam.time || '00:00';
+  const target = new Date(`${exam.date}T${t}:00`).getTime();
+  const nowMs = typeof now === 'number' ? now : now.getTime();
+  const diff = Math.max(0, target - nowMs);
+  const isPast = target - nowMs <= 0;
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const minutes = Math.floor((diff % 3600000) / 60000);
+  const seconds = Math.floor((diff % 60000) / 1000);
+  const st = computePosterStatic(exam, subjects, nowMs);
+  return { exam, days, hours, minutes, seconds, isPast, ...st };
 }
 
 /* ── helpers for the plan panel ── */
