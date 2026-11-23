@@ -1,5 +1,6 @@
+import { useId, useState } from 'react';
 import { motion } from 'framer-motion';
-import { RotateCcw, Save, Play, Pause, ExternalLink } from 'lucide-react';
+import { RotateCcw, Save, Play, Pause, ExternalLink, PenLine, Timer, Hourglass } from 'lucide-react';
 import type { RevisionKey } from '../../types';
 import { useTimer } from '../../contexts/TimerContext';
 import { useTimerTick } from '../../hooks/useGlobalTimer';
@@ -21,10 +22,6 @@ export interface TimerTarget {
   activity?: string;
 }
 
-const MODES = [
-  { id: 'stopwatch', label: 'Stopwatch', hint: 'counts up' },
-  { id: 'countdown', label: 'Countdown', hint: 'counts down' },
-] as const;
 const PRESETS = [25, 30, 45, 60];
 
 const fmtClock = (sec: number) => {
@@ -89,6 +86,76 @@ export function useTargetTimer(target: TimerTarget) {
   return { timer, ta, busy, isThis, runningOther, statusLabel, statusTone };
 }
 
+/* ───────────────────────── Manual · Stopwatch · Countdown ─────────────────────────
+   ONE three-way switch for every place that adds study time (topic window, Revision window, Add Study Time):
+   Manual (type the minutes) · Stopwatch (counts up) · Countdown (counts down). */
+export type StudyTab = 'manual' | 'stopwatch' | 'countdown';
+
+/** Which of the three tabs is open. A timer already running for this target re-opens on its own tab. */
+export function useStudyTimeTab(target: TimerTarget, timerEnabled = true) {
+  const { timer, ta, busy, isThis } = useTargetTimer(target);
+  const [timerOpen, setTimerOpen] = useState(() => busy && isThis);
+  const tab: StudyTab = timerOpen && timerEnabled ? (timer.appMode as StudyTab) : 'manual';
+  const select = (t: StudyTab) => {
+    if (t === 'manual') { setTimerOpen(false); return; }
+    if (!timerEnabled) return;
+    if (!busy) ta.setAppMode(t);
+    setTimerOpen(true);
+    navigator.vibrate?.(6);
+  };
+  return { tab, select };
+}
+
+/** Live clock text for a running tab — isolated so only these few characters re-render every second. */
+function LiveTabTime({ stopwatch }: { stopwatch: boolean }) {
+  const { timeLeft, swTime } = useTimerTick();
+  return <>{fmtClock(stopwatch ? swTime : timeLeft)}</>;
+}
+
+export function StudyTimeTabBar({ tab, onSelect, target, timerEnabled = true }: {
+  tab: StudyTab;
+  onSelect: (t: StudyTab) => void;
+  target: TimerTarget;
+  timerEnabled?: boolean;
+}) {
+  const uid = useId();
+  const { timer, busy, isThis } = useTargetTimer(target);
+  const items: { id: StudyTab; icon: typeof Timer; label: string; hint: string }[] = [
+    { id: 'manual', icon: PenLine, label: 'Manual', hint: 'type the time' },
+    { id: 'stopwatch', icon: Timer, label: 'Stopwatch', hint: 'counts up' },
+    { id: 'countdown', icon: Hourglass, label: 'Countdown', hint: 'counts down' },
+  ];
+  return (
+    <div role="tablist" aria-label="How do you want to add study time?" className="grid grid-cols-3 rounded-2xl border border-border/20 bg-muted/20 p-0.5"
+      onPointerDown={e => e.stopPropagation()}>
+      {items.map(it => {
+        const on = tab === it.id;
+        const isTimerTab = it.id !== 'manual';
+        // while a timer runs, only its own mode stays selectable (switching would silently reset it)
+        const locked = isTimerTab && (!timerEnabled || (busy && timer.appMode !== it.id));
+        const running = isTimerTab && timer.active && isThis && timer.appMode === it.id;
+        const paused = isTimerTab && !timer.active && timer.hasProgress && isThis && timer.appMode === it.id;
+        const Icon = it.icon;
+        return (
+          <button key={it.id} type="button" role="tab" aria-selected={on} aria-disabled={locked} disabled={locked} onClick={() => onSelect(it.id)}
+            title={locked && !timerEnabled ? 'Open this from a subject to use the timer' : undefined}
+            className={`relative z-10 min-w-0 py-1.5 rounded-xl text-[11px] font-bold transition-colors ${on ? 'text-primary-foreground' : locked ? 'text-muted-foreground/35' : 'text-muted-foreground'}`}>
+            {on && <motion.span layoutId={`${uid}-pill`} className="absolute inset-0 rounded-xl bg-primary shadow-sm -z-10" transition={{ type: 'spring', stiffness: 520, damping: 38 }} />}
+            <span className="flex items-center justify-center gap-1 leading-tight">
+              <Icon className="w-3 h-3 shrink-0" />
+              <span className="truncate">{it.label}</span>
+              {(running || paused) && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${running ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />}
+            </span>
+            <span className="block text-[8px] font-semibold opacity-70 leading-tight font-mono truncate">
+              {running || paused ? <LiveTabTime stopwatch={it.id === 'stopwatch'} /> : it.hint}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function StudyTimerPanel({ target, onBeforeSave, onOpenFull, hint }: {
   target: TimerTarget;
   /** Called right before a running session is saved (the host flushes its unsaved draft first). */
@@ -125,20 +192,6 @@ export default function StudyTimerPanel({ target, onBeforeSave, onOpenFull, hint
 
   return (
     <div className="space-y-2.5" onPointerDown={e => e.stopPropagation()}>
-      {/* Left = Stopwatch, right = Countdown */}
-      <div role="tablist" aria-label="Timer mode" className="relative grid grid-cols-2 rounded-2xl border border-border/20 bg-muted/20 p-0.5">
-        {MODES.map(m => {
-          const on = timer.appMode === m.id;
-          return (
-            <button key={m.id} type="button" role="tab" aria-selected={on} disabled={busy && !on} onClick={() => ta.setAppMode(m.id)}
-              className={`relative z-10 py-1.5 rounded-xl text-[11px] font-bold transition-colors ${on ? 'text-primary-foreground' : busy ? 'text-muted-foreground/40' : 'text-muted-foreground'}`}>
-              {on && <motion.span layoutId="study-mode-pill" className="absolute inset-0 rounded-xl bg-primary shadow-sm -z-10" transition={{ type: 'spring', stiffness: 520, damping: 38 }} />}
-              {m.label}<span className="block text-[8px] font-semibold opacity-70 -mt-0.5">{m.hint}</span>
-            </button>
-          );
-        })}
-      </div>
-
       {!stopwatch && !isBreak && !busy && (
         <div className="flex gap-1.5">
           {PRESETS.map(p => (

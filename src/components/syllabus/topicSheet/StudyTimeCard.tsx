@@ -7,7 +7,7 @@ import type { SubTopic, TimeEntry, TopicStatus, RevisionKey } from '../../../typ
 import { formatDateRelative, formatStudyTime, getLocalDateStr, formatTime12h, formatTimeRange12h } from '../../../lib/utils';
 import { SheetCard } from './CompactParts';
 import DurationPicker from '../../shared/DurationPicker';
-import StudyTimerPanel, { useTargetTimer } from '../../shared/StudyTimerPanel';
+import StudyTimerPanel, { StudyTimeTabBar, useStudyTimeTab, useTargetTimer } from '../../shared/StudyTimerPanel';
 
 /* ── One ⏱️ card — SAME layout as Add Study Time: Duration picker (manual) → Stopwatch · Countdown timer.
       Available in EVERY topic status. ── */
@@ -29,7 +29,8 @@ export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTim
   const [addNote, setAddNote] = useState('');
   const [addMins, setAddMins] = useState(30);
   const [showDate, setShowDate] = useState(false);
-  const [more, setMore] = useState(false);
+  // The added-time list is OPEN by default for every topic (collapse it with the chevron)
+  const [more, setMore] = useState(true);
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [editMin, setEditMin] = useState(0);
   const [editNote, setEditNote] = useState('');
@@ -40,7 +41,8 @@ export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTim
 
   const canTime = !!(subjectId && unitId);
   const target = { subjectId: subjectId || '', unitId: unitId || '', topicId: draft.id, topicName: draft.name, subjectName: subjectName || '', revisionKey: revisionKey || '' } as const;
-  const { isThis, runningOther, statusLabel, statusTone, timer } = useTargetTimer(target);
+  const { isThis, statusLabel, statusTone, timer } = useTargetTimer(target);
+  const { tab, select } = useStudyTimeTab(target, canTime);
 
   const entries = draft.timeEntries || [];
   const grouped = entries.reduce((acc, e, idx) => {
@@ -82,53 +84,55 @@ export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTim
         </button>
       </div>
 
-      {/* ── Manual: the 4-up Duration picker (identical to Add Study Time) ── */}
-      <div className="px-3.5 pb-3 space-y-3" onPointerDown={e => e.stopPropagation()}>
-        <DurationPicker value={addMins} onChange={setAddMins} />
-
-        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-          <button type="button" onClick={() => setShowDate(s => !s)} aria-expanded={showDate}
-            className={`h-8 px-2.5 rounded-full border text-[10px] font-bold flex items-center gap-1 ${
-              isToday ? 'bg-muted/15 border-border/12 text-muted-foreground' : 'bg-amber-500/10 border-amber-500/30 text-amber-600'
-            }`} title="Date this time is logged for">
-            <CalendarIcon className="w-3 h-3" /> {formatDateRelative(addDate)}
-          </button>
-          <button type="button" onClick={() => setShowDate(true)} title="Start time of this study block — Auto means the block ends right now"
-            className={`h-8 px-2.5 rounded-full border text-[10px] font-bold flex items-center gap-1 ${
-              addTimeStr ? 'bg-amber-500/10 border-amber-500/30 text-amber-600' : 'bg-muted/15 border-border/12 text-muted-foreground'
-            }`}>
-            <Clock className="w-3 h-3" /> {addTimeStr ? formatTime12h(addTimeStr) : 'Auto'}
-          </button>
-        </div>
-
-        {showDate && (
-          <div className="flex items-center gap-2 animate-fade-in">
-            <span className="text-[10px] font-bold text-chart-5 shrink-0">Logging for</span>
-            <Input type="date" value={addDate} onChange={e => setAddDate(e.target.value)} className="h-8 text-[11px] flex-1 bg-card border-chart-5/20 font-mono rounded-xl" />
-            {!isToday && <button type="button" onClick={() => setAddDate(getLocalDateStr(new Date()))} className="text-[10px] font-bold text-primary px-2 h-8">Today</button>}
-            <Input type="time" value={addTimeStr} onChange={e => setAddTimeStr(e.target.value)} aria-label="Start time of the block" title="Start time of the block" className="h-8 text-[11px] w-[6.5rem] bg-card border-chart-5/20 font-mono rounded-xl" />
-            {addTimeStr && <button type="button" onClick={() => setAddTimeStr('')} className="text-[10px] font-bold text-primary px-1.5 h-8">Auto</button>}
-          </div>
-        )}
-
-        <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => quickAdd(addMins)} disabled={addMins <= 0}
-          className="w-full h-10 rounded-xl bg-chart-5 text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-40">
-          <Plus className="w-3.5 h-3.5" /> Add {formatStudyTime(addMins)} {revisionKey ? `to ${revisionKey}` : 'study time'}
-        </motion.button>
-
-        {isToday && !addTimeStr && (
-          <p className="text-center text-[10px] text-muted-foreground/80 leading-snug -mt-1">
-            ⏱ Auto: the block <strong className="text-foreground/70">ends now</strong> — e.g. {formatStudyTime(addMins)} is saved as {formatTimeRange12h(autoStart(addMins), addMins)}.
-          </p>
-        )}
+      {/* ── Manual · Stopwatch · Countdown — the same three-way switch as Add Study Time ── */}
+      <div className="px-3.5 pb-2.5" onPointerDown={e => e.stopPropagation()}>
+        <StudyTimeTabBar tab={tab} onSelect={select} target={target} timerEnabled={canTime} />
       </div>
 
-      {/* ── Live: the Stopwatch · Countdown timer (identical to Add Study Time) ── */}
-      {canTime && (
-        <div className="px-3.5 pb-3 space-y-2.5" onPointerDown={e => e.stopPropagation()}>
-          <div className="flex items-center gap-2">
-            <span className="h-px flex-1 bg-border/15" /><span className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/60">or study live with the timer</span><span className="h-px flex-1 bg-border/15" />
+      {tab === 'manual' ? (
+        <div role="tabpanel" aria-label="Manual time" className="px-3.5 pb-3 space-y-3" onPointerDown={e => e.stopPropagation()}>
+          <DurationPicker value={addMins} onChange={setAddMins} />
+
+          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+            <button type="button" onClick={() => setShowDate(s => !s)} aria-expanded={showDate}
+              className={`h-8 px-2.5 rounded-full border text-[10px] font-bold flex items-center gap-1 ${
+                isToday ? 'bg-muted/15 border-border/12 text-muted-foreground' : 'bg-amber-500/10 border-amber-500/30 text-amber-600'
+              }`} title="Date this time is logged for">
+              <CalendarIcon className="w-3 h-3" /> {formatDateRelative(addDate)}
+            </button>
+            <button type="button" onClick={() => setShowDate(true)} title="Start time of this study block — Auto means the block ends right now"
+              className={`h-8 px-2.5 rounded-full border text-[10px] font-bold flex items-center gap-1 ${
+                addTimeStr ? 'bg-amber-500/10 border-amber-500/30 text-amber-600' : 'bg-muted/15 border-border/12 text-muted-foreground'
+              }`}>
+              <Clock className="w-3 h-3" /> {addTimeStr ? formatTime12h(addTimeStr) : 'Auto'}
+            </button>
           </div>
+
+          {showDate && (
+            <div className="flex items-center gap-2 animate-fade-in">
+              <span className="text-[10px] font-bold text-chart-5 shrink-0">Logging for</span>
+              <Input type="date" value={addDate} onChange={e => setAddDate(e.target.value)} className="h-8 text-[11px] flex-1 bg-card border-chart-5/20 font-mono rounded-xl" />
+              {!isToday && <button type="button" onClick={() => setAddDate(getLocalDateStr(new Date()))} className="text-[10px] font-bold text-primary px-2 h-8">Today</button>}
+              <Input type="time" value={addTimeStr} onChange={e => setAddTimeStr(e.target.value)} aria-label="Start time of the block" title="Start time of the block" className="h-8 text-[11px] w-[6.5rem] bg-card border-chart-5/20 font-mono rounded-xl" />
+              {addTimeStr && <button type="button" onClick={() => setAddTimeStr('')} className="text-[10px] font-bold text-primary px-1.5 h-8">Auto</button>}
+            </div>
+          )}
+
+          <Input placeholder="Note (optional)…" value={addNote} onChange={e => setAddNote(e.target.value)} className="h-8 text-[11px] bg-muted/15 border-border/10 rounded-xl" />
+
+          <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => quickAdd(addMins)} disabled={addMins <= 0}
+            className="w-full h-10 rounded-xl bg-chart-5 text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-40">
+            <Plus className="w-3.5 h-3.5" /> Add {formatStudyTime(addMins)} {revisionKey ? `to ${revisionKey}` : 'study time'}
+          </motion.button>
+
+          {isToday && !addTimeStr && (
+            <p className="text-center text-[10px] text-muted-foreground/80 leading-snug -mt-1">
+              ⏱ Auto: the block <strong className="text-foreground/70">ends now</strong> — e.g. {formatStudyTime(addMins)} is saved as {formatTimeRange12h(autoStart(addMins), addMins)}.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div role="tabpanel" aria-label={tab === 'stopwatch' ? 'Stopwatch' : 'Countdown'} className="px-3.5 pb-3" onPointerDown={e => e.stopPropagation()}>
           <StudyTimerPanel target={target} onBeforeSave={onBeforeSave} onOpenFull={onOpenFull}
             hint={revisionKey ? <>✅ Saving a session marks <strong className="text-foreground/70">{revisionKey}</strong> as Done and adds the time to today's study</> : undefined} />
         </div>
@@ -136,10 +140,11 @@ export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTim
 
       {more && (
         <div className="border-t border-border/10 animate-fade-in" onPointerDown={e => e.stopPropagation()}>
-          <div className="px-3.5 pt-3 pb-2">
-            <Input placeholder="Note for the next entry (optional)…" value={addNote} onChange={e => setAddNote(e.target.value)}
-              className="h-8 text-[11px] bg-muted/15 border-border/10 rounded-xl" />
+          <div className="px-3.5 pt-2.5 pb-1 flex items-center justify-between">
+            <span className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/60">Added time</span>
+            <span className="text-[9px] font-mono font-bold text-chart-5/70">{entries.length} {entries.length === 1 ? 'entry' : 'entries'}</span>
           </div>
+          {entries.length === 0 && <p className="px-3.5 pb-3 text-[11px] text-muted-foreground/60">Nothing added yet — log time above or run the timer.</p>}
 
           {entries.length > 0 && (
             <div className="px-3.5 pb-2 space-y-1 max-h-64 overflow-y-auto">
@@ -187,7 +192,7 @@ export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTim
             </div>
           )}
 
-          <div className="border-t border-border/10 px-3.5 py-2.5 flex items-center gap-2">
+          {(entries.length > 0 || draft.timeSpent > 0) && <div className="border-t border-border/10 px-3.5 py-2.5 flex items-center gap-2">
             <span className="text-[10px] text-muted-foreground/60 font-bold shrink-0">Override total</span>
             <Input type="text" inputMode="numeric" pattern="[0-9]*" value={draft.timeSpent === 0 ? '' : String(draft.timeSpent)}
               onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setField('timeSpent', v === '' ? 0 : parseInt(v, 10)); }}
@@ -197,7 +202,7 @@ export default function StudyTimeCard({ draft, addTime, deleteTimeEntry, editTim
               className="ml-auto h-7 px-2.5 rounded-lg border border-destructive/20 bg-destructive/6 text-destructive text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-transform">
               <RotateCcw className="w-3 h-3" /> Reset all
             </button>
-          </div>
+          </div>}
         </div>
       )}
     </SheetCard>

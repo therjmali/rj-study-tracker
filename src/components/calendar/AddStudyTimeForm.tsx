@@ -8,7 +8,7 @@ import type { DailyLog, Subject, StudySession, DbStudySession } from '../../type
 import { formatStudyTime } from '../../lib/utils';
 import DuplicateSessionDialog from '../shared/DuplicateSessionDialog';
 import DurationPicker from '../shared/DurationPicker';
-import StudyTimerPanel from '../shared/StudyTimerPanel';
+import StudyTimerPanel, { StudyTimeTabBar, useStudyTimeTab } from '../shared/StudyTimerPanel';
 import SessionEditSheet from '../sessions/SessionEditSheet';
 import type { SessionChanges } from '../sessions/SessionEditSheet';
 import { ACTIVITY_CHOICES } from '../../lib/activities';
@@ -74,6 +74,7 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
     revisionKey: '' as const,
     activity: timerActivity,
   }), [timerSubjectId, selectedTopic, subjects, timerActivity]);
+  const { tab, select: selectTab } = useStudyTimeTab(timerTarget);
 
   // Build searchable topic index
   const allTopics = useMemo<TopicSearchResult[]>(() => {
@@ -108,26 +109,6 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
       t.unitName.toLowerCase().includes(q)
     ).slice(0, 30);
   }, [allTopics, topicSearchQuery]);
-
-  // Merge dbSessions (canonical) with legacy dailyLog sessions, deduplicating by ID
-  const manualSessions = useMemo(() => {
-    const dbForDay = (dbSessions || []).filter(s => s.date === date);
-    const legacySessions = existingLog?.sessions || [];
-    const dbIds = new Set(dbForDay.map(s => s.id));
-    const merged: StudySession[] = [
-      ...dbForDay.map(s => ({
-        id: s.id,
-        subjectId: (s as any).subjectId || 'general',
-        subjectName: (s as any).subjectName || (s as any).description || 'Study',
-        durationMinutes: s.minutes,
-        startTime: (s as any).startTime,
-        endTime: (s as any).endTime,
-        note: (s as any).note || (s as any).description,
-      })),
-      ...legacySessions.filter(s => !dbIds.has(s.id)),
-    ];
-    return merged;
-  }, [dbSessions, existingLog, date]);
 
   // Select a topic and auto-fill subject
   const handleSelectTopic = useCallback((topic: TopicSearchResult) => {
@@ -320,19 +301,20 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
             className="overflow-hidden"
           >
             <div className="px-3 pb-3 space-y-3">
-              {/* ── Add New Session — Premium Duration Picker ── */}
-              <div className="pt-2 border-t border-border/10">
-                <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-3">Duration</p>
-                <DurationPicker value={hours * 60 + mins} onChange={v => { setHours(Math.floor(v / 60)); setMins(v % 60); }} />
-              </div>
-
-              {/* ── Live: the SAME Stopwatch · Countdown timer as every topic window ── */}
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="h-px flex-1 bg-border/15" /><span className="text-[9px] font-black uppercase tracking-[0.18em] text-muted-foreground/60">or study live with the timer</span><span className="h-px flex-1 bg-border/15" />
-                </div>
-                <StudyTimerPanel target={timerTarget}
-                  hint={<>Saves as <strong className="text-foreground/70">{ACTIVITY_CHOICES.find(a => a.id === activity)?.icon} {timerActivity}</strong> · {selectedTopic ? selectedTopic.topicName : timerTarget.subjectName || 'Free study'} <span className="opacity-70">(change below)</span></>} />
+              {/* ── Manual · Stopwatch · Countdown — the same three-way switch as every topic window ── */}
+              <div className="pt-2 border-t border-border/10 space-y-3">
+                <StudyTimeTabBar tab={tab} onSelect={selectTab} target={timerTarget} />
+                {tab === 'manual' ? (
+                  <div role="tabpanel" aria-label="Manual time">
+                    <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-3">Duration</p>
+                    <DurationPicker value={hours * 60 + mins} onChange={v => { setHours(Math.floor(v / 60)); setMins(v % 60); }} />
+                  </div>
+                ) : (
+                  <div role="tabpanel" aria-label={tab === 'stopwatch' ? 'Stopwatch' : 'Countdown'}>
+                    <StudyTimerPanel target={timerTarget}
+                      hint={<>Saves as <strong className="text-foreground/70">{ACTIVITY_CHOICES.find(a => a.id === activity)?.icon} {timerActivity}</strong> · {selectedTopic ? selectedTopic.topicName : timerTarget.subjectName || 'Free study'} <span className="opacity-70">(choose below)</span></>} />
+                  </div>
+                )}
               </div>
 
               {/* Activity type */}
@@ -480,6 +462,7 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
                 </AnimatePresence>
               </div>
 
+              {tab === 'manual' && (<>
               {/* Notes */}
               <div>
                 <p className="text-[10px] text-muted-foreground font-semibold mb-1.5">Notes</p>
@@ -494,6 +477,7 @@ export default function AddStudyTimeForm({ date, subjects, dailyLogs, onUpdateLo
               <Button onClick={handleSave} className="w-full h-10 text-xs font-bold gap-1.5 rounded-xl">
                 <Plus className="w-3.5 h-3.5" /> Log {formatStudyTime(hours * 60 + mins)} Study Time
               </Button>
+              </>)}
             </div>
           </motion.div>
         )}

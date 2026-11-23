@@ -1,5 +1,14 @@
 # Changelog
 
+## 21.5.0 — Manual · Stopwatch · Countdown: one three-way switch everywhere
+
+- **Three horizontal tabs — ✍️ Manual · ⏱️ Stopwatch · ⏳ Countdown** — replace the stacked "manual on top, timer below" layout in **every topic window**, the **Revision window** and **Statistics → Add Study Time** (same component, same behaviour). Manual is first and opens by default; a timer already running for that topic re-opens on its own tab, with a pulsing dot and the live time on the tab. While a timer runs only its own mode stays selectable, so it can't be reset by accident.
+- **Added time is open by default** for every topic (entries, edit & delete visible straight away; the chevron still collapses it). A fresh topic shows "Nothing added yet", and the override/reset row only appears once there is time to override.
+- **Statistics → Add Study Time is open by default** (it used to be a collapsed dashed button; "▲ Collapse" still hides it).
+- Manual tab keeps date, start time and a note next to the Add button; in Add Study Time, Notes and the Log button show on the Manual tab, while Activity · Topic · Subject stay visible for all three tabs (the timer saves with them).
+- Housekeeping: removed dead helpers and an unused per-render sessions computation.
+
+
 ## 21.4.0 — Smooth & stable: no more flicker, one timer + duration look everywhere, tap-to-edit sessions
 
 **⚡ Flicker, lag & crashes**

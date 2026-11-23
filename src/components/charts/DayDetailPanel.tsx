@@ -59,22 +59,6 @@ export interface CalendarTopicInfo {
   revision?: RevisionKey;
 }
 
-interface DateDetail {
-  dateStr: string;
-  topics: CalendarTopicInfo[];
-}
-
-function formatTime12h(t: string | undefined): string {
-  if (!t) return '';
-  const normalized = t.replace(/\./g, ':');
-  const [hRaw, mRaw] = normalized.split(':').map(Number);
-  const h = isNaN(hRaw) ? 0 : hRaw;
-  const m = isNaN(mRaw) ? 0 : mRaw;
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
-}
-
 const NOTES_KEY = 'nursetrack-calendar-notes';
 function loadNotes(): Record<string, string> {
   try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '{}'); } catch { return {}; }
@@ -171,7 +155,7 @@ export default function DayDetailPanel({
   const [moodNotesText, setMoodNotesText] = useState(dayLog?.notes || '');
   const [calNoteText, setCalNoteText] = useState(calendarNotes[selectedDate] || '');
   const [moodDirty, setMoodDirty] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(true);
   const [editingSess, setEditingSess] = useState<typeof manualSessions[0] | null>(null);
   const [deleteSessTarget, setDeleteSessTarget] = useState<typeof manualSessions[0] | null>(null);
   const [moveSess, setMoveSess] = useState<typeof manualSessions[0] | null>(null);
@@ -206,12 +190,6 @@ export default function DayDetailPanel({
   }, [subjects, onOpenTopicDetail]);
 
   /* ── session helpers ── */
-  function extractAct(desc?: string): string | null {
-    if (!desc) return null;
-    const m = desc.match(/^\[([^\]]+)\]/);
-    return m ? m[1] : null;
-  }
-
   const handleDeleteSess = useCallback((session: typeof manualSessions[0]) => {
     if (undoSessRef.current) clearTimeout(undoSessRef.current.timer);
     const timer = setTimeout(() => { undoSessRef.current = null; }, 6000);
@@ -543,15 +521,6 @@ function SummaryCard({ icon, iconColor, bgColor, value, label, sub }: {
       {sub && <span className="text-[8px] text-muted-foreground/60 font-mono">{sub}</span>}
     </motion.div>
   );
-}
-
-function DiffBadge({ diff }: { diff: string }) {
-  const styles: Record<string, string> = {
-    Easy: 'bg-diff-easy/15 text-diff-easy',
-    Medium: 'bg-diff-medium/15 text-diff-medium',
-    Hard: 'bg-diff-hard/15 text-diff-hard',
-  };
-  return <span className={`text-[7px] px-1.5 py-0.5 rounded-lg font-bold shrink-0 ${styles[diff] || ''}`}>{diff[0]}</span>;
 }
 
 
