@@ -17,6 +17,11 @@ export interface ActiveSubjectWidgetData {
   activeUnitId?: string;
   activeUnitName?: string;
   activeUnitPercent?: number;
+  /** Where the student last worked in this subject — a widget tap resumes exactly there. */
+  lastTopicId?: string;
+  lastTopicName?: string;
+  lastKind?: 'completed' | 'studied' | 'revised';
+  lastDate?: string;
 }
 
 export interface ExamWidgetData {
@@ -37,6 +42,8 @@ export interface WidgetStats {
   activeSubject?: ActiveSubjectWidgetData;
   /** Every subject, so the Subject widget's picker can offer them. */
   subjects?: ActiveSubjectWidgetData[];
+  /** Subjects the student picked for the Subject widget (in the app). Widgets without their own picker use this. */
+  widgetSubjectIds?: string[];
   examTarget?: ExamWidgetData;
 }
 

@@ -150,3 +150,40 @@ export function revisionRoundMinutesOn(t: TopicActivityLike, round: RevisionKey,
   for (const e of r.timeEntries) if (e && e.date === date && finite(e.minutes) && e.minutes > 0) n += e.minutes;
   return n;
 }
+
+export type ActivityKind = 'completed' | 'studied' | 'revised';
+export interface LastActivity {
+  unitId: string;
+  topicId: string;
+  topicName: string;
+  date: string;
+  /** HH:MM when known — breaks ties between two events on the same day. */
+  time?: string;
+  kind: ActivityKind;
+}
+
+interface SubjectLikeForActivity {
+  units: { id: string; subTopics: (TopicActivityLike & { id: string; name: string })[] }[];
+}
+
+/**
+ * Where the student last WORKED in a subject: the most recent topic completion, study entry or revision
+ * (completed or timed). Newest date wins; on the same day the later clock time wins. Used by the home-screen
+ * widget so a tap resumes exactly there.
+ */
+export function getLastActivity(subject: SubjectLikeForActivity | undefined): LastActivity | undefined {
+  if (!subject) return undefined;
+  let best: LastActivity | undefined;
+  const consider = (c: LastActivity) => {
+    if (!c.date) return;
+    if (!best || c.date > best.date || (c.date === best.date && (c.time || '') > (best.time || ''))) best = c;
+  };
+  for (const u of subject.units) for (const t of u.subTopics) {
+    const base = { unitId: u.id, topicId: t.id, topicName: t.name };
+    if (t.completed && t.completedDate) consider({ ...base, date: t.completedDate, time: (t as { completedTime?: string }).completedTime, kind: 'completed' });
+    if (t.timeEntries) for (const e of t.timeEntries) if (e && e.date && finite(e.minutes) && e.minutes > 0) consider({ ...base, date: e.date, time: e.time, kind: 'studied' });
+    forEachRevisionEntry(t, e => consider({ ...base, date: e.date, time: e.time, kind: 'revised' }));
+    for (const c of revisionCompletions(t)) consider({ ...base, date: c.date, time: c.time, kind: 'revised' });
+  }
+  return best;
+}

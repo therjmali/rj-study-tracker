@@ -7,6 +7,7 @@
  * its key or has an outage, the next provider that has a key is used automatically (can be turned off).
  */
 import { LocalApiError } from './localDb';
+import { stripThinking, ThinkFilter } from './thinkFilter.mjs';
 import {
   PROVIDER_IDS, PROVIDER_META, buildRequest, buildModelsRequest, parseModelList, readChunk, shouldFallback,
   type ProviderId, type ProviderMeta,
@@ -25,6 +26,10 @@ export interface AiSettings {
   models: Partial<Record<AiProvider, { main?: string; fast?: string }>>;
   /** Switch to the next provider that has a key when the active one fails (default on). */
   fallback?: boolean;
+  /** AI Tutor reasons before answering (native thinking where the model supports it). Default on. */
+  thinking?: boolean;
+  /** AI Tutor asks a second, independent pass to verify and correct the answer. Default on. */
+  verify?: boolean;
   status?: Partial<Record<AiProvider, KeyStatus>>;
 }
 
@@ -37,7 +42,7 @@ export const OPEN_SETTINGS_EVENT = 'rj:open-platform-settings';
 
 /* ───────────────────────────── settings store ───────────────────────────── */
 
-const DEFAULTS: AiSettings = { provider: 'gemini', keys: {}, models: {}, fallback: true, status: {} };
+const DEFAULTS: AiSettings = { provider: 'gemini', keys: {}, models: {}, fallback: true, thinking: true, verify: true, status: {} };
 let cached: AiSettings | null = null;
 
 export function getAiSettings(): AiSettings {
@@ -50,6 +55,8 @@ export function getAiSettings(): AiSettings {
       keys: parsed?.keys && typeof parsed.keys === 'object' ? parsed.keys : {},
       models: parsed?.models && typeof parsed.models === 'object' ? parsed.models : {},
       fallback: parsed?.fallback !== false,
+      thinking: parsed?.thinking !== false,
+      verify: parsed?.verify !== false,
       status: parsed?.status && typeof parsed.status === 'object' ? parsed.status : {},
     };
   } catch {
@@ -103,6 +110,8 @@ export function removeProviderKey(provider: AiProvider): void {
 }
 export function setActiveProvider(provider: AiProvider): void { saveAiSettings({ ...getAiSettings(), provider }); }
 export function setFallbackEnabled(on: boolean): void { saveAiSettings({ ...getAiSettings(), fallback: on }); }
+export function setAiThinking(on: boolean): void { saveAiSettings({ ...getAiSettings(), thinking: on }); }
+export function setAiVerify(on: boolean): void { saveAiSettings({ ...getAiSettings(), verify: on }); }
 export function setProviderModel(provider: AiProvider, tier: 'main' | 'fast', model: string): void {
   const s = getAiSettings();
   saveAiSettings({ ...s, models: { ...s.models, [provider]: { ...s.models[provider], [tier]: model.trim() || undefined } } });
@@ -153,6 +162,10 @@ interface CallOptions {
   tier: Tier;
   json?: boolean;
   signal?: AbortSignal;
+  /** Low = consistent answers. Defaults to 0.4 (the providers' own default is ~1.0, which made answers vary a lot). */
+  temperature?: number;
+  /** Reasoning budget in tokens (0 = off). Only models that support it use it. */
+  thinking?: number;
 }
 
 function modelFor(provider: AiProvider, tier: Tier): string {
@@ -208,6 +221,7 @@ function build(opts: CallOptions, stream: boolean, provider: AiProvider) {
   const model = modelFor(provider, opts.tier);
   const { url, init } = buildRequest(provider, {
     key, model, system: opts.system, messages: opts.messages, maxTokens: opts.maxTokens, json: opts.json, stream,
+    temperature: opts.temperature ?? 0.4, thinking: opts.thinking ?? 0,
   });
   return { url, init: { ...init, signal: opts.signal } as RequestInit, read: (d: unknown) => readChunk(provider, d, stream), model };
 }
@@ -220,7 +234,7 @@ async function complete(opts: CallOptions): Promise<string> {
     try {
       const { url, init, read, model } = build(opts, false, provider);
       const res = await request(url, init);
-      const text = read(await res.json()).trim();
+      const text = stripThinking(read(await res.json())).trim();
       if (!text) throw new LocalApiError('EMPTY', 'The AI returned an empty answer. Please try again.');
       noteRun(provider, model, list[0]);
       return text;
@@ -272,10 +286,15 @@ async function* streamText(opts: CallOptions): AsyncGenerator<string> {
     const provider = list[i];
     let started = false;
     try {
-      for await (const chunk of streamOne(opts, provider)) {
+      const filter = new ThinkFilter();
+      for await (const raw of streamOne(opts, provider)) {
+        const chunk = filter.push(raw);
+        if (!chunk) continue;
         if (!started) { started = true; noteRun(provider, modelFor(provider, opts.tier), list[0]); }
         yield chunk;
       }
+      const rest = filter.flush();
+      if (rest) { if (!started) { started = true; noteRun(provider, modelFor(provider, opts.tier), list[0]); } yield rest; }
       if (!started) throw new LocalApiError('EMPTY', 'The AI returned an empty answer. Please try again.');
       return;
     } catch (err) {
@@ -412,9 +431,17 @@ CRITICAL PERSONALIZATION RULES — you MUST follow these in EVERY response:
 
 /* ───────────────────────────── feature functions ───────────────────────────── */
 
-export async function* studyChat(input: {
-  messages: Msg[]; topicContext?: string; telemetry?: Telemetry;
-}): AsyncGenerator<string> {
+/** Rules that apply to EVERY tutor answer — the cause of most "inconsistent answer" complaints was the model guessing. */
+const ACCURACY_RULES = `
+
+ACCURACY RULES (always):
+- Answer exactly what the student wrote. NEVER say the student "asked for" or "provided" something they did not write. If the message is ambiguous, answer the most likely meaning in one short line and ask ONE clarifying question.
+- Facts first: names, numbers, drug doses, normal values, classifications and mnemonics must match standard nursing references (INC syllabus, Potter & Perry, Lippincott, Park's PSM, Bhatia/Dutta for OBG). If you are not sure, say so plainly instead of inventing.
+- If the student's own mnemonic / list / claim is wrong, say so kindly in ONE sentence and give the corrected version.
+- Never output placeholders or half-answers (e.g. "Incorrect/Placeholder", "TBD"), and never show your self-corrections — write the final, clean answer only.
+- Reply in the language the student used (English, Hindi or Hinglish). Keep a consistent structure: a one-line direct answer first, then the details.`;
+
+function chatSystem(input: { topicContext?: string; telemetry?: Telemetry }): string {
   let system: string;
   if (input.telemetry) {
     // Analytical-engine mode: real, app-computed telemetry + strict zero-hallucination rules.
@@ -429,7 +456,91 @@ export async function* studyChat(input: {
       system += PERSONALIZATION_RULES;
     }
   }
-  yield* streamText({ system, messages: input.messages, maxTokens: 2048, tier: 'main' });
+  return system + ACCURACY_RULES;
+}
+
+/** Plain streamed answer (low temperature). Kept for callers that want a single pass. */
+export async function* studyChat(input: {
+  messages: Msg[]; topicContext?: string; telemetry?: Telemetry;
+}): AsyncGenerator<string> {
+  yield* streamText({ system: chatSystem(input), messages: input.messages, maxTokens: 2048, tier: 'main', temperature: 0.25 });
+}
+
+/** 'draft' = the checking pass could not run, so the first-pass answer is shown (not verified). */
+export type ChatStage = 'thinking' | 'checking' | 'writing' | 'draft';
+
+const THINK_FORMAT = `
+
+HOW TO RESPOND (internal two-part format — the student only ever sees the <answer>):
+<analysis>
+Think step by step: (1) what exactly the student asked, in your own words (never attribute words to them that they did not write); (2) the key facts you will rely on; (3) common traps; (4) if the student wrote a mnemonic, list, dose or claim, check every item one by one.
+</analysis>
+<answer>
+The complete, final, student-facing answer. Clean: no self-corrections, no placeholders, no mention of this format.
+</answer>`;
+
+const REVIEW_RULES = `
+
+YOU ARE THE SECOND, INDEPENDENT PASS. You receive the student's latest message, the first pass's notes and its DRAFT answer.
+1. Re-derive the correct answer yourself — do not trust the draft.
+2. Verify every medical fact, number, dose, classification, name and mnemonic against standard nursing references; fix any error, omission or contradiction.
+3. Check the draft really answers what the student wrote and does not claim they said something they did not.
+4. If the student's own mnemonic / list / claim was wrong, say so kindly and give the corrected version.
+5. Keep the draft's structure and language when it is already right; improve clarity; keep it concise and exam-oriented.
+Output ONLY the final answer for the student. Never mention the draft, the notes, a review, or this process.`;
+
+/**
+ * The AI Tutor's answer pipeline — "think, then ask twice":
+ *   1. THINKING  — a silent first pass that analyses the question, checks facts and writes a draft
+ *                  (native reasoning where the model supports it, a step-by-step scratchpad otherwise);
+ *   2. CHECKING  — a second, independent pass that verifies and corrects the draft, streamed to the student.
+ * Both passes run at a low temperature. If anything goes wrong the student still gets an answer: the first
+ * pass failing falls back to a single streamed answer; the second failing shows the draft.
+ */
+export async function* studyChatVerified(
+  input: { messages: Msg[]; topicContext?: string; telemetry?: Telemetry },
+  opts: { thinking?: boolean; verify?: boolean; onStage?: (s: ChatStage) => void; signal?: AbortSignal } = {},
+): AsyncGenerator<string> {
+  const { thinking = true, verify = true, onStage, signal } = opts;
+  const system = chatSystem(input);
+  const base = { tier: 'main' as const, signal };
+  const single = async function* () {
+    onStage?.('writing');
+    yield* streamText({ ...base, system, messages: input.messages, maxTokens: 2048, temperature: 0.25, thinking: thinking ? 2048 : 0 });
+  };
+  if (!verify) { yield* single(); return; }
+
+  // Pass 1 — think & draft (not shown)
+  onStage?.('thinking');
+  let raw = '';
+  try {
+    raw = await complete({ ...base, system: system + THINK_FORMAT, messages: input.messages, maxTokens: 3000, temperature: 0.2, thinking: thinking ? 2048 : 0 });
+  } catch (err) {
+    if ((err as Error)?.name === 'AbortError') throw err;
+    yield* single();
+    return;
+  }
+  const draft = (/<answer>([\s\S]*?)(?:<\/answer>|$)/i.exec(raw)?.[1] ?? raw.replace(/<analysis>[\s\S]*?<\/analysis>/i, '')).trim();
+  const notes = (/<analysis>([\s\S]*?)<\/analysis>/i.exec(raw)?.[1] ?? '').trim();
+  if (!draft) { yield* single(); return; }
+
+  // Pass 2 — independent verification, streamed
+  onStage?.('checking');
+  const history = input.messages.slice(0, -1);
+  const question = input.messages[input.messages.length - 1]?.content ?? '';
+  const reviewMsg: Msg = { role: 'user', content: `[STUDENT'S LATEST MESSAGE]\n${question}\n\n[FIRST-PASS NOTES]\n${notes || '(none)'}\n\n[FIRST-PASS DRAFT ANSWER]\n${draft}\n\n[YOUR TASK] Write the final, verified answer for the student.` };
+  let wrote = false;
+  try {
+    for await (const chunk of streamText({ ...base, system: system + REVIEW_RULES, messages: [...history, reviewMsg], maxTokens: 2048, temperature: 0.1, thinking: thinking ? 1024 : 0 })) {
+      if (!wrote) { wrote = true; onStage?.('writing'); }
+      yield chunk;
+    }
+  } catch (err) {
+    if (wrote || (err as Error)?.name === 'AbortError') throw err;
+    // the checker could not run (rate limit, network): the first pass's answer is still far better than nothing
+    onStage?.('draft');
+    yield draft;
+  }
 }
 
 export interface McqQuestion { id: string; question: string; options: string[]; correctIndex: number; explanation: string }

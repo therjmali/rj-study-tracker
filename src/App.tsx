@@ -51,7 +51,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@project/components/ui/input';
 import { Label } from '@project/components/ui/label';
 import { syncDailyLogsWithSubjects } from './lib/dailyLogSync';
-import { completionsOn } from './lib/topicActivity';
+import { completionsOn, getLastActivity } from './lib/topicActivity';
 
 // Lazy load ALL heavy pages
 // memo: skip re-rendering this whole page when App re-renders for unrelated reasons (sheets opening, sync status, etc.)
@@ -448,6 +448,12 @@ function AppInner() {
   });
   const [pomodoroOpen, setPomodoroOpen] = useState(false);
   const [widgetModalOpen, setWidgetModalOpen] = useState(false);
+  // Where the Widgets sheet opens (a subject's / folder's menu opens it on the Subject tab, focused on that subject)
+  const [widgetTab, setWidgetTab] = useState<'study' | 'subject' | 'exam' | 'focus'>('study');
+  const [widgetHighlightId, setWidgetHighlightId] = useState<string | undefined>(undefined);
+  const openWidgetManager = useCallback((tab: 'study' | 'subject' | 'exam' | 'focus' = 'study', highlightId?: string) => {
+    setWidgetTab(tab); setWidgetHighlightId(highlightId); setWidgetModalOpen(true);
+  }, []);
   const [searchOpen, setSearchOpen] = useState(false);
   const [mcqOpen, setMcqOpen] = useState(false);
   const [flashcardOpen, setFlashcardOpen] = useState(false);
@@ -1446,7 +1452,10 @@ function AppInner() {
     const widgetSubjects: import('./platform/widgetSync').ActiveSubjectWidgetData[] = appState.subjects.map(sub => {
       let done = 0, tot = 0;
       sub.units.forEach(u => u.subTopics.forEach(t => { tot++; if (t.completed) done++; }));
-      const unit = getLastActiveUnit(sub);
+      // The widget resumes where the student LAST WORKED (a completion, study entry or revision); a subject
+      // with no activity yet falls back to the unit last opened in the app.
+      const last = getLastActivity(sub);
+      const unit = (last && sub.units.find(u => u.id === last.unitId)) || getLastActiveUnit(sub);
       let uDone = 0, uTot = 0;
       if (unit) { uTot = unit.subTopics.length; uDone = unit.subTopics.filter(t => t.completed).length; }
       return {
@@ -1454,6 +1463,7 @@ function AppInner() {
         percent: tot > 0 ? Math.round((done / tot) * 100) : 0, completedTopics: done, totalTopics: tot,
         activeUnitId: unit?.id, activeUnitName: unit ? unit.name.replace(/^Unit\s+\d+\s*:\s*/i, '') : undefined,
         activeUnitPercent: uTot > 0 ? Math.round((uDone / uTot) * 100) : 0,
+        lastTopicId: last?.topicId, lastTopicName: last?.topicName, lastKind: last?.kind, lastDate: last?.date,
       };
     });
 
@@ -1487,9 +1497,10 @@ function AppInner() {
       timerDisplay: timerState.active ? (timerState.appMode === 'stopwatch' ? '⏱ Running' : '⏳ Running') : '25:00',
       activeSubject: activeSubjectData,
       subjects: widgetSubjects,
+      widgetSubjectIds: (settings.widgetSubjectIds || []).filter(id => appState.subjects.some(x => x.id === id)).slice(0, 5),
       examTarget: examData,
     });
-  }, [appState.subjects, appState.dailyLogs, appState.semesterConfig?.exams, dbSessions, stats.streak, stats.pct, settings.studyGoals, timerState.active, timerState.appMode]);
+  }, [appState.subjects, appState.dailyLogs, appState.semesterConfig?.exams, dbSessions, stats.streak, stats.pct, settings.studyGoals, settings.widgetSubjectIds, timerState.active, timerState.appMode]);
 
   // "Start focus" from a reminder notification.
   const timerActionsRef = useRef(timerActions);
@@ -1524,6 +1535,13 @@ function AppInner() {
     setGlobalNavList(null);
     setGlobalTopicDetail({ topic, subjectId: sId, unitId: uId });
   }, [setGlobalTopicDetail]);
+  /** Jump into a subject → unit (→ topic) from a widget row, the Widgets sheet or the Profile page. */
+  const openUnitFromWidget = useCallback((sId: string, uId?: string, tId?: string) => {
+    setProfileOpen(false); setPomodoroOpen(false); setSearchOpen(false); setWidgetModalOpen(false);
+    setSyllabusNavTarget({ subjectId: sId, unitId: uId });
+    startTransition(() => setActiveTab('syllabus'));
+    if (tId) { const ids = { subjectId: sId, unitId: uId, topicId: tId }; setTimeout(() => openRunningTopic(ids), 350); }
+  }, [openRunningTopic]);
   useEffect(() => {
     const onAction = (e: Event) => {
       const detail = (e as CustomEvent<{ id: string; subjectId?: string; unitId?: string; topicId?: string }>).detail;
@@ -1557,6 +1575,11 @@ function AppInner() {
           setProfileOpen(false); setPomodoroOpen(false); setSearchOpen(false);
           setSyllabusNavTarget({ subjectId: detail.subjectId, unitId: detail.unitId });
           startTransition(() => setActiveTab('syllabus'));
+          // A widget row resumes exactly where the student last worked: open that topic on top of its unit
+          if (detail.topicId) {
+            const ids = { subjectId: detail.subjectId, unitId: detail.unitId, topicId: detail.topicId };
+            setTimeout(() => openRunningTopic(ids), 350);
+          }
         }
       } else if (id === 'open-exam') {
         setProfileOpen(false); setPomodoroOpen(false);
@@ -1581,6 +1604,7 @@ function AppInner() {
   // Pressing the tab you are already on reloads that section to its start state (out of any folder / unit / topic,
   // filters cleared, scrolled to top) — same as arriving from another tab. A bumped counter remounts the screen.
   const [resetCounts, setResetCounts] = useState<Record<string, number>>({});
+  const aiReturnTabRef = useRef<AppTab>('dashboard');
   const handleBottomNavChange = useCallback((tab: AppTab, dir?: 'left' | 'right') => {
     if (tab === activeTab) {
       navigator.vibrate?.(8);
@@ -1591,8 +1615,14 @@ function AppInner() {
       window.scrollTo({ top: 0, behavior: 'auto' });
       return;
     }
+    // remember where the AI Tutor was opened from, so its ❌ can take the student straight back there
+    if (tab === 'gamification') aiReturnTabRef.current = activeTab;
     setSlideDir(dir ?? null); setRevisionFilter(undefined); startTransition(() => setActiveTab(tab));
   }, [setActiveTab, activeTab]);
+  const closeAiTutor = useCallback(() => {
+    const back = aiReturnTabRef.current && aiReturnTabRef.current !== 'gamification' ? aiReturnTabRef.current : 'dashboard';
+    handleBottomNavChange(back, 'left');
+  }, [handleBottomNavChange]);
   const handleThemeToggle = useCallback(() => setSettings(prev => {
     const cur = prev.themeMode ?? 'light';
     // Liquid Glass: the quick toggle flips its light / dark tone instead of leaving the theme
@@ -1692,6 +1722,27 @@ function AppInner() {
   const handleUpdateSettings = useCallback((partial: Partial<UserSettings>) => {
     setSettings(prev => ({ ...prev, ...partial }));
   }, [setSettings]);
+
+  /** A subject's menu → Widget: add it to the home-screen widget (max 5) and open the sheet focused on it. */
+  const handleWidgetSubject = useCallback((subjectId: string) => {
+    const current = (settings.widgetSubjectIds || []).filter(id => appState.subjects.some(s => s.id === id));
+    if (!current.includes(subjectId) && current.length < 5) {
+      const name = appState.subjects.find(s => s.id === subjectId)?.shortName || 'Subject';
+      handleUpdateSettings({ widgetSubjectIds: [...current, subjectId] });
+      toast.success(`${name} added to your home-screen widget`, { action: { label: 'Undo', onClick: () => handleUpdateSettings({ widgetSubjectIds: current }) } });
+    } else if (!current.includes(subjectId)) {
+      toast.error('The widget shows up to 5 subjects — remove one to add this');
+    }
+    openWidgetManager('subject', subjectId);
+  }, [settings.widgetSubjectIds, appState.subjects, handleUpdateSettings, openWidgetManager]);
+  /** A folder's menu → Widget: the widget shows that folder's subjects (first 5), with Undo. */
+  const handleWidgetFolder = useCallback((subjectIds: string[], folderName: string) => {
+    const prev = settings.widgetSubjectIds || [];
+    const next = subjectIds.slice(0, 5);
+    handleUpdateSettings({ widgetSubjectIds: next });
+    toast.success(`Widget now shows ${folderName}${subjectIds.length > 5 ? ` (first 5 of ${subjectIds.length})` : ''}`, { action: { label: 'Undo', onClick: () => handleUpdateSettings({ widgetSubjectIds: prev }) } });
+    openWidgetManager('subject');
+  }, [settings.widgetSubjectIds, handleUpdateSettings, openWidgetManager]);
 
   const handleUpdateUser = useCallback((updatedUser: import('./types').User) => {
     // Update local state immediately
@@ -2115,7 +2166,7 @@ function AppInner() {
       case 'syllabus': return (
         <ErrorBoundary fallbackTitle="Syllabus failed to load">
           <Suspense fallback={<PageSkeleton />}>
-            <SyllabusTracker subjects={appState.subjects} onUpdate={updateSubjects} activeLogDate={activeDate} onHistoryLog={addHistoryEntries} canUndo={undoLen > 0} canRedo={redoLen > 0} onUndo={handleUndo} onRedo={handleRedo} onImportSubjects={handleImportSubjects} onTrashSubject={trashSubject} dailyLogs={appState.dailyLogs} onUpdateLogs={updateLogs} pendingTopicDetail={pendingTopicDetail} onClearPendingTopic={clearPendingTopic} onOpenPomodoro={handleOpenPomodoroForSubject} folders={appState.folders || []} onUpdateFolders={updateFolders} navTarget={syllabusNavTarget} onClearNavTarget={clearSyllabusNavTarget} onCreateSession={createStudySession} />
+            <SyllabusTracker subjects={appState.subjects} onUpdate={updateSubjects} activeLogDate={activeDate} onHistoryLog={addHistoryEntries} canUndo={undoLen > 0} canRedo={redoLen > 0} onUndo={handleUndo} onRedo={handleRedo} onImportSubjects={handleImportSubjects} onTrashSubject={trashSubject} dailyLogs={appState.dailyLogs} onUpdateLogs={updateLogs} pendingTopicDetail={pendingTopicDetail} onClearPendingTopic={clearPendingTopic} onOpenPomodoro={handleOpenPomodoroForSubject} folders={appState.folders || []} onUpdateFolders={updateFolders} navTarget={syllabusNavTarget} onClearNavTarget={clearSyllabusNavTarget} onCreateSession={createStudySession} widgetSubjectIds={settings.widgetSubjectIds} onWidgetSubject={handleWidgetSubject} onWidgetFolder={handleWidgetFolder} />
           </Suspense>
         </ErrorBoundary>
       );
@@ -2147,7 +2198,7 @@ function AppInner() {
       case 'gamification': return (
         <ErrorBoundary fallbackTitle="AI Chat failed to load">
           <Suspense fallback={<PageSkeleton />}>
-            <AIChat subjects={appState.subjects} dailyLogs={appState.dailyLogs} settings={settings} exams={appState.semesterConfig.exams} userName={user.name} dbSessions={dbSessions} />
+            <AIChat subjects={appState.subjects} dailyLogs={appState.dailyLogs} settings={settings} exams={appState.semesterConfig.exams} userName={user.name} dbSessions={dbSessions} onClose={closeAiTutor} />
           </Suspense>
         </ErrorBoundary>
       );
@@ -2217,14 +2268,15 @@ function AppInner() {
       )}
 
       <div className="flex max-w-full bg-background min-h-[calc(100vh-3.5rem)]">
-        <main className="flex-1 px-2 sm:px-6 py-4 pb-36 max-w-7xl mx-auto w-full">
+        <main className={`flex-1 px-2 sm:px-6 py-4 ${activeTab === 'gamification' ? 'pb-[max(1rem,env(safe-area-inset-bottom))]' : 'pb-36'} max-w-7xl mx-auto w-full`}>
           <div key={`${activeTab}:${resetCounts[activeTab] ?? 0}`} className="animate-page-enter min-h-[50vh]">
               {renderContent()}
           </div>
         </main>
       </div>
 
-      <BottomNav activeTab={activeTab} onTabChange={handleBottomNavChange} srsDueCount={srsDueCount} onOpenProfile={openProfile} profileOpen={profileOpen} />
+      {/* The AI Tutor is full-screen: the bottom bar steps aside (use the ❌ next to the key to close it) */}
+      {activeTab !== 'gamification' && <BottomNav activeTab={activeTab} onTabChange={handleBottomNavChange} srsDueCount={srsDueCount} onOpenProfile={openProfile} profileOpen={profileOpen} />}
 
       {/* Unified FAB — hidden on AI tab to avoid overlap */}
       {activeTab !== 'gamification' && <AiFab
@@ -2261,11 +2313,11 @@ function AppInner() {
         timerDisplay={timerState.active ? (timerState.appMode === 'stopwatch' ? '⏱ Running' : '⏳ Running') : '25:00'}
         subjects={appState.subjects}
         exams={appState.semesterConfig?.exams || []}
-        onOpenUnit={(sId, uId) => {
-          setProfileOpen(false); setPomodoroOpen(false); setSearchOpen(false);
-          setSyllabusNavTarget({ subjectId: sId, unitId: uId });
-          startTransition(() => setActiveTab('syllabus'));
-        }}
+        widgetSubjectIds={settings.widgetSubjectIds || []}
+        onWidgetSubjectsChange={ids => handleUpdateSettings({ widgetSubjectIds: ids })}
+        initialTab={widgetTab}
+        highlightSubjectId={widgetHighlightId}
+        onOpenUnit={openUnitFromWidget}
       />
 
       <BottomSheet open={pomodoroOpen} onClose={() => { setPomodoroOpen(false); setPomodoroPreFill(null); }} title="⏱️ Focus Timer">
@@ -2484,7 +2536,7 @@ function AppInner() {
             <ProfilePage
               user={user} onUpdateUser={handleUpdateUser}
               subjects={appState.subjects} dailyLogs={appState.dailyLogs}
-              appState={appState} settings={settings} onUpdateSettings={setSettings}
+              appState={appState} settings={settings} onUpdateSettings={setSettings} onOpenUnit={openUnitFromWidget}
               onImport={handleImport} onReset={handleReset} onClearHistory={handleClearHistory}
               history={history} exams={appState.semesterConfig.exams} onUpdateExams={updateExams}
               onPomodoroComplete={handlePomodoroComplete_inner}

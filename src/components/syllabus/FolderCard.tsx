@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MoreVertical, Pencil, Trash2, FolderOpen, ChevronRight, ChevronDown, Copy, FileText, FolderOutput, Clock, Star, ImagePlus, TrendingUp, Trophy, AlertTriangle } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, FolderOpen, ChevronRight, ChevronDown, Copy, FileText, FolderOutput, Clock, Star, ImagePlus, TrendingUp, Trophy, AlertTriangle, ArrowUpDown, LayoutGrid } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@project/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@project/components/ui/alert-dialog';
 import { Button } from '@project/components/ui/button';
@@ -15,6 +15,10 @@ interface Props {
   subjects: Subject[];
   onOpen: () => void;
   onEdit: () => void;
+  /** Rearrange the subjects inside this folder. */
+  onRearrange?: () => void;
+  /** Put this folder's subjects on the home-screen widget. */
+  onWidget?: () => void;
   onDelete: () => void;
   onDuplicate?: () => void;
   onExport?: () => void;
@@ -23,7 +27,7 @@ interface Props {
 
 function fmtTime(m: number) { if (m <= 0) return '0 min'; if (m < 60) return `${m} min`; const h = Math.floor(m / 60); const r = m % 60; return r > 0 ? `${h}h ${String(r).padStart(2, '0')}m` : `${h}h 00m`; }
 
-export default function FolderCard({ folder, subjects, onOpen, onEdit, onDelete, onDuplicate, onExport, onMoveAllOut }: Props) {
+export default function FolderCard({ folder, subjects, onOpen, onEdit, onRearrange, onWidget, onDelete, onDuplicate, onExport, onMoveAllOut }: Props) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -233,6 +237,16 @@ export default function FolderCard({ folder, subjects, onOpen, onEdit, onDelete,
                 <DropdownMenuItem onClick={e => { e.stopPropagation(); onEdit(); }} className="gap-2 text-sm font-medium">
                   <Pencil className="w-4 h-4" /> Edit Folder
                 </DropdownMenuItem>
+                {onRearrange && subjects.length > 1 && (
+                  <DropdownMenuItem onClick={e => { e.stopPropagation(); onRearrange(); }} className="gap-2 text-sm font-medium">
+                    <ArrowUpDown className="w-4 h-4" /> Rearrange
+                  </DropdownMenuItem>
+                )}
+                {onWidget && subjects.length > 0 && (
+                  <DropdownMenuItem onClick={e => { e.stopPropagation(); onWidget(); }} className="gap-2 text-sm font-medium">
+                    <LayoutGrid className="w-4 h-4" /> Widget
+                  </DropdownMenuItem>
+                )}
                 {onDuplicate && (
                   <DropdownMenuItem onClick={e => { e.stopPropagation(); onDuplicate(); }} className="gap-2 text-sm font-medium">
                     <Copy className="w-4 h-4" /> Duplicate Folder

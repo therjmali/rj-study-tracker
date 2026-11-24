@@ -28,6 +28,8 @@ interface Props {
   onReorderFolders?: (folderIds: string[]) => void;
   /** Called after a drop so the parent can switch the list to "Custom order" */
   onApplied?: () => void;
+  /** Open straight inside this folder (null / undefined = the top level). */
+  initialFolderId?: string | null;
 }
 
 const lockToY: Modifier = ({ transform }) => ({ ...transform, x: 0 });
@@ -163,12 +165,12 @@ function SortableGroup({ ids, render, onChange, onDrop, onTap }: {
 
 type Snapshot = { kind: 'folders' | 'subjects'; ids: string[] };
 
-export default function RearrangeModal({ open, onClose, subjects, folders, onReorderSubjects, onReorderFolders, onApplied }: Props) {
+export default function RearrangeModal({ open, onClose, subjects, folders, onReorderSubjects, onReorderFolders, onApplied, initialFolderId }: Props) {
   const [folderId, setFolderId] = useState<string | null>(null);
   const [savedTick, setSavedTick] = useState(0);
   const [history, setHistory] = useState<Snapshot[]>([]);
 
-  useEffect(() => { if (open) { setFolderId(null); setHistory([]); setSavedTick(0); } }, [open]);
+  useEffect(() => { if (open) { setFolderId(initialFolderId ?? null); setHistory([]); setSavedTick(0); } }, [open, initialFolderId]);
 
   const sortedFolders = useMemo(() => [...folders].sort((a, b) => a.order - b.order), [folders]);
   const rootSubjects = useMemo(() => subjects.filter(s => !s.folderId).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)), [subjects]);

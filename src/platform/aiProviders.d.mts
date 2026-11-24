@@ -7,7 +7,7 @@ export const PROVIDER_IDS: ProviderId[];
 export const PROVIDER_META: Record<ProviderId, ProviderMeta>;
 export const AI_HOSTS: string[];
 export interface ChatMsg { role: 'user' | 'assistant'; content: string }
-export interface RequestParams { key: string; model: string; system: string; messages: ChatMsg[]; maxTokens: number; json?: boolean; stream?: boolean }
+export interface RequestParams { key: string; model: string; system: string; messages: ChatMsg[]; maxTokens: number; json?: boolean; stream?: boolean; temperature?: number; thinking?: number }
 export interface BuiltRequest { url: string; init: { method: string; headers?: Record<string, string>; body?: string } }
 export function buildRequest(provider: ProviderId, p: RequestParams): BuiltRequest;
 export function readChunk(provider: ProviderId, data: any, stream: boolean): string;

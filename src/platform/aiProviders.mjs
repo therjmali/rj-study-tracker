@@ -44,12 +44,20 @@ export const AI_HOSTS = PROVIDER_IDS.map(id => PROVIDER_META[id].host);
 
 /**
  * Build one chat request.
- * p: { key, model, system, messages:[{role,content}], maxTokens, json?, stream? }
+ * p: { key, model, system, messages:[{role,content}], maxTokens, json?, stream?, temperature?, thinking? }
+ *   temperature — sampling temperature (low = consistent answers). Skipped for models that fix it.
+ *   thinking    — reasoning budget in tokens (0/undefined = off). Used only where the model supports it.
  * returns { url, init:{method, headers, body} } (the caller adds the AbortSignal)
  */
+const CLAUDE_THINKING = /claude-(3-7|opus-4|sonnet-4|haiku-4|opus-5|sonnet-5|haiku-5|fable|mythos)/i;
+const OPENAI_REASONING = /^(o\d|gpt-5)/i;
+const GROQ_GPT_OSS = /gpt-oss/i;
+const GEMINI_THINKING = /gemini-(2\.5|3)/i;
+
 export function buildRequest(provider, p) {
-  const { key, model, system, messages, maxTokens, json = false, stream = false } = p;
+  const { key, model, system, messages, maxTokens, json = false, stream = false, temperature, thinking = 0 } = p;
   const host = PROVIDER_META[provider].host;
+  const temp = typeof temperature === 'number' ? { temperature } : {};
 
   if (provider === 'anthropic') {
     return {
@@ -62,7 +70,12 @@ export function buildRequest(provider, p) {
           'anthropic-version': '2023-06-01',
           'anthropic-dangerous-direct-browser-access': 'true',
         },
-        body: JSON.stringify({ model, max_tokens: maxTokens, system, stream, messages }),
+        body: JSON.stringify(
+          thinking > 0 && CLAUDE_THINKING.test(model)
+            // extended thinking: temperature must stay default, and max_tokens must exceed the thinking budget
+            ? { model, max_tokens: maxTokens + Math.max(1024, thinking), system, stream, messages, thinking: { type: 'enabled', budget_tokens: Math.max(1024, thinking) } }
+            : { model, max_tokens: maxTokens, system, stream, messages, ...temp },
+        ),
       },
     };
   }
@@ -77,6 +90,9 @@ export function buildRequest(provider, p) {
         body: JSON.stringify({
           model, stream,
           max_completion_tokens: maxTokens,
+          // reasoning models fix their own temperature; the others answer more consistently when it is low
+          ...(provider === 'openai' && OPENAI_REASONING.test(model) ? (thinking > 0 ? { reasoning_effort: 'medium' } : {}) : temp),
+          ...(provider === 'groq' && GROQ_GPT_OSS.test(model) && thinking > 0 ? { reasoning_effort: 'medium' } : {}),
           ...(json ? { response_format: { type: 'json_object' } } : {}),
           messages: [{ role: 'system', content: system }, ...messages],
         }),
@@ -93,6 +109,7 @@ export function buildRequest(provider, p) {
         body: JSON.stringify({
           model, stream,
           max_tokens: maxTokens,
+          ...temp,
           ...(json ? { response_format: { type: 'json_object' } } : {}),
           messages: [{ role: 'system', content: system }, ...messages],
         }),
@@ -112,7 +129,10 @@ export function buildRequest(provider, p) {
         systemInstruction: { parts: [{ text: system }] },
         contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })),
         generationConfig: {
-          maxOutputTokens: Math.max(maxTokens, 2048) * 2,
+          // thinking tokens count toward the output limit, so the budget is added on top
+          maxOutputTokens: Math.max(maxTokens, 2048) * 2 + (thinking > 0 && GEMINI_THINKING.test(model) ? thinking : 0),
+          ...temp,
+          ...(thinking > 0 && GEMINI_THINKING.test(model) ? { thinkingConfig: { thinkingBudget: thinking } } : {}),
           ...(json ? { responseMimeType: 'application/json' } : {}),
         },
       }),

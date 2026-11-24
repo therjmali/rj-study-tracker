@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ImagePlus, X, Loader2, Upload, Copy } from 'lucide-react';
+import { ImagePlus, X, Loader2, Upload, Copy, ArrowUpDown, LayoutGrid } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import { Input } from '@project/components/ui/input';
 import { Label } from '@project/components/ui/label';
@@ -25,9 +25,12 @@ interface Props {
   onClose: () => void;
   onSave: (folder: Folder) => void;
   editFolder?: Folder | null;
+  /** Edit mode only: reorder the subjects in this folder / show them on the home-screen widget. */
+  onRearrange?: (folder: Folder) => void;
+  onWidget?: (folder: Folder) => void;
 }
 
-export default function CreateFolderSheet({ open, onClose, onSave, editFolder }: Props) {
+export default function CreateFolderSheet({ open, onClose, onSave, editFolder, onRearrange, onWidget }: Props) {
   const { upload } = useUpload();
   const [name, setName] = useState('');
   const [color, setColor] = useState(COLORS[0]);
@@ -253,6 +256,22 @@ export default function CreateFolderSheet({ open, onClose, onSave, editFolder }:
           </div>
         </div>
 
+        {editFolder && (onRearrange || onWidget) && (
+          <div className="grid grid-cols-2 gap-2">
+            {onRearrange && (
+              <button type="button" onClick={() => { onClose(); setTimeout(() => onRearrange(editFolder), 120); }}
+                className="h-11 rounded-xl border border-border/20 bg-card/40 text-[12px] font-bold flex items-center justify-center gap-2 active:scale-[0.97] transition">
+                <ArrowUpDown className="w-4 h-4 text-primary" /> Rearrange
+              </button>
+            )}
+            {onWidget && (
+              <button type="button" onClick={() => { onClose(); setTimeout(() => onWidget(editFolder), 120); }}
+                className="h-11 rounded-xl border border-border/20 bg-card/40 text-[12px] font-bold flex items-center justify-center gap-2 active:scale-[0.97] transition">
+                <LayoutGrid className="w-4 h-4 text-primary" /> Widget
+              </button>
+            )}
+          </div>
+        )}
         <Button className="w-full h-11 text-sm font-bold rounded-xl" onClick={handleSave} disabled={!name.trim()}>
           {editFolder ? 'Update Folder' : 'Create Folder'}
         </Button>

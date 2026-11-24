@@ -7,7 +7,8 @@ import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescript
 import type { Subject, DailyLog, User, AppState, UserSettings, HistoryEntry, ExamConfig, TrashItem, Reminder, DbStudySession } from '../../types';
 import { APP_VERSION } from '../../types';
 import { getStats } from '../../lib/gamification';
-import { formatStudyTime, getUnifiedTotalMinutes } from '../../lib/utils';
+import { formatStudyTime, getUnifiedTotalMinutes, getEffectiveDayMinutes, getLocalDateStr } from '../../lib/utils';
+import { completionsOn } from '../../lib/topicActivity';
 import SettingsHub from '../settings/SettingsHub';
 import ProfileEditorSheet, { COVER_GRADIENTS } from './ProfileEditorSheet';
 import StatusStrip from '../data/StatusStrip';
@@ -35,6 +36,8 @@ interface Props {
   onClose: () => void;
   onLogout: () => void;
   onOpenAi?: () => void;
+  /** Jump into a subject / unit / topic (used by the Widgets sheet's rows). */
+  onOpenUnit?: (subjectId: string, unitId?: string, topicId?: string) => void;
   reminders?: Reminder[];
   onUpdateReminders?: (r: Reminder[]) => void;
   onOpenHelp?: () => void;
@@ -51,7 +54,7 @@ const RANK_CONFIG = [
 
 
 export default function ProfilePage(props: Props) {
-  const { user, onUpdateUser, subjects, dailyLogs, appState, settings, onUpdateSettings, onImport, onReset, onClearHistory, history, exams, onUpdateExams, onPomodoroComplete, trash, onRestoreTrash, onDeleteTrash, onEmptyTrash, onClose, onLogout, onOpenAi, reminders, onUpdateReminders, onOpenHelp, dbSessions, initialSection } = props;
+  const { user, onUpdateUser, subjects, dailyLogs, appState, settings, onUpdateSettings, onImport, onReset, onClearHistory, history, exams, onUpdateExams, onPomodoroComplete, trash, onRestoreTrash, onDeleteTrash, onEmptyTrash, onClose, onLogout, onOpenAi, onOpenUnit, reminders, onUpdateReminders, onOpenHelp, dbSessions, initialSection } = props;
   const [editorOpen, setEditorOpen] = useState(false);
   const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
   const [widgetModalOpen, setWidgetModalOpen] = useState(false);
@@ -192,11 +195,16 @@ export default function ProfilePage(props: Props) {
       <WidgetManagerModal
         open={widgetModalOpen}
         onClose={() => setWidgetModalOpen(false)}
-        todayMinutes={getUnifiedTotalMinutes(subjects, dbSessions, dailyLogs)}
-        todayTopicsDone={doneTopics}
+        todayMinutes={getEffectiveDayMinutes(subjects, dailyLogs, getLocalDateStr(), dbSessions)}
+        todayTopicsDone={subjects.reduce((a, s) => a + s.units.reduce((b, u) => b + u.subTopics.reduce((c, t) => c + completionsOn(t, getLocalDateStr()), 0), 0), 0)}
         targetTopics={settings.studyGoals?.dailyTopics || 5}
         streakDays={stats.streak}
         syllabusPercent={pct}
+        subjects={subjects}
+        exams={exams}
+        onOpenUnit={onOpenUnit}
+        widgetSubjectIds={settings.widgetSubjectIds || []}
+        onWidgetSubjectsChange={ids => onUpdateSettings({ ...settings, widgetSubjectIds: ids })}
       />
 
       {/* Full-screen photo viewer */}

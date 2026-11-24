@@ -60,6 +60,10 @@ interface Props {
   onUpdateFolders: (folders: Folder[]) => void;
   navTarget?: { subjectId?: string; unitId?: string } | null;
   onClearNavTarget?: () => void;
+  /** Home-screen widget: subjects currently shown, and openers from a subject's / folder's menu. */
+  widgetSubjectIds?: string[];
+  onWidgetSubject?: (subjectId: string) => void;
+  onWidgetFolder?: (subjectIds: string[], folderName: string) => void;
   onCreateSession?: (session: { date: string; minutes: number; description: string; type: 'Topic' | 'Unit' | 'Other'; subjectId?: string; subjectName?: string; topicId?: string; unitId?: string; startTime?: string; endTime?: string; note?: string }) => void;
 }
 
@@ -73,7 +77,7 @@ function cleanEmptyUnits(newSubjects: Subject[], oldSubjects: Subject[]): Subjec
   }));
 }
 
-export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onHistoryLog, canUndo, canRedo, onUndo, onRedo, onImportSubjects, onTrashSubject, dailyLogs, onUpdateLogs, pendingTopicDetail, onClearPendingTopic, onOpenPomodoro, folders, onUpdateFolders, navTarget, onClearNavTarget, onCreateSession }: Props) {
+export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onHistoryLog, canUndo, canRedo, onUndo, onRedo, onImportSubjects, onTrashSubject, dailyLogs, onUpdateLogs, pendingTopicDetail, onClearPendingTopic, onOpenPomodoro, folders, onUpdateFolders, navTarget, onClearNavTarget, onCreateSession, widgetSubjectIds, onWidgetSubject, onWidgetFolder }: Props) {
   const [search, setSearch] = useState('');
   // Typing stays instant; the heavy filtering follows one render behind (React keeps the input responsive)
   const deferredSearch = useDeferredValue(search);
@@ -188,6 +192,9 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
   const [viewMode, setViewMode] = useState<'subjects' | 'units'>('subjects');
   const [toolbarOpen, setToolbarOpen] = useState(false);
   const [rearrangeOpen, setRearrangeOpen] = useState(false);
+  // Rearrange opens at the level it was asked from: the top level, or inside one folder
+  const [rearrangeFolderId, setRearrangeFolderId] = useState<string | null>(null);
+  const openRearrange = useCallback((folderId: string | null = null) => { setRearrangeFolderId(folderId); setRearrangeOpen(true); }, []);
 
   // Create Unit from Selected
   const [createUnitOpen, setCreateUnitOpen] = useState(false);
@@ -1412,7 +1419,7 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
             onViewModeChange={setViewMode}
             onAddSubject={() => { setEditSubject(null); setAddSubjectOpen(true); }}
             onAddFolder={() => { setEditFolderData(null); setCreateFolderOpen(true); }}
-            onRearrange={() => setRearrangeOpen(true)}
+            onRearrange={() => openRearrange(null)}
             onImport={() => setImportOpen(true)}
             onExport={() => {
               const lines: string[] = [];
@@ -1468,6 +1475,8 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
             onDelete={() => handleDeleteFolder(folder.id)}
             onDuplicate={() => handleDuplicateFolder(folder.id)}
             onExport={() => handleOpenFolderReport(folder.id)}
+            onRearrange={() => openRearrange(folder.id)}
+            onWidget={onWidgetFolder ? () => onWidgetFolder(subjects.filter(s => s.folderId === folder.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(s => s.id), folder.name) : undefined}
             onMoveAllOut={() => handleMoveAllSubjectsOut(folder.id)} />
         ))}
 
@@ -1507,11 +1516,11 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
             onCycleDifficulty={handleCycleDifficulty}
             onReorderTopic={handleReorderTopic}
             onMoveToFolder={() => { setMoveSubjectId(subject.id); setMoveToFolderOpen(true); }}
-            onMoveSubjectUp={idx > 0 ? () => handleMoveSubjectInList(subject.id, 'up') : undefined}
-            onMoveSubjectDown={idx < filteredDisplaySubjects.length - 1 ? () => handleMoveSubjectInList(subject.id, 'down') : undefined}
+            onRearrange={() => openRearrange(subject.folderId || null)}
+            onOpenWidget={onWidgetSubject ? () => onWidgetSubject(subject.id) : undefined}
+            onWidgetActive={!!widgetSubjectIds?.includes(subject.id)}
             onExpandAllUnits={expandAllUnits}
-            isFirstSubject={idx === 0}
-            isLastSubject={idx === filteredDisplaySubjects.length - 1}
+            
             onOpenReport={handleOpenReport}
             onUpdateTopicsModule={handleUpdateTopicsModule} />
           </ErrorBoundary>
@@ -1691,7 +1700,9 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
       <CreateFolderSheet open={createFolderOpen}
         onClose={() => { setCreateFolderOpen(false); setEditFolderData(null); }}
         onSave={editFolderData ? handleEditFolder : handleCreateFolder}
-        editFolder={editFolderData} />
+        editFolder={editFolderData}
+        onRearrange={f => openRearrange(f.id)}
+        onWidget={onWidgetFolder ? f => onWidgetFolder(subjects.filter(s => s.folderId === f.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(s => s.id), f.name) : undefined} />
 
       <MoveToSheet open={moveToFolderOpen}
         onClose={() => { setMoveToFolderOpen(false); setMoveSubjectId(''); }}
@@ -1755,6 +1766,7 @@ export default function SyllabusTracker({ subjects, onUpdate, activeLogDate, onH
           <RearrangeModal
             open={rearrangeOpen}
             onClose={() => setRearrangeOpen(false)}
+            initialFolderId={rearrangeFolderId}
             subjects={subjects}
             folders={folders}
             onReorderSubjects={handleReorderSubjectsGlobal}

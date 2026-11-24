@@ -113,6 +113,19 @@ public class SubjectWidgetProvider extends AppWidgetProvider {
         if (id.equals(s.optString("id"))) { out.add(s); break; }
       }
     }
+    // No picker choice on this widget -> follow the subjects chosen in the app (Profile > Widgets, a subject's
+    // menu, a folder's menu), in the order the student arranged them.
+    if (out.isEmpty() && root != null) {
+      org.json.JSONArray appIds = root.optJSONArray("widgetSubjectIds");
+      if (appIds != null) {
+        for (int i = 0; i < appIds.length() && out.size() < MAX_ROWS; i++) {
+          String id = appIds.optString(i, "");
+          for (JSONObject s : all) {
+            if (id.equals(s.optString("id"))) { out.add(s); break; }
+          }
+        }
+      }
+    }
     if (out.isEmpty() && root != null) {
       JSONObject active = root.optJSONObject("activeSubject");
       if (active != null) out.add(active);
@@ -148,11 +161,17 @@ public class SubjectWidgetProvider extends AppWidgetProvider {
   }
 
   private static PendingIntent openIntent(Context context, int requestCode, String subjectId, String unitId) {
+    return openIntent(context, requestCode, subjectId, unitId, null);
+  }
+
+  /** Opens the subject at the unit — and, when known, the exact topic — where the student last worked. */
+  private static PendingIntent openIntent(Context context, int requestCode, String subjectId, String unitId, String topicId) {
     Intent intent = new Intent(context, MainActivity.class);
     if (subjectId != null && !subjectId.isEmpty()) {
       intent.putExtra("rj_action", "open-unit");
       intent.putExtra("rj_subject", subjectId);
       if (unitId != null && !unitId.isEmpty()) intent.putExtra("rj_unit", unitId);
+      if (topicId != null && !topicId.isEmpty()) intent.putExtra("rj_topic", topicId);
     }
     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
     return PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -183,8 +202,16 @@ public class SubjectWidgetProvider extends AppWidgetProvider {
         int done = s.optInt("completedTopics", 0);
         int total = s.optInt("totalTopics", 0);
         String unit = s.optString("activeUnitName", "");
+        String lastTopic = s.optString("lastTopicName", "");
+        String lastKind = s.optString("lastKind", "");
         String meta = total > 0 ? (done + " / " + total + " topics") : (pct + "% complete");
-        if (!unit.isEmpty()) meta = meta + " · " + unit;
+        if (!lastTopic.isEmpty()) {
+          // where the student last worked: \u2713 completed, \u25B6 studied, \u21BB revised
+          String sym = "completed".equals(lastKind) ? "\u2713" : ("revised".equals(lastKind) ? "\u21BB" : "\u25B6");
+          meta = meta + " \u00B7 " + sym + " " + lastTopic;
+        } else if (!unit.isEmpty()) {
+          meta = meta + " \u00B7 " + unit;
+        }
         views.setViewVisibility(ROW[i], View.VISIBLE);
         views.setTextViewText(BADGE[i], s.optString("shortName", "SUBJ"));
         views.setTextColor(BADGE[i], parseColor(s.optString("color", "#CBBEFF")));
@@ -192,7 +219,7 @@ public class SubjectWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(PCT[i], pct + "%");
         views.setTextViewText(META[i], meta);
         views.setProgressBar(BAR[i], 100, pct, false);
-        views.setOnClickPendingIntent(ROW[i], openIntent(context, base + i + 1, s.optString("id", ""), s.optString("activeUnitId", "")));
+        views.setOnClickPendingIntent(ROW[i], openIntent(context, base + i + 1, s.optString("id", ""), s.optString("activeUnitId", ""), s.optString("lastTopicId", "")));
       } else {
         views.setViewVisibility(ROW[i], View.GONE);
       }

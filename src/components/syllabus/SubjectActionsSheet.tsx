@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import {
-  Pencil, FileText, Copy, Download, Upload, GitMerge, FolderInput, ArrowUp, ArrowDown,
+  Pencil, FileText, Copy, Download, Upload, GitMerge, FolderInput, ArrowUpDown, LayoutGrid,
   Trash2, ClipboardCopy, Layers, ListChecks, Clock, ChevronRight,
 } from 'lucide-react';
 import BottomSheet from '../shared/BottomSheet';
@@ -21,8 +21,12 @@ interface Props {
   onReport?: () => void;
   onMerge?: () => void;
   onMoveToFolder?: () => void;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
+  /** Opens the full-screen Rearrange mode at this subject (replaces Move up / Move down). */
+  onRearrange?: () => void;
+  /** Opens the home-screen Widgets sheet focused on this subject. */
+  onWidget?: () => void;
+  /** This subject is currently shown on the home-screen widget. */
+  onWidgetActive?: boolean;
   onCopyName: () => void;
   onDelete: () => void;
 }
@@ -117,9 +121,15 @@ export default function SubjectActionsSheet(p: Props) {
         <Group title="Organise">
           {p.onMoveToFolder && <Row icon={<FolderInput className="w-4 h-4" />} label="Move to folder" hint="File this subject in a folder" onClick={run(p.onMoveToFolder)} />}
           {p.onMerge && <Row icon={<GitMerge className="w-4 h-4" />} label="Merge units" hint="Combine two or more units" onClick={run(p.onMerge)} />}
-          {p.onMoveUp && <Row icon={<ArrowUp className="w-4 h-4" />} label="Move up" onClick={run(p.onMoveUp)} />}
-          {p.onMoveDown && <Row icon={<ArrowDown className="w-4 h-4" />} label="Move down" onClick={run(p.onMoveDown)} />}
+          {p.onRearrange && <Row icon={<ArrowUpDown className="w-4 h-4" />} label="Rearrange" hint="Drag subjects into your order" onClick={run(p.onRearrange)} />}
         </Group>
+
+        {p.onWidget && (
+          <Group title="Home screen">
+            <Row icon={<LayoutGrid className="w-4 h-4" />} label="Widget"
+              hint={p.onWidgetActive ? 'Shown on your widget · tap to manage' : 'Show this subject on your home-screen widget'} onClick={run(p.onWidget)} />
+          </Group>
+        )}
 
         <Group title="Share & data">
           <Row icon={<Download className="w-4 h-4" />} label="Export as JSON" hint="Backup this subject" onClick={run(p.onExport)} />

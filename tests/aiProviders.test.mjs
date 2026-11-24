@@ -113,3 +113,39 @@ test('looksLikeKey: blocks only the obviously wrong, warns on prefix mismatch', 
   assert.deepEqual(looksLikeKey('groq', 'gsk_' + 'x'.repeat(30)), { ok: true, hint: '' });
   assert.deepEqual(looksLikeKey('cohere', 'x'.repeat(40)), { ok: true, hint: '' });
 });
+
+test('low temperature everywhere, reasoning budgets only where the model supports them', async () => {
+  const { buildRequest } = await import('../src/platform/aiProviders.mjs');
+  const base = { key: 'k', system: 's', messages: [{ role: 'user', content: 'hi' }], maxTokens: 1000 };
+  const body = (prov, extra) => JSON.parse(buildRequest(prov, { ...base, ...extra }).init.body);
+  assert.equal(body('groq', { model: 'llama-3.3-70b-versatile', temperature: 0.2 }).temperature, 0.2);
+  assert.equal(body('cohere', { model: 'command-a', temperature: 0.2 }).temperature, 0.2);
+  assert.equal(body('gemini', { model: 'gemini-2.5-flash', temperature: 0.2 }).generationConfig.temperature, 0.2);
+  // Gemini 2.5 thinking budget is added on top of the output limit; Gemini 2.0 has no thinking config
+  const g25 = body('gemini', { model: 'gemini-2.5-flash', thinking: 2048 }).generationConfig;
+  assert.equal(g25.thinkingConfig.thinkingBudget, 2048);
+  assert.equal(g25.maxOutputTokens, 4096 + 2048);
+  assert.equal(body('gemini', { model: 'gemini-2.0-flash', thinking: 2048 }).generationConfig.thinkingConfig, undefined);
+  // Claude extended thinking: no temperature, max_tokens above the budget
+  const c = body('anthropic', { model: 'claude-sonnet-5-5', thinking: 2048, temperature: 0.2 });
+  assert.equal(c.thinking.budget_tokens, 2048);
+  assert.ok(c.max_tokens > 2048);
+  assert.equal(c.temperature, undefined);
+  assert.equal(body('anthropic', { model: 'claude-sonnet-5-5', temperature: 0.2 }).temperature, 0.2);
+  // OpenAI reasoning models fix their own temperature
+  assert.equal(body('openai', { model: 'gpt-5', temperature: 0.2, thinking: 1000 }).temperature, undefined);
+  assert.equal(body('openai', { model: 'gpt-5', temperature: 0.2, thinking: 1000 }).reasoning_effort, 'medium');
+  assert.equal(body('openai', { model: 'gpt-4.1', temperature: 0.2 }).temperature, 0.2);
+});
+
+test('think-tag filter hides reasoning even when tags are split across stream chunks', async () => {
+  const { stripThinking, ThinkFilter } = await import('../src/platform/thinkFilter.mjs');
+  assert.equal(stripThinking('<think>secret</think>Answer'), 'Answer');
+  assert.equal(stripThinking('no tags'), 'no tags');
+  const run = chunks => { const f = new ThinkFilter(); return chunks.map(c => f.push(c)).join('') + f.flush(); };
+  assert.equal(run(['<think>hid', 'den</th', 'ink>Hel', 'lo']), 'Hello');
+  assert.equal(run(['Hel', 'lo <', 'b>bold</b>']), 'Hello <b>bold</b>');   // a normal "<" is not swallowed
+  assert.equal(run(['a < b and c']), 'a < b and c');
+  assert.equal(run(['<thi', 'nk>x</think>ok']), 'ok');
+  assert.equal(run(['plain streamed answer']), 'plain streamed answer');
+});

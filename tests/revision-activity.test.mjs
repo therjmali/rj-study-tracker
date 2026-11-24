@@ -48,3 +48,17 @@ test('revision activity keeps the streak alive', async () => {
   a.addActivityDates(withRev(), dates);
   assert.deepEqual([...dates].sort(), [D1, D0].sort());
 });
+
+test('last activity = newest completion / study / revision in the subject (widget deep link)', async () => {
+  const a = await loadTs('src/lib/topicActivity.ts');
+  const t1 = topic({ id: 'a', name: 'Old', completed: true, completedDate: D1, completedTime: '10:00', timeEntries: [] });
+  const t2 = topic({ id: 'b', name: 'Revised today', completed: true, completedDate: D1, timeEntries: [],
+    revisions: { R1: { status: 'complete', completedDate: D0, completedTime: '07:30', timeSpent: 10, timeEntries: [{ date: D0, minutes: 10, time: '07:00' }] } } });
+  const t3 = topic({ id: 'c', name: 'Studied later today', completed: false, timeEntries: [{ date: D0, minutes: 20, time: '21:15' }] });
+  const sub = { units: [{ id: 'u1', subTopics: [t1, t2] }, { id: 'u2', subTopics: [t3] }] };
+  const last = a.getLastActivity(sub);
+  assert.equal(last.topicId, 'c');
+  assert.equal(last.unitId, 'u2');
+  assert.equal(last.kind, 'studied');
+  assert.equal(a.getLastActivity({ units: [{ id: 'u', subTopics: [topic({ id: 'x', name: 'None' })] }] }), undefined);
+});

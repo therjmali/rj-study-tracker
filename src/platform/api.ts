@@ -23,6 +23,7 @@ export const confirmReset = db.confirmReset;
 export const loadPrefillSyllabus = (_input?: { subjectIds: string[] }) => db.loadPrefillSyllabus();
 
 export const studyChat = ai.studyChat;
+export const studyChatVerified = ai.studyChatVerified;
 export const generateMCQ = ai.generateMCQ;
 export const generateFlashcards = ai.generateFlashcards;
 export const generateStudyPlan = ai.generateStudyPlan;

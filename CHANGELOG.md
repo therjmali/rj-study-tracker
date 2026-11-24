@@ -1,5 +1,23 @@
 # Changelog
 
+## 22.0.0 — Widgets that follow YOUR subjects, Rearrange everywhere, an AI Tutor that thinks twice
+
+**🧩 Home-screen widgets**
+- **Fixed the Widgets sheet showing an empty "Subject · 0% · No active unit".** Profile → Widgets was opened without your subjects, exams or navigation, so it could not list anything. It now has them (and its "Today" numbers are today's, not all-time).
+- New **Subject widget tab**: pick up to 5 subjects, reorder them, and see a live preview of the exact widget. Your picks are saved and every widget without its own picker follows them (a widget set up with the on-widget picker keeps its own choice).
+- **Interactive "resume" rows:** each row shows `done / total · ▶ last topic` and a tap opens the subject at the unit — and the exact topic — where you last worked (last completion, study entry or revision; ✓ completed · ▶ studied · ↻ revised).
+- **Subject menu → Widget** (adds the subject, with Undo) and **Folder menu / Edit folder → Widget** (the widget shows that folder's subjects, with Undo).
+
+**↕ Rearrange replaces Move up / Move down**
+- A subject's menu now has **Rearrange** (opens the drag-and-drop mode in that subject's folder).
+- Folders get **Rearrange** (subjects inside the folder) and **Widget** in both the folder menu and **Edit folder**.
+
+**🤖 AI Tutor**
+- **Why answers were inconsistent:** no temperature was set, so every provider ran near its default (~1.0). All answers now run at a low temperature, with accuracy rules (never claim you said something you didn't, no placeholders, correct a wrong mnemonic kindly, reply in your language).
+- **Think, then ask twice:** a silent first pass reasons and drafts (native reasoning on Gemini 2.5, Claude and OpenAI reasoning models; a step-by-step scratchpad elsewhere), then an independent second pass verifies and corrects it and streams the final answer, marked "✓ Double-checked". A live "Thinking it through… → Double-checking…" indicator shows each stage. If the checker can't run (rate limit/offline) you still get the draft.
+- **Thinking** and **Double-check** switches sit above the input and in AI settings (Double-check uses two requests per message — turn it off for fast answers). New **Stop** button while it answers.
+- The **bottom bar is gone on the AI Tutor** (full-screen chat) and a **❌ next to the 🔑 key button** minimises it back to where you came from. Reasoning-model `<think>` text is filtered out.
+
 ## 21.5.0 — Manual · Stopwatch · Countdown: one three-way switch everywhere
 
 - **Three horizontal tabs — ✍️ Manual · ⏱️ Stopwatch · ⏳ Countdown** — replace the stacked "manual on top, timer below" layout in **every topic window**, the **Revision window** and **Statistics → Add Study Time** (same component, same behaviour). Manual is first and opens by default; a timer already running for that topic re-opens on its own tab, with a pulsing dot and the live time on the tab. While a timer runs only its own mode stays selectable, so it can't be reset by accident.

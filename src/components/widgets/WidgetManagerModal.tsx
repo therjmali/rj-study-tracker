@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import SubjectWidgetPicker from './SubjectWidgetPicker';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Smartphone, Sparkles, Plus, Check, Clock, Target, Flame, LayoutGrid, ChevronRight, HelpCircle, BookOpen, Calendar, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17,7 +18,14 @@ interface Props {
   timerDisplay?: string;
   subjects?: Subject[];
   exams?: ExamConfig[];
-  onOpenUnit?: (subjectId: string, unitId?: string) => void;
+  onOpenUnit?: (subjectId: string, unitId?: string, topicId?: string) => void;
+  /** Subjects the Subject widget shows (saved in settings). */
+  widgetSubjectIds?: string[];
+  onWidgetSubjectsChange?: (ids: string[]) => void;
+  /** Open on this tab (e.g. 'subject' when coming from a subject's or folder's menu). */
+  initialTab?: 'study' | 'subject' | 'exam' | 'focus';
+  /** Emphasise this subject in the picker. */
+  highlightSubjectId?: string;
 }
 
 export default function WidgetManagerModal({
@@ -32,30 +40,17 @@ export default function WidgetManagerModal({
   subjects = [],
   exams = [],
   onOpenUnit,
+  widgetSubjectIds = [],
+  onWidgetSubjectsChange,
+  initialTab,
+  highlightSubjectId,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<'study' | 'subject' | 'exam' | 'focus'>('study');
+  const [activeTab, setActiveTab] = useState<'study' | 'subject' | 'exam' | 'focus'>(initialTab ?? 'study');
+  useEffect(() => { if (open) setActiveTab(initialTab ?? 'study'); }, [open, initialTab]);
   const [showManualGuide, setShowManualGuide] = useState(false);
   const [pinnedWidgets, setPinnedWidgets] = useState<Record<string, boolean>>({});
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(subjects[0]?.id || '');
 
   if (!open) return null;
-
-  const currentSubject = subjects.find(s => s.id === selectedSubjectId) || subjects[0];
-  const lastActiveUnit = currentSubject ? getLastActiveUnit(currentSubject) : undefined;
-  
-  // Calculate current subject stats
-  let subjDone = 0;
-  let subjTotal = 0;
-  if (currentSubject) {
-    currentSubject.units.forEach(u => u.subTopics.forEach(t => {
-      subjTotal++;
-      if (t.completed) subjDone++;
-    }));
-  }
-  const subjPct = subjTotal > 0 ? Math.round((subjDone / subjTotal) * 100) : 0;
-  const unitDone = lastActiveUnit ? lastActiveUnit.subTopics.filter(t => t.completed).length : 0;
-  const unitTotal = lastActiveUnit ? lastActiveUnit.subTopics.length : 0;
-  const cleanUnitName = lastActiveUnit ? lastActiveUnit.name.replace(/^Unit\s+\d+\s*:\s*/i, '') : 'No active unit';
 
   // Calculate upcoming exam
   const today = new Date().toISOString().split('T')[0];
@@ -225,106 +220,17 @@ export default function WidgetManagerModal({
           </motion.div>
         )}
 
-        {/* Widget 2: Subject Mastery & Live Unit (4x2) */}
+        {/* Widget 2: Subject widget — choose which subjects, live preview, tap → resume where you last worked */}
         {activeTab === 'subject' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                <BookOpen className="w-3.5 h-3.5 text-primary" /> Subject Mastery &amp; Unit (4×2)
-              </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted/40 text-muted-foreground">Interactive</span>
-            </div>
-
-            {/* Subject Selector for preview */}
-            {subjects.length > 1 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                {subjects.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelectedSubjectId(s.id)}
-                    className={`px-2.5 py-1 rounded-xl text-[10px] font-bold shrink-0 transition-all ${
-                      s.id === (currentSubject?.id || '')
-                        ? 'bg-primary text-primary-foreground shadow-sm'
-                        : 'bg-muted/30 text-muted-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    {s.shortName || s.name}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Realistic Subject Widget Render */}
-            <div
-              className="rounded-3xl p-4 border border-white/15 shadow-xl relative overflow-hidden"
-              style={{
-                background: 'linear-gradient(135deg, #1A1F26 0%, #151920 100%)',
-                boxShadow: '0 12px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span
-                    className="text-[10px] font-black px-2 py-0.5 rounded-lg border backdrop-blur-md shrink-0"
-                    style={{
-                      backgroundColor: (currentSubject?.color || '#38BDF8') + '30',
-                      color: '#fff',
-                      borderColor: (currentSubject?.color || '#38BDF8') + '50',
-                    }}
-                  >
-                    {currentSubject?.shortName || 'SUBJ'}
-                  </span>
-                  <span className="text-xs font-bold text-white truncate drop-shadow-sm">
-                    {currentSubject?.name || 'Subject'}
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#242B35] border border-[#3B4654] text-[#34D399] shrink-0">
-                  {subjPct}%
-                </span>
-              </div>
-
-              <div className="mt-2.5 pt-1 border-t border-white/5">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">LAST ACTIVE UNIT</p>
-                <p className="text-xs font-black text-white truncate mt-0.5">{cleanUnitName}</p>
-                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                  {unitTotal > 0 ? `${unitDone} / ${unitTotal} Topics (${Math.round((unitDone / unitTotal) * 100)}%)` : `${subjPct}% Complete`}
-                </p>
-              </div>
-
-              <div className="mt-2.5">
-                <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-[#E0764F] to-[#B4452B]" style={{ width: `${subjPct}%` }} />
-                </div>
-                <div className="flex items-center justify-between text-[9px] text-slate-500 mt-1 font-semibold">
-                  <span>Tap to jump into unit</span>
-                  <span className="text-[#E0764F] font-bold">⚡ Resume Unit ›</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleAddWidget('subject')}
-                className="flex-1 h-10 rounded-2xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-md"
-              >
-                {pinnedWidgets['subject'] ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                {pinnedWidgets['subject'] ? 'Widget Requested — Tap to Request Again' : 'Pin Subject Widget to Home Screen'}
-              </button>
-              {currentSubject && onOpenUnit && (
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenUnit(currentSubject.id, lastActiveUnit?.id);
-                  }}
-                  className="h-10 px-3 rounded-2xl bg-muted/40 hover:bg-muted/60 text-foreground text-xs font-bold flex items-center gap-1 transition-all"
-                  title="Test launching this unit directly in app"
-                >
-                  <span>Launch</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </motion.div>
+          <SubjectWidgetPicker
+            subjects={subjects}
+            selectedIds={widgetSubjectIds}
+            onChange={ids => onWidgetSubjectsChange?.(ids)}
+            onOpenUnit={onOpenUnit ? (sId, uId, tId) => { onClose(); onOpenUnit(sId, uId, tId); } : undefined}
+            onPin={() => handleAddWidget('subject')}
+            pinned={!!pinnedWidgets['subject']}
+            highlightId={highlightSubjectId}
+          />
         )}
 
         {/* Widget 3: Exam Countdown & Target Pace (4x1) */}

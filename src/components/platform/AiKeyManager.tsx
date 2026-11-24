@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Check, ChevronDown, ClipboardPaste, ExternalLink, Eye, EyeOff, KeyRound, Loader2, RefreshCw, ShieldCheck, Trash2, WifiOff, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  PROVIDER_ORDER, PROVIDERS, getAiSettings, getLastAiRun, removeProviderKey, setActiveProvider, setFallbackEnabled,
+  PROVIDER_ORDER, PROVIDERS, getAiSettings, getLastAiRun, removeProviderKey, setActiveProvider, setFallbackEnabled, setAiThinking, setAiVerify,
   setProviderKey, setProviderModel, subscribeAiRun, subscribeAiSettings, testProviderKey, configuredProviders,
   type AiProvider, type KeyStatus,
 } from '@/platform/ai';
@@ -91,6 +91,24 @@ export default function AiKeyManager() {
           <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${s.fallback !== false ? 'left-[22px]' : 'left-0.5'}`} />
         </span>
       </button>
+
+      {/* Answer quality — the AI Tutor thinks first, then asks a second time to verify */}
+      {([
+        { id: 'think', on: s.thinking !== false, toggle: () => setAiThinking(s.thinking === false), title: 'Thinking mode', hint: 'The tutor reasons step by step before it answers (native reasoning on Gemini 2.5, Claude and OpenAI reasoning models).', tone: 'bg-primary/15 text-primary', icon: '🧠' },
+        { id: 'verify', on: s.verify !== false, toggle: () => setAiVerify(s.verify === false), title: 'Double-check every answer', hint: 'Each answer is written, then independently verified and corrected by a second pass. Uses two requests per message — turn off for faster, cheaper answers.', tone: 'bg-emerald-500/15 text-emerald-600', icon: '🛡️' },
+      ] as const).map(o => (
+        <button key={o.id} type="button" role="switch" aria-checked={o.on} onClick={o.toggle}
+          className="flex w-full items-center gap-3 rounded-[22px] border border-border/30 bg-card p-3.5 text-left transition-all active:scale-[0.99]">
+          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-base ${o.tone}`}>{o.icon}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-bold text-foreground">{o.title}</span>
+            <span className="block text-[11px] leading-snug text-muted-foreground">{o.hint}</span>
+          </span>
+          <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${o.on ? 'bg-primary' : 'bg-muted'}`}>
+            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${o.on ? 'left-[22px]' : 'left-0.5'}`} />
+          </span>
+        </button>
+      ))}
 
       {/* Provider cards */}
       {PROVIDER_ORDER.map(p => (

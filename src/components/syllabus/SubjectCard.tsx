@@ -67,10 +67,11 @@ interface Props {
   onCycleDifficulty?: (subjectId: string, unitId: string, topicId: string, newDifficulty: 'Easy' | 'Medium' | 'Hard') => void;
   onReorderTopic?: (subjectId: string, unitId: string, topicId: string, direction: 'up' | 'down') => void;
   onMoveToFolder?: () => void;
-  onMoveSubjectUp?: () => void;
-  onMoveSubjectDown?: () => void;
-  isFirstSubject?: boolean;
-  isLastSubject?: boolean;
+  /** Rearrange mode at this subject (replaces the old Move up / Move down). */
+  onRearrange?: () => void;
+  /** Open the home-screen Widgets sheet on this subject. */
+  onOpenWidget?: () => void;
+  onWidgetActive?: boolean;
   onExpandAllUnits?: (unitIds: string[]) => void;
   onOpenReport?: (subjectId: string) => void;
   onUpdateTopicsModule?: (subjectId: string, unitId: string, topicIds: string[], field: 'module' | 'subModule', value: string | undefined) => void;
@@ -83,7 +84,7 @@ const SubjectCard = memo(function SubjectCard({
   selectMode, selectedTopics, onSelectTopic, studyPace, onOpenUnitEditor, onMoveUnit,
   onReorderUnits, onMergeUnits, onImportSubject, onSelectAllInUnit, onOpenPomodoro, onOpenTimer,
   onCycleTopicStatus, onCycleDifficulty, onReorderTopic,
-  onMoveToFolder, onMoveSubjectUp, onMoveSubjectDown, isFirstSubject, isLastSubject, onExpandAllUnits, onOpenReport,
+  onMoveToFolder, onRearrange, onOpenWidget, onWidgetActive, onExpandAllUnits, onOpenReport,
   onUpdateTopicsModule,
 }: Props) {
   // origSubject has ALL units/topics (for export, edit mode, overall stats).
@@ -427,8 +428,9 @@ const SubjectCard = memo(function SubjectCard({
         onReport={() => onOpenReport?.(subject.id)}
         onMerge={origSubject.units.length >= 2 ? () => { setMergeMode(true); setMergeSelected(new Set()); if (!expanded) onToggle(); } : undefined}
         onMoveToFolder={onMoveToFolder}
-        onMoveUp={onMoveSubjectUp && !isFirstSubject ? onMoveSubjectUp : undefined}
-        onMoveDown={onMoveSubjectDown && !isLastSubject ? onMoveSubjectDown : undefined}
+        onRearrange={onRearrange}
+        onWidget={onOpenWidget}
+        onWidgetActive={onWidgetActive}
         onCopyName={() => { navigator.clipboard.writeText(getCleanName(subject.name)).then(() => toast.success('📋 Copied!')).catch(() => {}); }}
         onDelete={() => setDeleteConfirmOpen(true)}
       />

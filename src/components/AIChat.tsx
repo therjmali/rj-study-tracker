@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback, useMemo, useSyncExternalStore } from 'react';
-import { Send, Bot, User, Trash2, Sparkles, Loader2, Brain, Zap, Lock, LogIn, KeyRound, WifiOff } from 'lucide-react';
+import { Send, Bot, User, Trash2, Sparkles, Brain, Zap, Lock, LogIn, KeyRound, WifiOff, X, ShieldCheck, Square, Search } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import { Markdown } from '@project/components/markdown';
 import { toast } from 'sonner';
-import { studyChat } from '@/platform/api';
-import { PROVIDERS, getAiSettings, getLastAiRun, isAiConfigured, reportAiError, subscribeAiRun, subscribeAiSettings } from '@/platform/ai';
+import { studyChatVerified } from '@/platform/api';
+import { PROVIDERS, getAiSettings, getLastAiRun, isAiConfigured, reportAiError, setAiThinking, setAiVerify, subscribeAiRun, subscribeAiSettings } from '@/platform/ai';
+import type { ChatStage } from '@/platform/ai';
 import { useConnectivity } from '@/platform/connectivity';
 import BottomSheet from './shared/BottomSheet';
 import AiKeyManager from './platform/AiKeyManager';
@@ -19,6 +20,8 @@ import { getLocalDateStr } from '../lib/utils';
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  /** The answer went through the second, independent checking pass. */
+  verified?: boolean;
 }
 
 interface Props {
@@ -28,6 +31,8 @@ interface Props {
   exams?: ExamConfig[];
   userName?: string;
   dbSessions?: DbStudySession[];
+  /** Minimise: close the tutor and go back (shown as ❌ beside the key button). */
+  onClose?: () => void;
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -114,7 +119,7 @@ function GuestLockScreen() {
   );
 }
 
-export default function AIChat({ subjects = [], dailyLogs = [], settings, exams, userName, dbSessions }: Props) {
+export default function AIChat({ subjects = [], dailyLogs = [], settings, exams, userName, dbSessions, onClose }: Props) {
   const { user: authUser } = useAuth();
   const isGuest = !authUser;
 
@@ -123,6 +128,8 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [keysOpen, setKeysOpen] = useState(false);
+  const [stage, setStage] = useState<ChatStage | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const conn = useConnectivity();
   const ai = useSyncExternalStore(subscribeAiSettings, getAiSettings, getAiSettings);
   const run = useSyncExternalStore(subscribeAiRun, getLastAiRun, getLastAiRun);
@@ -190,28 +197,48 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
     setInput('');
     setIsStreaming(true);
     setStreamingText('');
+    setStage(null);
+    const ctl = new AbortController();
+    abortRef.current = ctl;
+    const seen = new Set<ChatStage>();
+    let fullText = '';
 
     try {
-      const stream = studyChat({
+      // "Think, then ask twice": a silent reasoning + draft pass, then an independent verification pass that is streamed
+      const stream = studyChatVerified({
         messages: newMessages.map(m => ({ role: m.role, content: m.content })),
         topicContext: progressContext,
         telemetry: collectTutorTelemetry(subjects, dailyLogs, exams, dbSessions),
+      }, {
+        thinking: ai.thinking !== false,
+        verify: ai.verify !== false,
+        signal: ctl.signal,
+        onStage: s => { seen.add(s); setStage(s); },
       });
 
-      let fullText = '';
       for await (const chunk of stream) {
         fullText += chunk;
         setStreamingText(fullText);
       }
 
-      setMessages(prev => [...prev, { role: 'assistant', content: fullText }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: fullText, verified: seen.has('checking') && !seen.has('draft') }]);
       setStreamingText('');
     } catch (err) {
-      reportAiError(err, toast, 'Failed to get response. Please try again.');
+      if ((err as Error)?.name === 'AbortError') {
+        // Stopped by the student: keep what was already written
+        if (fullText.trim()) setMessages(prev => [...prev, { role: 'assistant', content: fullText.trim() }]);
+        setStreamingText('');
+      } else {
+        reportAiError(err, toast, 'Failed to get response. Please try again.');
+      }
     } finally {
+      abortRef.current = null;
+      setStage(null);
       setIsStreaming(false);
     }
-  }, [input, messages, isStreaming, progressContext, subjects, dailyLogs, exams, dbSessions]);
+  }, [input, messages, isStreaming, progressContext, subjects, dailyLogs, exams, dbSessions, ai.thinking, ai.verify]);
+
+  const stopGenerating = () => abortRef.current?.abort();
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -244,7 +271,7 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] lg:h-[calc(100vh-6rem)]">
+    <div className={`flex flex-col ${onClose ? 'h-[calc(100dvh-6.5rem)] lg:h-[calc(100dvh-6rem)]' : 'h-[calc(100vh-10rem)] lg:h-[calc(100vh-6rem)]'}`}>
       {/* Header */}
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -280,6 +307,12 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
             <KeyRound className="h-[18px] w-[18px]" />
             {!configured && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 animate-pulse rounded-full border-2 border-background bg-red-500" />}
           </button>
+          {onClose && (
+            <button type="button" onClick={onClose} aria-label="Close AI Tutor" title="Close"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/40 bg-card text-muted-foreground transition-transform active:scale-95 hover:text-foreground">
+              <X className="h-[18px] w-[18px]" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -355,16 +388,30 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
         )}
 
         {isStreaming && !streamingText && (
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2" role="status" aria-live="polite">
             <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
               <Bot className="w-4 h-4 text-primary" />
             </div>
-            <div className="bg-card border border-border/20 rounded-xl px-4 py-3">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
+            <div className="bg-card border border-border/20 rounded-xl px-3.5 py-2.5 min-w-[11rem]">
+              {stage === 'thinking' || stage === 'checking' ? (
+                <>
+                  <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                    {stage === 'thinking' ? <Brain className="w-3.5 h-3.5 text-primary animate-pulse" /> : <Search className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />}
+                    {stage === 'thinking' ? 'Thinking it through…' : 'Double-checking the answer…'}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{stage === 'thinking' ? 'Reading your question and checking the facts' : 'A second pass verifies every fact'}</p>
+                  <div className="flex gap-1 mt-1.5" aria-hidden>
+                    <span className={`h-1 flex-1 rounded-full ${stage === 'thinking' ? 'bg-primary/70 animate-pulse' : 'bg-primary'}`} />
+                    <span className={`h-1 flex-1 rounded-full ${stage === 'checking' ? 'bg-emerald-500/70 animate-pulse' : 'bg-muted/50'}`} />
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -373,7 +420,18 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-border/20 pt-3 mt-2">
+      <div className="border-t border-border/20 pt-2 mt-2">
+        <div className="mb-2 flex items-center gap-1.5 flex-wrap">
+          <button type="button" aria-pressed={ai.thinking !== false} onClick={() => setAiThinking(ai.thinking === false)} disabled={isStreaming}
+            className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold transition-colors ${ai.thinking !== false ? 'border-primary/40 bg-primary/12 text-primary' : 'border-border/30 bg-card text-muted-foreground'}`}>
+            <Brain className="h-3 w-3" /> Thinking {ai.thinking !== false ? 'on' : 'off'}
+          </button>
+          <button type="button" aria-pressed={ai.verify !== false} onClick={() => setAiVerify(ai.verify === false)} disabled={isStreaming}
+            className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold transition-colors ${ai.verify !== false ? 'border-emerald-500/40 bg-emerald-500/12 text-emerald-600 dark:text-emerald-400' : 'border-border/30 bg-card text-muted-foreground'}`}>
+            <ShieldCheck className="h-3 w-3" /> Double-check {ai.verify !== false ? 'on' : 'off'}
+          </button>
+          <span className="ml-auto text-[9px] font-semibold text-muted-foreground/70">{ai.verify !== false ? 'Slower · more accurate' : 'Fast answers'}</span>
+        </div>
         <div className="flex items-end gap-2">
           <textarea
             value={input}
@@ -384,10 +442,16 @@ export default function AIChat({ subjects = [], dailyLogs = [], settings, exams,
             className="flex-1 resize-none bg-card border border-border/30 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 placeholder:text-muted-foreground/50 max-h-32"
             style={{ minHeight: 42 }}
           />
-          <Button onClick={() => handleSend()} disabled={!input.trim() || isStreaming}
-            size="icon" className="w-10 h-10 rounded-xl flex-shrink-0">
-            <Send className="w-4 h-4" />
-          </Button>
+          {isStreaming ? (
+            <Button onClick={stopGenerating} size="icon" variant="outline" aria-label="Stop" className="w-10 h-10 rounded-xl flex-shrink-0 border-destructive/40 text-destructive">
+              <Square className="w-4 h-4" fill="currentColor" />
+            </Button>
+          ) : (
+            <Button onClick={() => handleSend()} disabled={!input.trim()}
+              size="icon" aria-label="Send" className="w-10 h-10 rounded-xl flex-shrink-0">
+              <Send className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
       <BottomSheet open={keysOpen} onClose={() => setKeysOpen(false)} title="AI partners & keys" zIndex={120}>
@@ -415,6 +479,9 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage; isStrea
         )}
         {isStreaming && (
           <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 rounded-sm" />
+        )}
+        {!isUser && message.verified && !isStreaming && (
+          <p className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400"><ShieldCheck className="h-3 w-3" /> Double-checked</p>
         )}
       </div>
     </div>

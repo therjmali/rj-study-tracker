@@ -360,6 +360,8 @@ export interface CustomQuote {
 }
 
 export interface UserSettings {
+  /** Subjects shown by the home-screen Subject widget (max 5 rows). Empty = follow the last active subject. */
+  widgetSubjectIds?: string[];
   theme: ThemeId;
   themeMode: ThemeMode;
   /** Only used by the Liquid Glass theme. */
